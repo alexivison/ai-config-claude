@@ -1,6 +1,6 @@
 ---
 name: writing-tests
-description: Write tests following Testing Trophy methodology. Analyzes code to determine test type (unit/integration/component), applies appropriate granularity. Supports both frontend (Vitest, testing-library) and backend (Go testing, moq). Use when asked to write tests, add test coverage, or create test files.
+description: Write tests following Testing Trophy methodology. Analyzes code to determine test type (unit/integration/component), applies appropriate granularity. Use when asked to write tests, add test coverage, or create test files.
 ---
 
 # Overview

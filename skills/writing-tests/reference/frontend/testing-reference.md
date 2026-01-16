@@ -1,14 +1,12 @@
 # Frontend Testing Reference
 
-A comprehensive guide to testing practices in the frontend codebase.
+A methodology guide for testing frontend applications.
 
 ## Testing Philosophy
 
 ### Core Principles
 
-1. **Tests are mandatory** - Automated tests are expected for all production code
-   - Enable confident future changes (supporting continuous software improvement)
-   - Guarantee that changes meet specifications (more reliable than code review alone)
+1. **Tests are mandatory** - Automated tests enable confident changes and guarantee specifications
    - Exception: PoC code not intended for maintenance
 
 2. **Testing Trophy approach** - Based on Kent C. Dodds' Testing Trophy
@@ -18,26 +16,25 @@ A comprehensive guide to testing practices in the frontend codebase.
 
 ### Test Classifications
 
-| Type | Description | Tools |
-|------|-------------|-------|
-| **Static Tests** | Type checking, linting | TypeScript, ESLint |
-| **Unit Tests** | Isolated logic, minimal dependencies | Vitest |
-| **Integration Tests** | Multiple modules working together | Vitest, MSW |
-| **Component Tests** | React components and interactions | Vitest, React Testing Library |
-| **Visual Regression** | Screenshot comparison | Chromatic (planned) |
-| **E2E Tests** | Full user flows | Playwright |
+| Type | Description |
+|------|-------------|
+| **Static Tests** | Type checking, linting |
+| **Unit Tests** | Isolated logic, minimal dependencies |
+| **Integration Tests** | Multiple modules working together |
+| **Component Tests** | UI components and interactions |
+| **Visual Regression** | Screenshot comparison |
+| **E2E Tests** | Full user flows |
 
-### Component Tests vs Visual Regression Tests
+### Component Tests vs Visual Regression
 
 **Component Tests** (preferred for most cases):
 - Fast execution, low cost
-- Vitest + testing-library
 - Cannot test CSS-based behavior changes
 
 **Visual Regression Tests** (use sparingly):
 - Real browser rendering
-- Higher cost (Chromatic subscription)
-- Use for: representative UI states, CSS-dependent behavior (text overflow, dynamic sizing)
+- Higher cost
+- Use for: representative UI states, CSS-dependent behavior
 
 ## What to Test
 
@@ -48,7 +45,7 @@ A comprehensive guide to testing practices in the frontend codebase.
 
 2. **External layer integrations** → Integration tests
    - Network requests, LocalStorage, URL parameters
-   - Test from the interface that React components/hooks consume (typically Repository layer)
+   - Test from the interface that components consume
 
 3. **User-facing components** → Component tests
    - Test at appropriate granularity (form level, not individual inputs)
@@ -56,24 +53,24 @@ A comprehensive guide to testing practices in the frontend codebase.
 
 4. **Hooks extracted from components** → Component tests (not hook tests)
    - Testing via component is closer to user behavior
-   - Exception: highly reusable utility hooks can have dedicated tests
+   - Exception: highly reusable utility hooks
 
 ### What NOT to Test
 
 - Don't re-test lower-level logic at higher levels
 - Don't test external module behavior (use test doubles)
-- Don't exhaustively test input variations at page level (test at input component level)
+- Don't exhaustively test input variations at page level
 
 ## When to Write Tests
 
 Write tests as early as possible:
-1. Implement minimal functionality (return fixed values)
+1. Implement minimal functionality
 2. Write tests for that functionality
 3. Evolve tests and implementation together (TDD style)
 
 ## PR Strategy
 
-**Include tests in the same PR as implementation** - Avoid separate test PRs because:
+**Include tests in the same PR as implementation** because:
 - No safety guarantee without tests
 - No guarantee tests will be added later
 - Different reviewers may review implementation vs tests
@@ -81,200 +78,69 @@ Write tests as early as possible:
 **Managing PR size:**
 - Build features incrementally (thin slices)
 - Split behavior changes into smaller PRs
-- Use `.todo()` to outline planned tests (create tickets for tracking)
 
 ---
 
-## Technical Setup
+## Setup Patterns
 
-### Frameworks & Libraries
+### Test Setup File
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `vitest` | 2.1.9+ | Test runner |
-| `@testing-library/react` | 16.3.1 | Component/hook testing |
-| `@testing-library/user-event` | 14.6.1 | User interaction simulation |
-| `@testing-library/jest-dom` | 6.9.1 | DOM matchers |
-| `msw` | 2.12.4 | API mocking |
-| `jsdom` | 25+ | Browser environment simulation |
+Create a setup file that:
+- Mocks browser APIs not available in test environment (IntersectionObserver, ResizeObserver, etc.)
+- Imports assertion matchers
+- Configures global test behavior
 
-**Why jsdom over happy-dom?**
-- happy-dom has issues with certain interactions (e.g., `fireEvent.change` on text inputs)
-- jsdom is slower but more reliable
+### Custom Render Function
 
-### File Organization
+Wrap the default render with your app's providers:
 
 ```
-src/
-├── parts/                      # UI components
-│   └── ComponentName/
-│       ├── index.tsx
-│       └── index.test.tsx      # Component test
-├── repositories/               # API layer
-│   ├── mock.ts                 # Centralized MSW handlers
-│   └── feature/
-│       ├── adapter/
-│       │   ├── index.ts
-│       │   └── index.test.ts   # Adapter test
-│       ├── index.ts
-│       └── mock.ts             # Feature-specific mocks
-├── domains/
-│   ├── models/
-│   │   └── entityName/
-│   │       ├── index.ts
-│   │       └── utils.test.ts   # Utility tests
-│   └── interactors/
-│       └── feature/
-│           └── index.test.ts   # Business logic tests
-```
-
-**Naming convention:** `*.test.ts` or `*.test.tsx`
-
-### Configuration
-
-**Vitest config** (in `vite.config.ts`):
-```typescript
-test: {
-  globals: true,
-  environment: 'jsdom',
-  setupFiles: ['./test/setup.ts', './test/msw/setup.ts', './test/failOnConsole.ts'],
-  exclude: ['node_modules/**/*'],
-  coverage: {
-    reporter: ['html', 'lcov'],
-    reportsDirectory: 'coverage',
-  },
-}
-```
-
-### Setup Files
-
-**`test/setup.ts`** - Browser API mocks and jest-dom:
-```typescript
-// Mock browser APIs not available in jsdom
-import './mocks/intersectionObserver';
-import './mocks/resizeObserver';
-import '@testing-library/jest-dom';
-```
-
-**`test/failOnConsole.ts`** - Fail on console errors/warnings:
-- Tests fail if `console.error` or `console.warn` are called
-- Allowlist for known warnings (e.g., React Router deprecation notices)
-
-### Custom Render Functions
-
-**`test/customRender.ts`:**
-```typescript
-export const customRender = (
-  ui: Parameters<typeof render>[0],
-  options?: Omit<Parameters<typeof render>[1], 'wrapper'>,
-): ReturnType<typeof render> => render(ui, { wrapper: TestProvider, ...options });
-
-export const customRenderHook = <Result, Props>(
-  render: (initialProps: Props) => Result,
-  options?: Omit<Parameters<typeof renderHook>[1], 'wrapper'>,
-): RenderHookResult<Result, Props> => renderHook(render, { wrapper: TestProvider, ...options });
-```
-
-**For async/Suspense components:**
-```typescript
-export const customAsyncRender = async (
-  ui: Parameters<typeof customRender>[0],
-  options?: Parameters<typeof customRender>[1],
-): Promise<ReturnType<typeof render>> => {
-  const rendered = customRender(ui, { ...options });
-  await waitForSuspense();
-  return rendered;
-};
+customRender(ui, options)
+  → render(ui, { wrapper: TestProvider, ...options })
 ```
 
 ### Test Provider
 
-Wraps components with all necessary context providers:
-```typescript
-export const TestProvider = ({ children }: { children: React.ReactNode }): JSX.Element => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+Wrap components with necessary context:
+- Router context
+- State management provider
+- Auth context (mocked)
+- Any other required providers
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={createMemoryRouter([{ path: '*', element: children }])}>
-        {children}
-      </RouterProvider>
-    </QueryClientProvider>
-  );
-};
-```
+### Fail on Console Errors
+
+Configure tests to fail on `console.error` or `console.warn` to catch silent failures.
 
 ---
 
 ## Mocking Strategies
 
-### MSW (Mock Service Worker)
+### API Mocking
 
-**Setup** (`test/msw/setup.ts`):
-```typescript
-beforeAll(() => {
-  queryClient = createQueryClient({ defaultOptions: { queries: { retry: false } } });
-  server.listen();
-});
+Mock at the network level (not module level) for realistic tests:
+- Intercept HTTP requests
+- Return mock responses
+- Verify request payloads
 
-afterEach(() => {
-  server.resetHandlers();
-  queryClient?.clear();
-});
+### Mock Data Factories
 
-afterAll(() => {
-  server.close();
-});
+Create factory functions for test data:
+
+```
+mockUser(override?) → { id, name, email, ...override }
 ```
 
-**Handler factory pattern**:
-```typescript
-import { http, HttpResponse } from 'msw';
-
-// Mock data factory
-export const mockUser = (override?: Partial<User>): User => ({
-  id: '550e8400-e29b-41d4-a716-446655440000',
-  name: 'Test User',
-  email: 'test@example.com',
-  ...override,
-});
-
-// Handler factory
-export const createUserHandlers = (data = mockUser()) => [
-  http.get('/api/users/:id', () => HttpResponse.json(data)),
-  http.post('/api/users', async ({ request }) => {
-    const body = await request.json();
-    return HttpResponse.json({ ...data, ...body }, { status: 201 });
-  }),
-];
-```
+Benefits:
+- Consistent test data
+- Easy to override specific fields
+- Single source of truth for data shape
 
 ### Feature Flag Mocking
 
-```typescript
-// Mock feature flag provider or use vi.mock
-vi.mock('@/hooks/useFeatureFlag', () => ({
-  useFeatureFlag: (flag: string) => flag === 'new-feature',
-}));
-
-// Or use a test wrapper with flag context
-const TestProviderWithFlags = ({ children, flags }) => (
-  <FeatureFlagContext.Provider value={flags}>
-    {children}
-  </FeatureFlagContext.Provider>
-);
-// ... test code
-```
-
-### Vitest Spying
-
-```typescript
-const mockCallback = vi.fn();
-vi.spyOn(module, 'functionName').mockReturnValue(value);
-vi.spyOn(console, 'error').mockImplementationOnce(() => {});
-```
+Options:
+- Mock the feature flag hook/function
+- Provide a test wrapper with flag context
+- Use environment variables
 
 ---
 
@@ -282,137 +148,53 @@ vi.spyOn(console, 'error').mockImplementationOnce(() => {});
 
 ### Unit Test Pattern
 
-```typescript
-describe('convertToRepositoryError', () => {
-  it('normalizes non-ConnectError to Unknown and preserves cause', () => {
-    const original = new Error('test');
-    const result = convertToRepositoryError(original);
-
-    expect(result).toBeInstanceOf(RepositoryError);
-    expect(result.code).toBe('Unknown');
-    expect(result.cause).toBe(original);
+```
+describe('functionName', () => {
+  it('describes expected behavior in plain English', () => {
+    // Arrange
+    // Act
+    // Assert
   });
 
-  it.each(cases)('maps ConnectError code to RepositoryError code', ({ connectCode, expected }) => {
-    const err = new ConnectError('test', connectCode);
-    const result = convertToRepositoryError(err);
-
-    expect(result.code).toBe(expected);
+  it.each(cases)('handles multiple cases', (input, expected) => {
+    // Parameterized test
   });
 });
 ```
 
 ### Component Test Pattern
 
-```typescript
-describe('ConversationActionMenu', () => {
-  const mockOnClick = vi.fn();
-
-  test('displays menu icon with accessible label', () => {
-    customRender(<ConversationActionMenu {...props} />);
-    expect(screen.getByLabelText('Menu')).toBeInTheDocument();
+```
+describe('ComponentName', () => {
+  test('displays expected content', () => {
+    render(<Component />);
+    expect(screen.getByText('...')).toBeInTheDocument();
   });
 
-  test('shows menu items when opened', async () => {
-    customRender(<ConversationActionMenu {...props} />);
-    await userEvent.click(screen.getByLabelText('Menu'));
-
-    expect(screen.getByText('Edit')).toBeInTheDocument();
-    expect(screen.getByText('Delete')).toBeInTheDocument();
-  });
-
-  test('opens dialog on edit click', async () => {
-    customRender(<ConversationActionMenu {...props} />);
-    await userEvent.click(screen.getByLabelText('Menu'));
-    await userEvent.click(screen.getByText('Edit'));
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: 'Edit' })).toBeInTheDocument();
-    });
+  test('handles user interaction', async () => {
+    render(<Component />);
+    await user.click(screen.getByRole('button'));
+    expect(screen.getByText('result')).toBeInTheDocument();
   });
 });
 ```
 
-### Hook Test Pattern
+### Async Component Pattern
 
-```typescript
-it('returns merged values from localStorage and defaults', async () => {
-  vi.spyOn(localStorage, 'getLocalStorageValue').mockImplementation(() => ok(mockData));
-
-  const { result } = customRenderHook(() => useGetTableRowTitles({ enabled: true }));
-
-  await waitFor(() => expect(result.current.data).not.toBe(null));
-  expect(result.current.data).toEqual(expectedData);
-});
-```
-
-### Async Component Test Pattern
-
-```typescript
-test('renders data after loading', async () => {
-  const rendered = await customAsyncRender(<AsyncComponent />);
-
-  expect(rendered.getByText('Loaded Data')).toBeInTheDocument();
-});
-```
-
-### XSS Prevention Test
-
-```typescript
-describe('XSS protection', () => {
-  it('does not render XSS scripts', () => {
-    const maliciousText = "<iframe srcdoc='<script>alert()</script>'></iframe>";
-    customRender(<MarkdownText>{maliciousText}</MarkdownText>);
-
-    expect(screen.queryByText('alert')).not.toBeInTheDocument();
-  });
-});
-```
-
----
-
-## Scripts
-
-```bash
-# Run tests
-pnpm test
-
-# Run with coverage
-pnpm test:coverage
-
-# Run Storybook tests
-pnpm test:storybook
-```
-
----
-
-## Storybook Integration
-
-Tests can be written within Storybook stories using `@storybook/experimental-addon-test`.
-
-**Preview setup** (`.storybook/preview.tsx`):
-```typescript
-import { handlers } from '@repositories/mock';
-import { initialize, mswLoader } from 'msw-storybook-addon';
-
-initialize({ onUnhandledRequest: 'error' });
-
-const preview: Preview = {
-  parameters: { msw: { handlers } },
-  decorators: [(Story) => <TestProvider><Story /></TestProvider>],
-  loaders: [mswLoader],
-};
-```
+For components with data fetching:
+1. Render the component
+2. Wait for loading state to resolve
+3. Assert on loaded content
 
 ---
 
 ## Best Practices Summary
 
-1. **Use `customRender`/`customRenderHook`** - Always use custom wrappers, never raw render
+1. **Use custom render** - Always wrap with app providers
 2. **Query by role/label** - Use accessible queries (`getByRole`, `getByLabelText`)
 3. **Avoid implementation details** - Test behavior, not internal state
 4. **One assertion focus** - Each test should verify one concept
-5. **Use `userEvent` over `fireEvent`** - More realistic user interactions
+5. **Simulate real user interactions** - Click, type, not programmatic state changes
 6. **Mock at boundaries** - Mock network, not internal functions
-7. **Fresh QueryClient per test** - Prevent cross-test pollution
+7. **Isolate tests** - Fresh state per test, no cross-test dependencies
 8. **Fail on console errors** - Treat warnings as failures

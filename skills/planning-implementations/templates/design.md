@@ -45,11 +45,11 @@ Mermaid sequence diagram showing request/response flow.
 
 ## API Contracts
 
-Use Zod schemas:
+Define request/response schemas:
 
-```typescript
-const Request = z.object({ ... });
-const Response = z.object({ ... });
+```
+Request: { field: type, ... }
+Response: { field: type, ... }
 ```
 
 **Errors:**
