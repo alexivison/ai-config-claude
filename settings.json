@@ -1,5 +1,9 @@
 {
   "model": "opus",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/scripts/context-bar.sh"
@@ -19,6 +23,13 @@
     ]
   },
   "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets/**)"
+    ],
     "allow": [
       "Skill(addressing-pr-comments)",
       "Skill(reviewing-code)",
