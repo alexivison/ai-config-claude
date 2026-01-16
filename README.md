@@ -47,6 +47,7 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 | `reviewing-code` | PR reviews, code quality checks |
 | `planning-implementations` | Feature planning, creating specs |
 | `addressing-pr-comments` | "address PR comments", "check feedback" |
+| `autoskill` | "learn from this session", "remember this pattern", `/autoskill` |
 
 ## Ignored (local-only)
 
