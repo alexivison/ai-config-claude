@@ -57,6 +57,7 @@ Ask the user (if not clear):
 - If task touches >5 files, split it
 
 ### Every Task Must Include
+- **Issue ID**: Link to issue tracker (e.g., `ENG-123`, `PROJ-456`)
 - **Required context**: Files agent reads first
 - **Files to modify**: Exact paths with actions
 - **Verification commands**: Type check, tests, lint

@@ -16,7 +16,7 @@ Examples:
 ```markdown
 # Task N — <Short Description>
 
-**Estimated LOC:** ~<number> | **Dependencies:** <Task X, Task Y>
+**Estimated LOC:** ~<number> | **Dependencies:** <Task X, Task Y> | **Issue:** <ID>
 
 ---
 
