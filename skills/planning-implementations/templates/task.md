@@ -66,11 +66,3 @@ pnpm tsc --noEmit && pnpm lint && pnpm test src/path/to/file
 - [ ] Requirement 2 works
 - [ ] Tests pass
 ```
-
-## Guidelines
-
-- **Requirements over implementation:** Focus on what, not how
-- **Reference existing code:** Point to implementations, don't duplicate them
-- **Tests as bullet points:** List test cases, not detailed test code
-- **Key gotchas only:** Include critical bugs/caveats, skip obvious details
-- **Max 300 lines per PR:** Split if larger

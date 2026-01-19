@@ -61,7 +61,7 @@ Ask the user (if not clear):
 - Each task should have its own test requirements
 
 ### Every Task Must Include
-- **Issue ID**: Link to issue tracker (e.g., `ENG-123`, `PROJ-456`)
+- **Issue:** Link to issue tracker (e.g., `ENG-123`) or descriptive slug if none
 - **Required context**: Files agent reads first
 - **Files to modify**: Exact paths with actions
 - **Verification commands**: Type check, tests, lint
