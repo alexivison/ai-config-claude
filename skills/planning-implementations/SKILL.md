@@ -52,9 +52,13 @@ Ask the user (if not clear):
 ## Agent-Optimized Guidelines
 
 ### Task Sizing
-- Target ~200 lines per task
+- Target ~200 lines per task, max 300 lines per PR
 - Each task fits in single agent context window
 - If task touches >5 files, split it
+
+### Testing in Tasks
+- Include tests in the same task/PR as implementation (not separate testing tasks)
+- Each task should have its own test requirements
 
 ### Every Task Must Include
 - **Issue ID**: Link to issue tracker (e.g., `ENG-123`, `PROJ-456`)
@@ -72,3 +76,10 @@ Ask the user (if not clear):
 - Each task independently executable
 - Don't assume agent remembers previous tasks
 - List all dependencies explicitly
+
+### Requirements Over Implementation
+- Focus on requirements, references, and key gotchas
+- Reference existing implementations rather than duplicating code
+- Don't provide near-complete code implementations in tasks
+- List test cases as bullet points, not detailed test code
+- Trust implementer agents to handle detailed implementation decisions
