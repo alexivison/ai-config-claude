@@ -34,6 +34,17 @@ Sub-agents preserve context by offloading investigation/verification tasks. Loca
 
 **Note:** Uses Haiku for cost efficiency. Isolates hundreds of lines of test output from main context.
 
+### log-analyzer
+**Use when:** Analyzing application/server logs that would bloat main context.
+
+**Writes to:** `~/.claude/logs/{identifier}.md` — Full analysis preserved outside main context.
+
+**Returns:** Brief summary with file path, error/warning counts, and timeline.
+
+**After:** Main agent reads findings file and addresses issues.
+
+**Note:** Uses Haiku for cost efficiency. Handles JSON, syslog, Apache/Nginx, and plain text formats.
+
 ### When to Use Sub-Agents
 
 | Scenario | Use Sub-Agent? |
@@ -42,6 +53,7 @@ Sub-agents preserve context by offloading investigation/verification tasks. Loca
 | Write tests | No - main agent |
 | Fix simple bug | No - main agent |
 | Run test suite | Yes - test-runner |
+| Analyze logs | Yes - log-analyzer |
 | Investigate complex/intermittent bug | Yes - debug-investigator |
 | Explore codebase structure | Yes - built-in Explore agent |
 | Starting work on new project | Yes - project-researcher |
@@ -60,7 +72,7 @@ project-researcher (if unfamiliar) → [wait] → implementation → test-runner
 
 **Bug Fix:**
 ```
-debug-investigator (if complex) → [wait] → implementation → test-runner → /minimize (optional)
+debug-investigator (if complex) → [wait] → log-analyzer (if relevant) → [wait] → implementation → test-runner → /minimize (optional)
 ```
 
 **PR Review:**
@@ -92,8 +104,8 @@ When delegating to sub-agents, include:
 
 IMPORTANT: After any sub-agent completes, you MUST:
 
-1. **For file-based agents** (debug-investigator):
-   - Read the findings file (e.g., `~/.claude/investigations/{issue-id}.md`)
+1. **For file-based agents** (debug-investigator, log-analyzer):
+   - Read the findings file (e.g., `~/.claude/investigations/{issue-id}.md` or `~/.claude/logs/{identifier}.md`)
    - Show the user the full detailed findings - NO EXCEPTIONS
 2. **For inline agents** (project-researcher, test-runner):
    - Show the user the full detailed findings directly

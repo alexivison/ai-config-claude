@@ -16,6 +16,7 @@ shell-snapshots/
 todos/
 plans/
 investigations/
+logs/
 
 # Debug and telemetry
 debug/
