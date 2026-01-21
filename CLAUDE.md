@@ -3,6 +3,24 @@
 - Use sub-agents only for context preservation (investigation, verification)
 - Use to the point language. Focus on essential information without unnecessary details.
 
+## Verification Rules
+
+Evidence before claims. Never state success without fresh proof.
+
+| Claim | Required Evidence |
+|-------|-------------------|
+| "Tests pass" | Run test suite, show zero failures |
+| "Lint clean" | Run linter, show zero errors |
+| "Build succeeds" | Run build, show exit 0 |
+| "Bug fixed" | Reproduce original symptom, show it passes |
+
+**Red flags requiring re-verification:**
+- Tentative language ("should work", "probably fixed")
+- Planning commit/PR without running checks
+- Relying on previous runs as proof
+
+**3 Strikes Rule:** After 3 failed fix attempts for the same issue, stop patching. Document what was tried, question the approach, and ask user before continuing.
+
 ## Sub-Agents
 
 Sub-agents preserve context by offloading investigation/verification tasks. Located in `~/.claude/agents/`.

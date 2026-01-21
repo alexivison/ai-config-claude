@@ -18,10 +18,19 @@ IFS=$'\t' read -r model cwd transcript_path max_context < <(echo "$input" | jq -
 ] | @tsv')
 dir=$(basename "$cwd" 2>/dev/null || echo "?")
 
-# Get git branch
+# Get git branch and worktree status
 branch=""
+worktree_info=""
 if [[ -n "$cwd" && -d "$cwd" ]]; then
     branch=$(git -C "$cwd" branch --show-current 2>/dev/null)
+    # Get repo root, then check if .git is a file (worktree indicator)
+    repo_root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)
+    if [[ -n "$repo_root" && -f "$repo_root/.git" ]]; then
+        # In a worktree - extract name from gitdir path (.git/worktrees/<name>)
+        gitdir_line=$(head -1 "$repo_root/.git")
+        worktree_name=$(basename "${gitdir_line#gitdir: }")
+        worktree_info=" ⎇${worktree_name}"
+    fi
 fi
 
 # max_context already extracted above
@@ -96,7 +105,7 @@ fi
 
 # Build output: Model | Dir | Branch | Context
 output="${C_BLUE}${model}${C_GRAY} | ${dir}"
-[[ -n "$branch" ]] && output+=" | ${C_GREEN}${branch}${C_GRAY}"
+[[ -n "$branch" ]] && output+=" | ${C_GREEN}${branch}${worktree_info}${C_GRAY}"
 output+=" | ${ctx}${C_RESET}"
 
 printf '%b\n' "$output"
