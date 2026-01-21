@@ -12,13 +12,22 @@
 ```markdown
 # <Feature Name> Implementation Plan
 
-> **Specification:** [SPEC.md](./SPEC.md)
+> **Goal:** [One sentence — what this achieves for users/system]
 >
-> **Design:** [DESIGN.md](./DESIGN.md)
+> **Architecture:** [2-3 sentences — key technical approach, main components]
+>
+> **Tech Stack:** [Languages, frameworks, libraries involved]
+>
+> **Specification:** [SPEC.md](./SPEC.md) | **Design:** [DESIGN.md](./DESIGN.md)
 
 ## Scope
 
 What this plan covers. If multi-service, note the order.
+
+## Task Granularity
+
+- [ ] **Standard** — ~200 lines of implementation (tests excluded), split if >5 files (default)
+- [ ] **Atomic** — 2-5 minute steps with checkpoints (for high-risk: auth, payments, migrations)
 
 ## Agent Execution Strategy
 
@@ -65,7 +74,8 @@ Task 1 ───┬───> Task 2 ───┐
 
 ## Notes
 
-- Target ~200 lines per task
+- Target ~200 lines per task (standard) or 2-5 min steps (atomic)
 - Task files go in `tasks/` folder with naming: `TASK<N>-<kebab-case-title>.md`
 - Use ASCII for dependency graph (not Mermaid)
 - Each task = one PR, independently mergeable
+- Reference skills with `@skill-name` syntax (e.g., `@write-tests`)

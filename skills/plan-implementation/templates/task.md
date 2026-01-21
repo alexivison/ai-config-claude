@@ -28,15 +28,15 @@ One paragraph: what this accomplishes and why.
 
 Files to study before implementing (single source of truth):
 
-- `src/path/to/similar.ts` — Reference implementation to follow
-- `src/path/to/types.ts` — Type definitions to reuse
+- `path/to/similar/implementation` — Reference implementation to follow
+- `path/to/types/or/interfaces` — Type/interface definitions to reuse
 
 ## Files to Create/Modify
 
 | File | Action |
 |------|--------|
-| `src/api/users.ts` | Modify |
-| `src/types/user.ts` | Create |
+| `path/to/file` | Modify |
+| `path/to/new/file` | Create |
 
 ## Requirements
 
@@ -49,7 +49,7 @@ Files to study before implementing (single source of truth):
 
 ## Tests
 
-Test cases (implementer writes the actual test code):
+Test cases (implementer writes the actual test code, see `@write-tests`):
 - Happy path scenario
 - Error handling
 - Edge case
@@ -57,7 +57,8 @@ Test cases (implementer writes the actual test code):
 ## Verification
 
 ```bash
-pnpm tsc --noEmit && pnpm lint && pnpm test src/path/to/file
+# Adjust commands based on project tooling
+<typecheck-command> && <lint-command> && <test-command>
 ```
 
 ## Acceptance Criteria
@@ -66,3 +67,9 @@ pnpm tsc --noEmit && pnpm lint && pnpm test src/path/to/file
 - [ ] Requirement 2 works
 - [ ] Tests pass
 ```
+
+## Notes
+
+- Adjust file paths and verification commands based on project structure
+- Reference skills with `@skill-name` (e.g., `@write-tests` for testing methodology)
+- Keep tasks independently executable — include all context needed

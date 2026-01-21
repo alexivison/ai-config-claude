@@ -162,7 +162,7 @@ When discussing which findings to address, reference by `file:line` rather than 
 - **minimize** — Review changes for bloat and unnecessary complexity. Invoke via `/minimize`.
 - **address-pr** — Fetch PR comments and suggest solutions. Invoke via `/address-pr`.
 - **plan-implementation** — Plan features for agentic implementation. Creates SPEC.md, DESIGN.md, PLAN.md, TASK*.md. Invoke via `/plan-implementation`.
-- **autoskill** — Learns from session feedback to extract durable preferences and propose skill updates. Use when the user says "learn from this session", "remember this pattern", or invokes `/autoskill`.
+- **autoskill** — Learns from sessions or documents to extract preferences and create/update skills. Two modes: session learning (from corrections) and document learning (from books/articles/codebases). Uses TDD approach for new skill creation. Invoke via `/autoskill` or `/autoskill [url/path]`.
 
 ### Autoskill Triggers
 

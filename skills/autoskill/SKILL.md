@@ -1,11 +1,23 @@
 ---
 name: autoskill
 description: Learns from session feedback to extract durable preferences and propose skill updates. Use when the user says "learn from this session", "remember this pattern", or invokes /autoskill.
+user-invocable: true
 ---
 
 # Autoskill
 
-Extract durable preferences from session feedback and update skill files.
+Extract durable preferences and create/update skills from multiple sources.
+
+## Modes
+
+| Mode | Trigger | Source |
+|------|---------|--------|
+| **Session** | `/autoskill`, "learn from this session" | Current conversation |
+| **Document** | `/autoskill [url or path]`, "learn from this doc" | Book, article, codebase |
+
+---
+
+# Mode 1: Session Learning
 
 ## When to Activate
 
@@ -13,7 +25,6 @@ Trigger on explicit requests:
 - `/autoskill`
 - "learn from this session"
 - "remember this pattern"
-- "update skills based on this"
 
 **Do NOT activate** for one-off corrections or declined modifications.
 
@@ -59,20 +70,128 @@ Before proposing changes, confirm:
 - Universal security practices
 - Standard accessibility guidelines
 
-## Mapping Signals to Skills
+---
 
-1. Match each signal to the relevant skill in `~/.claude/skills/`
-2. If 3+ related signals don't fit any existing skill, propose a new one
-3. Ignore signals unrelated to skill usage
+# Mode 2: Document Learning
 
-### Skill Locations
+## When to Activate
+
+Trigger on:
+- `/autoskill [url]` or `/autoskill [file path]`
+- "learn from this book/article/doc"
+- "extract skills from [source]"
+
+## Process
+
+1. **Read the source** — Fetch URL or read file(s)
+2. **Extract techniques** — Identify patterns, methodologies, principles not already in your skills
+3. **Filter for novelty** — Skip what you already know or is standard practice
+4. **Propose skills** — Either updates to existing skills OR new skill creation
+
+## What to Extract
+
+- Methodologies (e.g., debugging approaches, testing strategies)
+- Workflows (e.g., review processes, deployment patterns)
+- Principles with concrete rules (e.g., "always X before Y")
+- Red flags / anti-patterns with alternatives
+
+## What to Skip
+
+- General advice without actionable rules
+- Content already covered by existing skills
+- Context-specific examples that don't generalize
+- Opinion without methodology
+
+---
+
+# Creating New Skills (TDD Approach)
+
+When signals suggest a new skill (3+ related signals not fitting existing skills), use test-driven skill development.
+
+## The Process
+
+### 1. RED — Document the Failure
+
+Before writing the skill, identify what goes wrong without it:
+
+```markdown
+## Skill Gap: [name]
+
+**Problem observed:**
+- [What happened without this skill]
+- [Specific failure or suboptimal behavior]
+
+**Desired behavior:**
+- [What should happen instead]
+```
+
+### 2. GREEN — Write Minimal Skill
+
+Create `~/.claude/skills/<skill-name>/SKILL.md` addressing **only** the documented failures.
+
+```yaml
+---
+name: [skill-name]
+description: [triggering conditions only — when to use, not what it does]
+user-invocable: [true if callable via /skill-name]
+---
+```
+
+Skill content should be minimal — just enough to fix the observed problem.
+
+### 3. REFACTOR — Test and Iterate
+
+After creating the skill:
+1. Consider: "How might I rationalize ignoring this skill?"
+2. Add rules to close those loopholes
+3. Keep the skill focused — resist scope creep
+
+## Skill Structure
+
+```markdown
+# [Skill Name]
+
+[One sentence: what this skill does]
+
+## When to Use
+[Triggering conditions]
+
+## Workflow / Process
+[Steps or phases]
+
+## Key Rules
+[Non-negotiable constraints]
+
+## Output Format (if applicable)
+[Expected deliverable structure]
+```
+
+---
+
+# Mapping Signals to Locations
+
+## Skill Locations
 
 - Skills: `~/.claude/skills/<skill-name>/SKILL.md`
 - Reference docs: `~/.claude/skills/<skill-name>/reference/`
 - Sub-agents: `~/.claude/agents/<agent-name>.md`
+- Rules: `~/.claude/rules/<category>.md`
 - Global config: `~/.claude/CLAUDE.md`
 
-## Proposing Changes
+## Decision Tree
+
+```
+Signal about...
+├── Workflow/process → Skill
+├── Agent behavior → Agent definition
+├── Code style/patterns → Rules
+├── Global preferences → CLAUDE.md
+└── Doesn't fit → Consider new skill (TDD)
+```
+
+---
+
+# Proposing Changes
 
 For each proposed edit, provide:
 
@@ -80,6 +199,7 @@ For each proposed edit, provide:
 ### [SKILL-NAME] — [CONFIDENCE]
 
 **Signal:** "[exact quote or paraphrase]"
+**Source:** [session / document title]
 **File:** `path/to/file.md`
 **Section:** [section name or "new section"]
 
@@ -96,20 +216,26 @@ Confidence levels:
 - **HIGH** — Explicit rule stated, repeated 2+ times, or clearly generalizable
 - **MEDIUM** — Single instance but appears intentional, or slightly ambiguous scope
 
-## Review Flow
+---
 
-Present changes grouped by confidence:
+# Review Flow
+
+Present changes grouped by type:
 
 ```
 ## Autoskill Summary
 
-Detected [N] durable preferences from this session.
+**Source:** [session / document name]
+**Detected:** [N] updates, [M] new skills
 
-### HIGH Confidence
+### Skill Updates (HIGH confidence)
 [changes...]
 
-### MEDIUM Confidence
+### Skill Updates (MEDIUM confidence)
 [changes...]
+
+### New Skills Proposed
+[skill proposals with RED phase documentation...]
 
 ---
 Apply changes? [all / high-only / selective / none]
@@ -117,7 +243,9 @@ Apply changes? [all / high-only / selective / none]
 
 Always wait for explicit approval before editing.
 
-## Applying Changes
+---
+
+# Applying Changes
 
 On approval:
 
@@ -128,9 +256,12 @@ On approval:
 5. If git available, commit: `chore(autoskill): [description]`
 6. Report changes made
 
-## Constraints
+---
+
+# Constraints
 
 - **Never delete** existing rules without explicit instruction
 - **Prefer additive changes** over rewrites
 - **Downgrade to MEDIUM** when uncertain about scope
 - **Skip** if no actionable signals detected
+- **New skills require RED phase** — Document the gap before writing
