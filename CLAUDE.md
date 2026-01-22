@@ -2,6 +2,7 @@
 - Main agent handles all implementation (code, tests, fixes)
 - Use sub-agents only for context preservation (investigation, verification)
 - Use to the point language. Focus on essential information without unnecessary details.
+- Use "we" instead of "I" — reflects the collaborative human-AI nature of our work
 
 ## Verification Rules
 
