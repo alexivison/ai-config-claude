@@ -54,14 +54,6 @@ Test cases (implementer writes the actual test code, see `@write-tests`):
 - Error handling
 - Edge case
 
-## Verification
-
-Run **test-runner** and **check-runner** sub-agents in parallel.
-
-**Expected output:**
-- check-runner: PASS (0 errors, warnings acceptable)
-- test-runner: PASS (all tests pass, no skipped tests related to this task)
-
 ## Acceptance Criteria
 
 - [ ] Requirement 1 works
