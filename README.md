@@ -113,6 +113,14 @@ crontab -e
 30 16 * * 5 ~/.claude/scripts/weekly-report.sh
 ```
 
+## Hooks
+
+| Hook | Event | Purpose |
+|------|-------|---------|
+| `skill-eval.sh` | UserPromptSubmit | Evaluates if skills should activate |
+| `pre-push.sh` | PreToolUse (Bash) | Guards against accidental pushes |
+| `worktree-guard.sh` | PreToolUse (Bash) | Prevents branch switching in shared repos |
+
 ## Ignored (local-only)
 
 These stay local and aren't version controlled:
@@ -122,3 +130,6 @@ These stay local and aren't version controlled:
 - `history.jsonl` - Conversation history
 - `plugins/`, `projects/` - Per-machine data
 - `scripts/*.plist` - macOS LaunchAgent configs
+- `plans/` - Local planning files
+- `investigations/` - Debug-investigator output
+- `logs/` - Log-analyzer output
