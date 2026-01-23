@@ -44,12 +44,44 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 
 | Skill | Triggers |
 |-------|----------|
+| `brainstorm` | New features with unclear requirements, multiple approaches |
+| `plan-implementation` | Feature planning, creating specs |
 | `write-tests` | "write tests", "add test coverage" |
 | `code-review` | PR reviews, code quality checks |
+| `pre-pr-verification` | Before creating PR, verifying all checks pass |
 | `minimize` | Identifies bloat and unnecessary complexity |
-| `plan-implementation` | Feature planning, creating specs |
 | `address-pr` | "address PR comments", "check feedback" |
 | `autoskill` | "learn from this session", "remember this pattern", `/autoskill` |
+
+## Workflow
+
+Standard development workflow (discipline-based, documented in CLAUDE.md):
+
+```
+New Feature:
+  project-researcher (if unfamiliar)
+  → /brainstorm (if unclear requirements)
+  → /plan-implementation (if substantial)
+  → implementation
+  → test-runner + check-runner (parallel)
+  → /code-review
+  → fix issues
+  → /pre-pr-verification
+  → PR
+  → /minimize (if PR large)
+
+Bug Fix:
+  debug-investigator (if complex)
+  → implementation
+  → test-runner + check-runner (parallel)
+  → /pre-pr-verification
+  → PR
+```
+
+Key principles:
+- **Evidence before claims** — never state "tests pass" without running them
+- **RED phase for tests** — watch new tests fail before implementation
+- **Verification before PR** — run `/pre-pr-verification` before every PR
 
 ## Scripts
 
