@@ -40,3 +40,23 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 **Returns:** Brief summary with file path, error/warning counts, timeline.
 
 **Note:** Uses Haiku. Handles JSON, syslog, Apache/Nginx, plain text.
+
+## security-scanner
+**Use when:** Before commits/PRs, auditing security posture, or after dependency updates.
+
+**Checks:** Secrets detection, dependency vulnerabilities, OWASP Top 10 patterns, config issues.
+
+**Returns:** Structured findings with severity (CRITICAL/HIGH/MEDIUM/LOW), exact locations, and remediation.
+
+**Note:** Uses Haiku. Runs available tools (npm audit, pip-audit, etc.) and grep patterns.
+
+## code-critic
+**Use when:** After writing code, before commit.
+
+**Pattern:** Single-pass review. Main agent controls iteration loop (write → critic → fix → critic → ... → APPROVED).
+
+**Returns:** Verdict (APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION) with `[must]`/`[q]`/`[nit]` feedback.
+
+**Escalates to user:** Only on NEEDS_DISCUSSION or after 3 failed iterations.
+
+**Note:** Uses Sonnet. Preloads `/code-review` skill. Include iteration number and previous feedback when re-invoking.

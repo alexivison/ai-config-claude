@@ -30,6 +30,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/agent-trace.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "permissions": {

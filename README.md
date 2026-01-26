@@ -39,6 +39,8 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 | `test-runner` | Runs tests, returns only failures (isolates verbose output) |
 | `check-runner` | Runs typecheck/lint, returns only errors (isolates verbose output) |
 | `log-analyzer` | Analyzes logs, returns error summary (isolates verbose output) |
+| `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues before PR |
+| `code-critic` | Autonomous code review loop using `/code-review` guidelines |
 
 ## Skills
 
@@ -60,17 +62,16 @@ Standard development workflow (discipline-based, documented in CLAUDE.md):
 ```
 Single Task (most common):
   Pick up task → read requirements → /write-tests (if needed) → implement
-  → test-runner + check-runner → fix issues → /pre-pr-verification
-  → PR → wait for review → /address-pr (if comments) → merge → next task
+  → code-critic loop (autonomous) → test-runner + check-runner + security-scanner
+  → /pre-pr-verification → PR → wait for review → /address-pr (if comments) → merge
 
 New Feature:
   project-researcher (if unfamiliar)
   → /brainstorm (if unclear requirements)
   → /plan-implementation (if substantial)
   → implementation
-  → test-runner + check-runner (parallel)
-  → /code-review
-  → fix issues
+  → code-critic loop (autonomous, max 3 iterations)
+  → test-runner + check-runner + security-scanner (parallel)
   → /pre-pr-verification
   → PR
   → /minimize (if PR large)
@@ -78,7 +79,8 @@ New Feature:
 Bug Fix:
   debug-investigator (if complex)
   → implementation
-  → test-runner + check-runner (parallel)
+  → code-critic loop (autonomous)
+  → test-runner + check-runner + security-scanner (parallel)
   → /pre-pr-verification
   → PR
 ```
@@ -95,6 +97,7 @@ Key principles:
 |--------|---------|
 | `context-bar.sh` | Status line display |
 | `weekly-report.sh` | Generate weekly summary of investigations and projects |
+| `agent-stats.sh` | Summarize sub-agent activity (today/week/all) |
 
 ### Scheduling weekly-report.sh
 
@@ -125,6 +128,7 @@ crontab -e
 |------|-------|---------|
 | `skill-eval.sh` | UserPromptSubmit | Detects skill triggers, suggests invocation |
 | `worktree-guard.sh` | PreToolUse (Bash) | Prevents branch switching in shared repos |
+| `agent-trace.sh` | PostToolUse (Task) | Logs sub-agent invocations for observability |
 
 ## Ignored (local-only)
 

@@ -27,6 +27,7 @@ Evidence before claims. Never state success without fresh proof.
 **STOP. Before `gh pr create`, verify:**
 - [ ] `/pre-pr-verification` invoked THIS session (hook suggestions don't count)
 - [ ] All checks passed with evidence
+- [ ] security-scanner shows no CRITICAL/HIGH issues (or user approved exceptions)
 - [ ] Verification summary in PR description
 
 ## Sub-Agents
@@ -38,16 +39,19 @@ Details in `~/.claude/agents/README.md`. Key behavior rules:
 | Run tests | test-runner |
 | Run typecheck/lint | check-runner |
 | Run tests + checks | test-runner + check-runner (parallel)* |
+| Security scan before PR | security-scanner |
 | Analyze logs | log-analyzer |
 | Complex bug investigation | debug-investigator |
 | New project context | project-researcher |
 | Explore codebase | built-in Explore agent |
+| Quality gate after coding | code-critic (iterative loop) |
 
 *Parallel: invoke both in same message using multiple Task tool calls.
 
 **After sub-agent returns:**
 - **Investigation agents** (debug-investigator, project-researcher, log-analyzer): MUST show findings, use AskUserQuestion "Ready to proceed?", wait for user
-- **Verification agents** (test-runner, check-runner): Show summary, address failures directly, no need to ask
+- **Verification agents** (test-runner, check-runner, security-scanner): Show summary, address failures directly, no need to ask
+- **Iterative agents** (code-critic): Loop autonomously until APPROVED (max 3 iterations). Only ask user if NEEDS_DISCUSSION or 3 failures.
 
 **Invocation:** Include scope (files), context (errors), success criteria.
 
@@ -71,6 +75,12 @@ debug-investigator (if complex) → [wait] → log-analyzer (if relevant) → [w
 ```
 Pick up task → /write-tests → test-runner (RED) → implement → test-runner + check-runner (GREEN) → fix → /pre-pr-verification → PR → /address-pr (if comments) → merge
 ```
+
+**Quality-Critical Task (autonomous refinement):**
+```
+implement → code-critic loop (autonomous, max 3) → [APPROVED] → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
+```
+Loop runs without user intervention. Only pause if NEEDS_DISCUSSION or 3 failed iterations.
 
 **Plan/Task updates:** After completing task, update checkbox `- [ ]` → `- [x]`, commit with implementation, wait for user approval before next task.
 
