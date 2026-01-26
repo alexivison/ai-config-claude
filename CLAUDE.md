@@ -1,3 +1,5 @@
+<!-- Core decision rules. Sub-agent details: ~/.claude/agents/README.md | Domain rules: ~/.claude/rules/* -->
+
 # General Guidelines
 - Main agent handles all implementation (code, tests, fixes)
 - Sub-agents for context preservation only (investigation, verification)
@@ -48,6 +50,8 @@ Details in `~/.claude/agents/README.md`. Key behavior rules:
 - **Verification agents** (test-runner, check-runner): Show summary, address failures directly, no need to ask
 
 **Invocation:** Include scope (files), context (errors), success criteria.
+
+**Delegation transparency:** State reason in one sentence ("Delegating to debug-investigator because..." or "Handling directly — simple fix").
 
 ## Workflows
 
