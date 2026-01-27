@@ -20,7 +20,7 @@ When executing TASK*.md, **do NOT stop between these steps**:
 - Ask "Should I continue?" or "Should I create the PR?" mid-workflow
 
 **ONLY pause for:**
-- Investigation agent findings (debug-investigator, project-researcher, log-analyzer)
+- Investigation agent findings (debug-investigator, log-analyzer)
 - NEEDS_DISCUSSION verdict from code-critic
 - 3 failed code-critic iterations
 - Explicit blocker requiring user decision
@@ -71,14 +71,13 @@ Details in `~/.claude/agents/README.md`. Key behavior rules:
 | Security scan before PR | security-scanner |
 | Analyze logs | log-analyzer |
 | Complex bug investigation | debug-investigator |
-| New project context | project-researcher |
 | Explore codebase | built-in Explore agent |
 | After implementing plan task | code-critic (MANDATORY) |
 
 *Parallel: invoke both in same message using multiple Task tool calls.
 
 **After sub-agent returns:**
-- **Investigation agents** (debug-investigator, project-researcher, log-analyzer): MUST show findings, use AskUserQuestion "Ready to proceed?", wait for user
+- **Investigation agents** (debug-investigator, log-analyzer): MUST show findings, use AskUserQuestion "Ready to proceed?", wait for user
 - **Verification agents** (test-runner, check-runner, security-scanner): Show summary, address failures directly, no need to ask
 - **Iterative agents** (code-critic): Loop autonomously until APPROVED (max 3 iterations). Only ask user if NEEDS_DISCUSSION or 3 failures.
 
@@ -92,7 +91,7 @@ Details in `~/.claude/agents/README.md`. Key behavior rules:
 
 **New Feature:**
 ```
-project-researcher (if unfamiliar) → [wait] → /brainstorm (if unclear) → [wait] → /plan-implementation (if substantial) → create worktree → /write-tests (if needed) → implement → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
+/brainstorm (if unclear) → [wait] → /plan-implementation (if substantial) → create worktree → /write-tests (if needed) → implement → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
 ```
 
 **Bug Fix:**

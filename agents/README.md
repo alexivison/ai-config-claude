@@ -11,13 +11,6 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 
 **Returns:** Brief summary with file path, verdict, hypotheses tested, one-line summary.
 
-## project-researcher
-**Use when:** Starting on a new project, need context on status/team/decisions, or finding design specs.
-
-**Returns:** Structured overview with status, team, resources (Notion/Figma/Slack), recent activity, open questions.
-
-**Note:** Searches Notion primarily. Figma/Slack only if MCP configured.
-
 ## test-runner
 **Use when:** Running test suites that produce verbose output.
 
