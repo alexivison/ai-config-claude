@@ -63,12 +63,12 @@ Details in `~/.claude/agents/README.md`. Key behavior rules:
 
 **New Feature:**
 ```
-project-researcher (if unfamiliar) → [wait] → /brainstorm (if unclear) → [wait] → /plan-implementation (if substantial) → implement → test-runner + check-runner → fix → /pre-pr-verification → PR
+project-researcher (if unfamiliar) → [wait] → /brainstorm (if unclear) → [wait] → /plan-implementation (if substantial) → create worktree → /write-tests (if needed) → implement → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
 ```
 
 **Bug Fix:**
 ```
-debug-investigator (if complex) → [wait] → log-analyzer (if relevant) → [wait] → implement → test-runner + check-runner → /pre-pr-verification → PR
+debug-investigator (if complex) → [wait] → log-analyzer (if relevant) → [wait] → create worktree → /write-tests (regression test) → implement fix → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
 ```
 
 **Single Task (from plan/TASK*.md):**
