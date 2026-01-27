@@ -88,10 +88,12 @@ Pick up task → STOP: PRE-IMPLEMENTATION GATE → create worktree → /write-te
 Skip this gate = workflow violation. State which items were checked before proceeding.
 
 **AUTONOMOUS FLOW — NO STOPPING:**
-- After /write-tests → continue to implement (no user prompt needed)
+- After /write-tests (including RED phase) → implement immediately
 - After implement → update checkboxes in TASK*.md AND PLAN.md (if exists)
 - After code-critic APPROVED → continue to verification
 - After verification → continue to commit and PR
+
+**RED phase is NOT a stopping point.** After confirming tests fail for the right reason, start implementing immediately in the same turn. Do not wait for user input.
 
 Only pause if: NEEDS_DISCUSSION verdict, 3 failed code-critic iterations, or explicit blocker.
 
