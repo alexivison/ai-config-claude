@@ -47,5 +47,5 @@ When writing tests for new functionality:
 **When RED phase is optional:**
 - Adding a single test to an existing test file for coverage → optional but recommended
 
-**After RED phase verification:**
-RED phase confirmation is NOT a stopping point. Once tests fail for the right reason, immediately proceed to implementation in the same turn. Do not wait for user input.
+**Completion:**
+Skill is complete when tests are written and (if required) RED phase confirms tests fail for the right reason.

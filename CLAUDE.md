@@ -5,6 +5,35 @@
 - Sub-agents for context preservation only (investigation, verification)
 - Use "we" instead of "I"
 
+## Autonomous Flow (CRITICAL)
+
+When executing TASK*.md, **do NOT stop between these steps**:
+
+```
+/write-tests → implement → checkboxes → code-critic → verification → commit → PR
+```
+
+**DO NOT:**
+- Stop after RED phase — implement immediately in the same response
+- Stop after "Verification complete" — create commit and PR in the same response
+- Output "Ready to..." or "Now I'll..." then end your turn — just do it
+- Ask "Should I continue?" or "Should I create the PR?" mid-workflow
+
+**ONLY pause for:**
+- Investigation agent findings (debug-investigator, project-researcher, log-analyzer)
+- NEEDS_DISCUSSION verdict from code-critic
+- 3 failed code-critic iterations
+- Explicit blocker requiring user decision
+
+**Examples of violations:**
+```
+❌ "RED phase verified. Tests fail for the right reason."  [ends turn]
+✓  "RED phase verified. Tests fail for the right reason. Implementing now..." [continues]
+
+❌ "All checks pass. Ready to create PR."  [ends turn]
+✓  "All checks pass. Creating PR..." [continues with git add, commit, push, gh pr create]
+```
+
 ## Verification Rules
 
 Evidence before claims. Never state success without fresh proof.
@@ -87,15 +116,7 @@ Pick up task → STOP: PRE-IMPLEMENTATION GATE → create worktree → /write-te
 
 Skip this gate = workflow violation. State which items were checked before proceeding.
 
-**AUTONOMOUS FLOW — NO STOPPING:**
-- After /write-tests (including RED phase) → implement immediately
-- After implement → update checkboxes in TASK*.md AND PLAN.md (if exists)
-- After code-critic APPROVED → continue to verification
-- After verification → continue to commit and PR
-
-**RED phase is NOT a stopping point.** After confirming tests fail for the right reason, start implementing immediately in the same turn. Do not wait for user input.
-
-Only pause if: NEEDS_DISCUSSION verdict, 3 failed code-critic iterations, or explicit blocker.
+After passing this gate, follow **Autonomous Flow** rules above — no stopping until PR is created.
 
 ## Skills
 
