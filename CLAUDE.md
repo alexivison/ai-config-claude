@@ -73,15 +73,19 @@ debug-investigator (if complex) → [wait] → log-analyzer (if relevant) → [w
 
 **Single Task (from plan/TASK*.md):**
 ```
-Pick up task → PRE-IMPLEMENTATION CHECKLIST → /write-tests (if needed) → implement → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR → /address-pr (if comments) → merge
+Pick up task → STOP: PRE-IMPLEMENTATION CHECK → /write-tests (if needed) → implement → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
 ```
 
-**Pre-implementation checklist (review before writing code):**
-- [ ] Does task require tests? → invoke `/write-tests` FIRST
-- [ ] Requirements clear? → if not, `/brainstorm` or ask user
-- [ ] Touching 3+ files? → consider `/plan-implementation`
+## Pre-Implementation Gate
 
-**Run autonomously through PR creation.** Don't stop after implementation. Only pause if NEEDS_DISCUSSION or 3 failed code-critic iterations.
+**STOP. Before writing ANY code for a TASK*.md, check:**
+1. Does task require tests? → **MUST invoke `/write-tests` FIRST**
+2. Requirements unclear? → `/brainstorm` or ask user
+3. Touching 3+ files? → consider `/plan-implementation`
+
+Skip this gate = workflow violation. State which items were checked before proceeding.
+
+**Run autonomously through PR creation.** Don't stop after commit - continue to PR. Only pause if NEEDS_DISCUSSION or 3 failed code-critic iterations.
 
 **Plan/Task updates:** After completing task, update checkbox `- [ ]` → `- [x]`, commit with implementation, wait for user approval before next task.
 
