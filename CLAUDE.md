@@ -73,15 +73,17 @@ debug-investigator (if complex) → [wait] → log-analyzer (if relevant) → [w
 
 **Single Task (from plan/TASK*.md):**
 ```
-Pick up task → STOP: PRE-IMPLEMENTATION CHECK → /write-tests (if needed) → implement → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
+Pick up task → STOP: PRE-IMPLEMENTATION GATE → create worktree → /write-tests (if needed) → implement → code-critic → test-runner + check-runner + security-scanner → /pre-pr-verification → PR
 ```
 
 ## Pre-Implementation Gate
 
-**STOP. Before writing ANY code for a TASK*.md, check:**
-1. Does task require tests? → **MUST invoke `/write-tests` FIRST**
-2. Requirements unclear? → `/brainstorm` or ask user
-3. Touching 3+ files? → consider `/plan-implementation`
+**STOP. Before writing ANY code for a TASK*.md:**
+
+1. **Create worktree first** — `git worktree add ../repo-branch-name -b branch-name`
+2. **Does task require tests?** → invoke `/write-tests` FIRST
+3. **Requirements unclear?** → `/brainstorm` or ask user
+4. **Will this bloat into a large PR?** → If task scope seems too broad (many unrelated changes, multiple features), split into smaller tasks before proceeding
 
 Skip this gate = workflow violation. State which items were checked before proceeding.
 
