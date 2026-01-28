@@ -35,12 +35,12 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 | Agent | Purpose |
 |-------|---------|
 | `debug-investigator` | Systematic bug investigation, returns root cause analysis |
-| `project-researcher` | Gathers project context from Notion/Figma/Slack |
 | `test-runner` | Runs tests, returns only failures (isolates verbose output) |
 | `check-runner` | Runs typecheck/lint, returns only errors (isolates verbose output) |
 | `log-analyzer` | Analyzes logs, returns error summary (isolates verbose output) |
 | `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues before PR |
-| `code-critic` | Autonomous code review loop using `/code-review` guidelines |
+| `code-critic` | Iterative code review using `/code-review` guidelines |
+| `architecture-critic` | Reviews architectural patterns, complexity metrics (advisory) |
 
 ## Skills
 
@@ -50,6 +50,7 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 | `plan-implementation` | Feature planning, creating specs |
 | `write-tests` | "write tests", "add test coverage" |
 | `code-review` | PR reviews, code quality checks |
+| `architecture-review` | Architecture guidelines (preloaded by architecture-critic) |
 | `pre-pr-verification` | Before creating PR, verifying all checks pass |
 | `minimize` | Identifies bloat and unnecessary complexity |
 | `address-pr` | "address PR comments", "check feedback" |
@@ -99,12 +100,12 @@ crontab -e
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| `session-cleanup.sh` | SessionStart | Cleans old PR gate markers (>24h) |
+| `session-cleanup.sh` | SessionStart | Cleans old markers (>24h) |
 | `skill-eval.sh` | UserPromptSubmit | Detects skill triggers, injects MANDATORY/SHOULD suggestions |
 | `worktree-guard.sh` | PreToolUse (Bash) | Prevents branch switching in shared repos |
 | `pr-gate.sh` | PreToolUse (Bash) | Blocks `gh pr create` without verification markers |
-| `agent-trace.sh` | PostToolUse (Task) | Logs sub-agent invocations, creates security-scanner marker |
-| `skill-marker.sh` | PostToolUse (Skill) | Creates /pre-pr-verification marker |
+| `agent-trace.sh` | PostToolUse (Task) | Logs to agent-trace.jsonl, creates agent markers |
+| `skill-marker.sh` | PostToolUse (Skill) | Logs to skill-trace.jsonl, creates skill markers |
 
 ## Ignored (local-only)
 
