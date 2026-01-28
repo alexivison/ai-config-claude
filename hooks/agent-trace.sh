@@ -35,17 +35,7 @@ agent_type=$(echo "$hook_input" | jq -r '.tool_input.subagent_type // "unknown"'
 description=$(echo "$hook_input" | jq -r '.tool_input.description // ""')
 model=$(echo "$hook_input" | jq -r '.tool_input.model // "inherit"')
 
-# Try to extract skills from agent definition file
-skills=""
-agent_file="$HOME/.claude/agents/${agent_type}.md"
-if [ -f "$agent_file" ]; then
-  # Extract skills from YAML frontmatter (between --- markers)
-  # Look for "skills:" followed by list items "  - skillname"
-  skills=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep -A 20 '^skills:' | grep '^ *- ' | sed 's/^ *- //' | tr '\n' ',' | sed 's/,$//')
-fi
-
 # Extract result summary from tool_response
-# The response structure varies, try to get meaningful summary
 response_text=$(echo "$hook_input" | jq -r '.tool_response // ""' | head -c 500)
 
 # Detect verdict/status from common patterns (ordered by specificity)
@@ -85,7 +75,6 @@ trace_entry=$(jq -n \
   --arg agent "$agent_type" \
   --arg desc "$description" \
   --arg model "$model" \
-  --arg skills "$skills" \
   --arg verdict "$verdict" \
   '{
     timestamp: $ts,
@@ -94,7 +83,6 @@ trace_entry=$(jq -n \
     agent: $agent,
     description: $desc,
     model: $model,
-    skills: $skills,
     verdict: $verdict
   }')
 
