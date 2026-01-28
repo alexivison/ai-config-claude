@@ -78,10 +78,15 @@ Details in `~/.claude/agents/README.md`. Key behavior rules:
 *Parallel: invoke both in same message using multiple Task tool calls.
 
 **After sub-agent returns:**
-- **Investigation agents** (debug-investigator, log-analyzer): MUST show findings, use AskUserQuestion "Ready to proceed?", wait for user
-- **Verification agents** (test-runner, check-runner, security-scanner): Show summary, address failures directly, no need to ask
-- **Iterative agents** (code-critic): Loop autonomously until APPROVED (max 3 iterations). Only ask user if NEEDS_DISCUSSION or 3 failures.
-- **Advisory agents** (architecture-critic): Show key findings (triggered metrics, main concerns) in conversation. Before asking about a refactor task, check existing TASK*.md files — if one already covers the suggested refactor, note "TASK04 already addresses this" and skip creation. Otherwise ask user, and if yes, use next available number. PR is not blocked. Only pause for NEEDS_DISCUSSION.
+
+| Agent Class | Examples | When to Pause | Show to User |
+|-------------|----------|---------------|--------------|
+| Investigation | debug-investigator, log-analyzer | Always | Full findings, then AskUserQuestion |
+| Verification | test-runner, check-runner, security-scanner | Never (fix failures directly) | Summary only |
+| Iterative | code-critic | NEEDS_DISCUSSION or 3 failures | Verdict each iteration |
+| Advisory | architecture-critic | NEEDS_DISCUSSION only | Key findings (metrics, concerns) |
+
+**Advisory behavior**: On REQUEST_CHANGES, check existing TASK*.md for duplicates. If one covers the suggested refactor, note it and skip. Otherwise ask user about creating a task (use next available number). PR proceeds regardless.
 
 **Invocation:** Include scope (files), context (errors), success criteria.
 
