@@ -15,6 +15,7 @@ When executing TASK*.md, **do NOT stop between these steps**:
 
 **DO NOT:**
 - Stop after RED phase — implement immediately in the same response
+- Stop after GREEN phase — continue to checkboxes and critics in the same response
 - Stop after "Verification complete" — create commit and PR in the same response
 - Output "Ready to..." or "Now I'll..." then end your turn — just do it
 - Ask "Should I continue?" or "Should I create the PR?" mid-workflow
@@ -29,6 +30,9 @@ When executing TASK*.md, **do NOT stop between these steps**:
 ```
 ❌ "RED phase verified. Tests fail for the right reason."  [ends turn]
 ✓  "RED phase verified. Tests fail for the right reason. Implementing now..." [continues]
+
+❌ "All tests pass. GREEN phase complete."  [ends turn]
+✓  "All tests pass. Updating checkboxes and running code-critic..." [continues]
 
 ❌ "All checks pass. Ready to create PR."  [ends turn]
 ✓  "All checks pass. Creating PR..." [continues with git add, commit, push, gh pr create]
