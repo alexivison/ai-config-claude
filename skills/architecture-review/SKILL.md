@@ -1,7 +1,7 @@
 ---
 name: architecture-review
 description: Architecture guidelines for reviewing structural patterns, complexity metrics, and design decisions
-user-invocable: true
+user-invocable: false
 ---
 
 # Architecture Review Guidelines

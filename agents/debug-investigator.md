@@ -2,7 +2,7 @@
 name: debug-investigator
 description: "Investigate bugs, errors, or unexpected behavior. Writes findings to file to preserve main context. Does NOT implement fixes. Use for complex debugging."
 model: sonnet
-tools: Bash, Glob, Grep, Read, Write, WebFetch, WebSearch, mcp__chrome-devtools__click, mcp__chrome-devtools__evaluate_script, mcp__chrome-devtools__fill, mcp__chrome-devtools__get_console_message, mcp__chrome-devtools__get_network_request, mcp__chrome-devtools__hover, mcp__chrome-devtools__list_console_messages, mcp__chrome-devtools__list_network_requests, mcp__chrome-devtools__list_pages, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__new_page, mcp__chrome-devtools__performance_analyze_insight, mcp__chrome-devtools__performance_start_trace, mcp__chrome-devtools__performance_stop_trace, mcp__chrome-devtools__press_key, mcp__chrome-devtools__select_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__wait_for
+tools: Bash, Glob, Grep, Read, Write, WebFetch, WebSearch, mcp__chrome-devtools__*
 color: red
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: pre-pr-verification
 description: Run full verification before creating PR. Enforces evidence-based completion. Use before any PR creation or when asked to verify changes.
-user-invocable: true
+user-invocable: false
 allowed-tools: Bash, Task
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: code-review
 description: Review code for quality, bugs, and guideline compliance. Use for pre-commit/PR verification.
-user-invocable: true
+user-invocable: false
 allowed-tools: Read, Grep, Glob, Bash(git:*)
 ---
 
