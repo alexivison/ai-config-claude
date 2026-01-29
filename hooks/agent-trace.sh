@@ -36,7 +36,6 @@ description=$(echo "$hook_input" | jq -r '.tool_input.description // ""')
 model=$(echo "$hook_input" | jq -r '.tool_input.model // "inherit"')
 
 # Extract result summary from tool_response
-# The response structure varies, try to get meaningful summary
 response_text=$(echo "$hook_input" | jq -r '.tool_response // ""' | head -c 500)
 
 # Detect verdict/status from common patterns (ordered by specificity)
@@ -47,6 +46,8 @@ elif echo "$response_text" | grep -qi "NEEDS_DISCUSSION"; then
   verdict="NEEDS_DISCUSSION"
 elif echo "$response_text" | grep -qi "APPROVE"; then
   verdict="APPROVED"
+elif echo "$response_text" | grep -qi "SKIP"; then
+  verdict="SKIP"
 elif echo "$response_text" | grep -qi "CRITICAL\|HIGH"; then
   verdict="ISSUES_FOUND"
 elif echo "$response_text" | grep -qi "FAIL"; then
@@ -88,9 +89,34 @@ trace_entry=$(jq -n \
 # Append to trace file
 echo "$trace_entry" >> "$TRACE_FILE"
 
-# Create marker when security-scanner completes (for PR gate)
+# Create markers for PR gate enforcement
+# Each marker proves a workflow step was completed
+
+# security-scanner: any completion creates marker
 if [ "$agent_type" = "security-scanner" ]; then
   touch "/tmp/claude-security-scanned-$session_id"
+fi
+
+# architecture-critic: any verdict creates marker (review happened)
+if [ "$agent_type" = "architecture-critic" ]; then
+  touch "/tmp/claude-architecture-reviewed-$session_id"
+fi
+
+# code-critic: only APPROVE creates marker (must pass before PR)
+if [ "$agent_type" = "code-critic" ] && [ "$verdict" = "APPROVED" ]; then
+  touch "/tmp/claude-code-critic-$session_id"
+fi
+
+# test-runner: only PASS creates marker
+if [ "$agent_type" = "test-runner" ] && [ "$verdict" = "PASS" ]; then
+  touch "/tmp/claude-tests-passed-$session_id"
+fi
+
+# check-runner: only PASS or CLEAN creates marker
+if [ "$agent_type" = "check-runner" ]; then
+  if [ "$verdict" = "PASS" ] || [ "$verdict" = "CLEAN" ]; then
+    touch "/tmp/claude-checks-passed-$session_id"
+  fi
 fi
 
 exit 0

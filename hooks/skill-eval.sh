@@ -15,9 +15,31 @@ SUGGESTION=""
 PRIORITY=""  # "must" or "should"
 
 # MUST invoke skills (highest priority, blocking language)
-if echo "$PROMPT_LOWER" | grep -qE '\bwrite tests?\b|\badd tests?\b|\bcreate tests?\b|\btest coverage\b|\badd coverage\b'; then
+
+# MUST skills - check most specific patterns first
+
+# task-workflow: TASK file references (highest priority - most specific)
+if echo "$PROMPT_LOWER" | grep -qE '\btask[_-]?[0-9]|\btask[_-]?file|\bpick up task|\bfrom (the )?plan\b|\bexecute task\b|\bimplement task\b'; then
+  SUGGESTION="MANDATORY: Invoke task-workflow skill for planned task execution."
+  PRIORITY="must"
+
+# write-tests: Test-related keywords (high specificity - check before feature-workflow)
+elif echo "$PROMPT_LOWER" | grep -qE '\bwrite (a |the )?tests?\b|\badd (a |the )?tests?\b|\bcreate (a |the )?tests?\b|\btest coverage\b|\badd coverage\b'; then
   SUGGESTION="MANDATORY: Invoke /write-tests skill BEFORE writing any tests."
   PRIORITY="must"
+
+# bugfix-workflow: Bug/error keywords (medium specificity)
+# Note: "fix" alone is too broad (catches "fix typo"). Require bug-related context.
+elif echo "$PROMPT_LOWER" | grep -qE '\bbug\b|\bbroken\b|\berror\b|\bnot work|\bdebug\b|\bcrash|\bfail(s|ed|ing|ure)?\b|\bfix(es|ed|ing)?\b.*(bug|error|issue|broken|crash|fail)|\b(bug|error|issue|broken|crash).*(fix|fixes|fixed|fixing)\b'; then
+  SUGGESTION="MANDATORY: Invoke bugfix-workflow skill for debugging workflow."
+  PRIORITY="must"
+
+# feature-workflow: Build/create keywords (fallback - most general)
+elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\bcreate\b|\badd (a |the |new )?[a-z]+\b'; then
+  SUGGESTION="MANDATORY: Invoke feature-workflow skill for new feature workflow."
+  PRIORITY="must"
+
+# Other MUST skills
 elif echo "$PROMPT_LOWER" | grep -qE '\bcreate pr\b|\bmake pr\b|\bready for pr\b|\bopen pr\b|\bsubmit pr\b'; then
   SUGGESTION="MANDATORY: Run /pre-pr-verification + security-scanner BEFORE creating PR. PR gate will block without these."
   PRIORITY="must"

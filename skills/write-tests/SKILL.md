@@ -28,12 +28,23 @@ Write appropriate tests based on code characteristics and Testing Trophy princip
 - **Test behavior, not implementation**
 - **Keep tests in the same PR as implementation**
 
+## Running Tests
+
+**Always use test-runner agent** for running tests (both RED and GREEN phases).
+
+Why:
+- Preserves main context (isolates verbose test output)
+- Returns concise summary
+- Consistent approach across all test runs
+
+If you need detailed failure output (e.g., to verify RED fails for the right reason), check the test-runner summary first. Only re-run specific tests directly via Bash if the summary is insufficient.
+
 ## RED Phase
 
 When writing tests for new functionality:
 
 1. **Write the test first** — before implementation
-2. **Run it and watch it FAIL**
+2. **Run via test-runner agent** and watch it FAIL
 3. **Verify it fails for the RIGHT reason:**
    - Good: "Expected X but received undefined" (feature missing)
    - Bad: "Cannot find module" (syntax/import error)
@@ -47,5 +58,5 @@ When writing tests for new functionality:
 **When RED phase is optional:**
 - Adding a single test to an existing test file for coverage → optional but recommended
 
-**Completion:**
-Skill is complete when tests are written and (if required) RED phase confirms tests fail for the right reason.
+**After RED Phase:**
+Once tests are written and RED phase confirms they fail for the right reason, **immediately proceed to implementation** — do not stop or wait for user input. The TDD cycle is: RED → GREEN → refactor, all in one flow.
