@@ -25,7 +25,7 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 | `settings.json` | Global settings (model, permissions, hooks) |
 | `agents/` | Custom sub-agents for specialized tasks |
 | `skills/` | Context-aware skills triggered by task type |
-| `rules/` | Language/framework-specific coding rules |
+| `rules/` | Execution rules and development guidelines |
 | `hooks/` | Shell scripts that run on Claude events |
 | `scripts/` | Utility scripts (e.g., status line) |
 | `commands/` | Custom slash commands |
@@ -44,26 +44,55 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 
 ## Skills
 
+### User-Invocable
+
 | Skill | Triggers |
 |-------|----------|
 | `brainstorm` | New features with unclear requirements, multiple approaches |
 | `plan-implementation` | Feature planning, creating specs |
-| `write-tests` | "write tests", "add test coverage" |
-| `code-review` | PR reviews, code quality checks |
-| `architecture-review` | Architecture guidelines (preloaded by architecture-critic) |
-| `pre-pr-verification` | Before creating PR, verifying all checks pass |
 | `minimize` | Identifies bloat and unnecessary complexity |
 | `address-pr` | "address PR comments", "check feedback" |
 | `autoskill` | "learn from this session", "remember this pattern", `/autoskill` |
 
+### Workflow Orchestrators (auto-invoked)
+
+| Skill | Triggers |
+|-------|----------|
+| `task-workflow` | TASK*.md execution, "pick up task", "from the plan" |
+| `feature-workflow` | "implement", "build", "create", "add new" |
+| `bugfix-workflow` | "bug", "broken", "error", "debug", "fix" |
+
+### Reference Skills (loaded by agents/workflows)
+
+| Skill | Purpose |
+|-------|---------|
+| `write-tests` | Test writing methodology (invoked by workflows) |
+| `code-review` | Code quality guidelines (preloaded by code-critic) |
+| `architecture-review` | Architecture guidelines (preloaded by architecture-critic) |
+| `pre-pr-verification` | PR verification checklist (invoked before PR creation) |
+
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `deploy-k8s` | Deploy services to Kubernetes via ArgoCD/Kustomize overlays |
+
+## Rules
+
+| Rule | Purpose |
+|------|---------|
+| `execution-core.md` | Core sequence, decision matrix, verification principle |
+| `autonomous-flow.md` | Continuous execution rules, valid pause conditions |
+| `development.md` | Git conventions, PRs, worktrees, task management |
+
 ## Workflow
 
-See `CLAUDE.md` for workflow definitions.
+Core sequence: `/write-tests` → implement → checkboxes → code-critic → architecture-critic → verification → commit → PR
 
 Key principles:
 - **Evidence before claims** — never state "tests pass" without running them
-- **Verification before PR** — run `/pre-pr-verification` before every PR
-- **Code-critic for plan tasks** — mandatory for all TASK*.md implementations
+- **Autonomous flow** — no stopping between steps unless blocked
+- **Code-critic mandatory** — for all TASK*.md implementations
 
 ## Scripts
 

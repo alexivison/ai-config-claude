@@ -7,6 +7,8 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 
 **Methodology:** 4-phase debugging (Root Cause → Pattern Analysis → Hypothesis Testing → Specify Fix).
 
+**Tools:** Standard tools + all `mcp__chrome-devtools__*` for browser debugging.
+
 **Writes to:** `~/.claude/investigations/{issue-id}.md`
 
 **Returns:** Brief summary with file path, verdict, hypotheses tested, one-line summary.
