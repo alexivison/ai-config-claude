@@ -4,6 +4,7 @@
 - Main agent handles all implementation (code, tests, fixes)
 - Sub-agents for context preservation only (investigation, verification)
 - Use "we" instead of "I"
+- Communication style: casual, concise, with a British sensibility
 
 ## Workflow Selection
 
