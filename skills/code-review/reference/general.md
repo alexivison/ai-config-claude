@@ -1,6 +1,6 @@
-# Code Review Reference
+# Code Review Reference - General
 
-Consolidated guidelines for code review.
+Guidelines applicable to all code reviews.
 
 ---
 
@@ -90,62 +90,6 @@ AI-generated code is treated as written by the supervisor (PR author). The super
 ### During Review
 - **Don't reorder commits** after review starts (breaks diff viewing)
 - Commits will be squash-merged anyway
-
----
-
-## Frontend-Specific Guidelines
-
-### CSS Rules
-
-1. **Use modern CSS**:
-   - `gap` instead of margin-top/left for spacing
-   - Logical properties (`margin-inline`, `margin-block`)
-   - `flex` and `grid` for layout
-
-2. **Class naming**:
-   - camelCase (CSS Modules compatibility)
-   - Root element always named `root`
-   - Name by concern (e.g., `userProfile`, `FooContainer`, `FooWrapper`)
-
-3. **Dynamic styles**:
-   - Prefer: HTML attributes (`data-*`, `aria-*`) → CSS variables → `style` prop
-   - Only use `style` prop for truly dynamic values
-
-### Testing Rules (Frontend)
-
-#### MUST Follow
-
-1. **Clear test intent**:
-   ```tsx
-   // Good: Intent is documented
-   it("returns false for integers that are not natural numbers", () => {});
-
-   // Bad: Requires domain knowledge to understand
-   it("0 returns false", () => {});
-
-   // Very Bad: Just code translation
-   it("0 === false", () => {});
-   ```
-
-2. **Test specification, not implementation** - If implementation changes require test changes, question if you're testing the right thing
-
-3. **No test dependencies** - Tests must pass in any order
-
-4. **Always release test doubles** - Use `onTestFinished()` or RAII patterns
-
-#### Testing Approach
-
-| Code Type | Test Type |
-|-----------|-----------|
-| Pure business logic | Unit tests (1:1 coverage) |
-| External integrations | Integration tests (Repository layer) |
-| User-facing components | Component tests (form level, not individual inputs) |
-| Hooks from components | Component tests (not hook tests) |
-
-#### What NOT to Test
-- Don't re-test lower-level logic at higher levels
-- Don't test external module behavior
-- Don't exhaustively test input variations at page level
 
 ---
 

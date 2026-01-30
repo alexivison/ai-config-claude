@@ -11,7 +11,10 @@ Review the current changes for quality, bugs, and best practices. Identify issue
 
 ## Reference Documentation
 
-For detailed coding standards and frontend-specific rules, see `~/.claude/skills/code-review/reference/review-guidelines.md`. Load when reviewing unfamiliar patterns.
+- **General**: `~/.claude/skills/code-review/reference/general.md` — Principles, quality standards, PR guidelines
+- **Frontend**: `~/.claude/skills/code-review/reference/frontend.md` — React, TypeScript, CSS, testing patterns
+
+Load relevant reference docs based on what's being reviewed.
 
 ## Severity Levels
 

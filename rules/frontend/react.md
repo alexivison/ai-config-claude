@@ -17,3 +17,45 @@ paths: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js"]
 - Keep dependency arrays minimal and precise
 - Always include cleanup for subscriptions, timers, and async operations
 - Multiple related boolean states often indicate need for `useReducer` or state machine
+
+## useState Guidelines
+
+- Use callback form when updating state based on current value:
+  ```tsx
+  // Good - guaranteed latest value
+  setCount(prev => prev + 1);
+
+  // Bad - may use stale value
+  setCount(count + 1);
+  ```
+
+## Props Design
+
+- Prefer discriminated unions over multiple boolean props:
+  ```tsx
+  // Good - explicit states, no invalid combinations
+  type Props =
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'error'; message: string };
+
+  // Bad - combinatorial explosion, invalid states possible
+  type Props = {
+    isLoading?: boolean;
+    isError?: boolean;
+    errorMessage?: string;
+  };
+  ```
+
+## Naming Conventions
+
+- Event handlers use `handle` prefix:
+  ```tsx
+  // Good
+  const handleClick = () => {};
+  const handleSubmit = () => {};
+
+  // Bad
+  const onClick = () => {};  // Looks like a prop
+  const submitForm = () => {};  // Unclear it's a handler
+  ```
