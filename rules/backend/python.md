@@ -4,10 +4,21 @@ paths: ["**/*.py"]
 
 # Python Rules
 
+## Tooling
+
+- **Linter/Formatter:** ruff (not black/isort/flake8)
+- **Type Checker:** pyright strict mode (not mypy)
+- **Package Manager:** uv (not pip/poetry)
+- **Line length:** 120 characters
+- **Python version:** 3.13+
+
+Ruff rules: A (builtins), E (style), F (pyflakes), I (imports), N (naming), T100 (breakpoints)
+
 ## Type Hints
 
 - Use type hints for function signatures
-- Use `from __future__ import annotations` for forward references
+- All function signatures require types
+- Target pyright strict mode compliance
 - Prefer `list[str]` over `List[str]` (Python 3.9+)
 - Use `TypedDict` for structured dicts, not `dict[str, Any]`
 
@@ -39,6 +50,28 @@ paths: ["**/*.py"]
 - Use `@property` for computed attributes, not getters/setters
 - Prefer composition over inheritance
 - Use `ABC` and `@abstractmethod` for interfaces
+- Interface naming: `*Interface` suffix for ABCs
+- Docstrings required for abstract methods
+- Simple classes for tiny models; @dataclass for multi-field data
+
+## Dependency Injection
+
+- Constructor injection with typed interfaces
+- Composition root in server.py
+- Example: `def __init__(self, repo: RepositoryInterface)`
+
+## gRPC Patterns
+
+- Inherit from generated servicer: `class FooController(grpc_v1.FooServiceServicer)`
+- Use `# noqa: N802` for PascalCase method names (gRPC requirement)
+- Error handling: `context.abort(code=StatusCode.X, details=str(e))`
+- Type hints for request/response protos
+
+## Logging
+
+- Module-level logger: `_LOGGER = StructuredLogger.get_logger()`
+- Structured logging with context fields
+- Exception logging: `_LOGGER.error("message", exception=e)`
 
 ## Async
 
@@ -61,8 +94,21 @@ paths: ["**/*.py"]
 - Avoid `import *` (pollutes namespace)
 - Use `is` for `None` comparison: `if x is None` not `if x == None`
 
-## Project Structure
+## Project Structure (Clean Architecture)
 
-- `__init__.py` should be minimal (re-exports only)
-- Keep imports at top of file, grouped: stdlib, third-party, local
-- Use absolute imports over relative
+```
+src/package_name/
+  ├── controller/           # gRPC/REST handlers
+  │   └── interceptor/      # gRPC interceptors
+  ├── usecase/              # Business logic
+  ├── domain/
+  │   ├── model/            # Business entities
+  │   └── repository/       # Data access interfaces
+  ├── infrastructure/
+  │   └── repository/       # Repository implementations
+  ├── common/               # Shared utilities (logger)
+  └── server.py             # Entry point
+tests/
+```
+
+Interfaces optional for small scope; add dto/, service/, gateway/ as needed.
