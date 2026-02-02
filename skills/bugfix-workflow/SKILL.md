@@ -14,12 +14,19 @@ Debug and fix bugs with investigation before implementation.
 
 1. **Create worktree first** — `git worktree add ../repo-branch-name -b branch-name`
 2. **Understand the bug** — Read relevant code, reproduce if possible
-3. **Complex bug?** → Invoke `debug-investigator` agent → `[wait for user]`
+3. **Complex bug?** → Invoke `cli-orchestrator` for investigation → `[wait for user]`
 4. **Logs relevant?** → Invoke `log-analyzer` agent → `[wait for user]`
 
 `[wait]` = Show findings, use AskUserQuestion, wait for user input.
 
-Investigation agents ALWAYS require user review before proceeding.
+**cli-orchestrator investigation prompt:**
+```
+Investigate bug: {error/symptom description}.
+Context: {relevant files, steps to reproduce}.
+Apply four-phase methodology.
+```
+
+Investigation ALWAYS requires user review before proceeding.
 
 State which items were checked before proceeding.
 

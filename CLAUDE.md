@@ -36,7 +36,7 @@ Details in `~/.claude/agents/README.md`. Quick reference:
 | Run tests | test-runner |
 | Run typecheck/lint | check-runner |
 | Security scan | security-scanner |
-| Complex bug | debug-investigator |
+| Complex bug investigation | cli-orchestrator (investigate) |
 | Analyze logs | log-analyzer |
 | After implementing | cli-orchestrator (review) (MANDATORY) |
 | After review passes | cli-orchestrator (arch) |

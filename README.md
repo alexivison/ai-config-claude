@@ -34,14 +34,14 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 
 | Agent | Purpose |
 |-------|---------|
-| `debug-investigator` | Systematic bug investigation, returns root cause analysis |
+| `cli-orchestrator` | Routes to Codex/Gemini for review, architecture, debugging, research |
 | `test-runner` | Runs tests, returns only failures (isolates verbose output) |
 | `check-runner` | Runs typecheck/lint, returns only errors (isolates verbose output) |
 | `log-analyzer` | Analyzes logs, returns error summary (isolates verbose output) |
 | `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues before PR |
-| `cli-orchestrator` | Routes to Codex/Gemini for review, architecture, research |
-| `code-critic` | Legacy: Iterative code review using `/code-review` guidelines |
-| `architecture-critic` | Legacy: Reviews architectural patterns, complexity metrics |
+| `debug-investigator` | Legacy: Systematic bug investigation (replaced by cli-orchestrator) |
+| `code-critic` | Legacy: Iterative code review (replaced by cli-orchestrator) |
+| `architecture-critic` | Legacy: Architecture review (replaced by cli-orchestrator) |
 
 ## Skills
 
