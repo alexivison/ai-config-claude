@@ -24,7 +24,7 @@ State which items were checked before proceeding.
 After passing the gate, execute continuously — **no stopping until PR is created**.
 
 ```
-/write-tests (if needed) → implement → checkboxes → code-critic → architecture-critic → verification → commit → PR
+/write-tests (if needed) → implement → checkboxes → cli-orchestrator (review) → cli-orchestrator (arch) → verification → commit → PR
 ```
 
 ### Step-by-Step
@@ -33,8 +33,8 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 2. **Implement** — Write the code to make tests pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
 4. **Checkboxes** — Update both TASK*.md and PLAN.md: `- [ ]` → `- [x]`
-5. **code-critic** — MANDATORY after implementing. Fix issues until APPROVE
-6. **architecture-critic** — Run after code-critic passes
+5. **cli-orchestrator (review)** — MANDATORY after implementing. Prompt: "Review the uncommitted changes. Context: {task description}". Fix issues until APPROVE
+6. **cli-orchestrator (arch)** — Run after review passes. Prompt: "Architecture review of changed files. Context: {task description}"
 7. **Verification** — Run test-runner + check-runner + security-scanner (parallel)
 8. **PR Verification** — Invoke `/pre-pr-verification`
 9. **Commit & PR** — Create commit and draft PR

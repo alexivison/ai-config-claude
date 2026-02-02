@@ -20,7 +20,7 @@ Workflow skills load on-demand. See `~/.claude/skills/*/SKILL.md` for details.
 
 **Do NOT stop between steps.** Core sequence:
 ```
-tests → implement → checkboxes → code-critic → architecture-critic → verification → commit → PR
+tests → implement → checkboxes → cli-orchestrator (review) → cli-orchestrator (arch) → verification → commit → PR
 ```
 
 **Only pause for:** Investigation findings, NEEDS_DISCUSSION, 3 strikes, HIGH/CRITICAL security.
@@ -38,8 +38,8 @@ Details in `~/.claude/agents/README.md`. Quick reference:
 | Security scan | security-scanner |
 | Complex bug | debug-investigator |
 | Analyze logs | log-analyzer |
-| After implementing | code-critic (MANDATORY) |
-| After code-critic | architecture-critic |
+| After implementing | cli-orchestrator (review) (MANDATORY) |
+| After review passes | cli-orchestrator (arch) |
 | After creating plan | plan-reviewer (MANDATORY) |
 
 ## Verification Principle

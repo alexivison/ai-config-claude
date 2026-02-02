@@ -39,8 +39,9 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 | `check-runner` | Runs typecheck/lint, returns only errors (isolates verbose output) |
 | `log-analyzer` | Analyzes logs, returns error summary (isolates verbose output) |
 | `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues before PR |
-| `code-critic` | Iterative code review using `/code-review` guidelines |
-| `architecture-critic` | Reviews architectural patterns, complexity metrics (advisory) |
+| `cli-orchestrator` | Routes to Codex/Gemini for review, architecture, research |
+| `code-critic` | Legacy: Iterative code review using `/code-review` guidelines |
+| `architecture-critic` | Legacy: Reviews architectural patterns, complexity metrics |
 
 ## Skills
 
@@ -67,8 +68,9 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 | Skill | Purpose |
 |-------|---------|
 | `write-tests` | Test writing methodology (invoked by workflows) |
-| `code-review` | Code quality guidelines (preloaded by code-critic) |
-| `architecture-review` | Architecture guidelines (preloaded by architecture-critic) |
+| `consult` | External CLI orchestration (Codex/Gemini) |
+| `code-review` | Code quality guidelines (used by cli-orchestrator) |
+| `architecture-review` | Architecture guidelines (used by cli-orchestrator) |
 | `pre-pr-verification` | PR verification checklist (invoked before PR creation) |
 
 ## Commands
@@ -87,12 +89,12 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 
 ## Workflow
 
-Core sequence: `/write-tests` → implement → checkboxes → code-critic → architecture-critic → verification → commit → PR
+Core sequence: `/write-tests` → implement → checkboxes → cli-orchestrator (review) → cli-orchestrator (arch) → verification → commit → PR
 
 Key principles:
 - **Evidence before claims** — never state "tests pass" without running them
 - **Autonomous flow** — no stopping between steps unless blocked
-- **Code-critic mandatory** — for all TASK*.md implementations
+- **cli-orchestrator mandatory** — for all TASK*.md implementations (routes to Codex CLI)
 
 ## Scripts
 

@@ -50,7 +50,7 @@ elif echo "$PROMPT_LOWER" | grep -qE '\breview (this|my|the) code\b|\bcode revie
 
 # SHOULD invoke skills (recommended)
 elif echo "$PROMPT_LOWER" | grep -qE '\bquality.?critical\b|\bimportant.*code\b|\bproduction.*ready\b'; then
-  SUGGESTION="RECOMMENDED: Use code-critic agent for iterative quality refinement."
+  SUGGESTION="RECOMMENDED: Use cli-orchestrator agent for iterative quality refinement via Codex."
   PRIORITY="should"
 elif echo "$PROMPT_LOWER" | grep -qE '\bsecurity\b|\bvulnerab\b|\baudit\b|\bsecret\b'; then
   SUGGESTION="RECOMMENDED: Run security-scanner agent for security analysis."

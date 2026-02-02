@@ -6,7 +6,7 @@ user-invocable: false
 
 # Architecture Review Guidelines
 
-Reference documentation for architectural code review. Used by the `architecture-critic` agent.
+Reference documentation for architectural code review. Used by `cli-orchestrator` (arch mode) or legacy `architecture-critic` agent.
 
 ## Reference Files
 
