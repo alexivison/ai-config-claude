@@ -34,6 +34,7 @@ Parse the prompt to determine which CLI to use:
 |--------------------|------|----------|
 | "review", "code review" | Codex | Code review |
 | "architecture", "arch", "structure" | Codex | Architecture analysis |
+| "plan review", "review plan", "SPEC", "PLAN.md" | Codex | Plan review |
 | "design", "approach", "compare", "trade-off" | Codex | Design decisions |
 | "debug", "error", "bug", "root cause" | Codex | Debugging |
 | "research", "investigate", "best practices" | Gemini | Research |
@@ -121,6 +122,58 @@ codex exec -s read-only "{Question from prompt}. Analyze trade-offs: maintainabi
 
 ### Risks
 - {Potential issue}
+```
+
+## Plan Review (Codex)
+
+**Trigger:** "plan review", "review plan", "SPEC.md", "PLAN.md", "TASK*.md"
+
+Reviews planning documents for completeness, clarity, and agent-executability.
+
+```bash
+codex exec -s read-only "Review planning documents at {project_path}.
+
+Check for:
+1. SPEC.md - Clear requirements, acceptance criteria, user stories
+2. DESIGN.md - Architecture decisions, component design (if substantial feature)
+3. PLAN.md - Task breakdown, dependencies, no circular deps
+4. TASK*.md - Each task is self-contained, has clear acceptance criteria
+
+Iteration: {N}
+Previous feedback: {if iteration > 1}
+
+Use severity labels:
+- [must] - Missing sections, circular deps, ambiguous reqs (blocks approval)
+- [q] - Questions needing clarification (blocks until answered)
+- [nit] - Minor improvements (does not block)
+
+Max iterations: 3 → then NEEDS_DISCUSSION"
+```
+
+### Output Format (VERDICT FIRST for marker detection)
+```markdown
+## Plan Review (Codex)
+
+**Verdict**: **APPROVE** | **REQUEST_CHANGES** | **NEEDS_DISCUSSION**
+**Iteration**: {N}
+**Project**: {project_path}
+
+### Previous Feedback Status (if iteration > 1)
+| Issue | Status |
+|-------|--------|
+| [must] Missing acceptance criteria | Fixed |
+
+### Summary
+{One paragraph assessment}
+
+### Must Fix
+- **SPEC.md:Acceptance Criteria** - Missing measurable conditions
+
+### Questions
+- **PLAN.md:Dependencies** - Is task 3 blocked by task 2?
+
+### Nits
+- **TASK-01.md** - Consider adding complexity estimate
 ```
 
 ## Debug Investigation (Codex)
@@ -309,6 +362,7 @@ Create markers based on task type:
 |-----------|------|----------------|
 | Code Review + APPROVE | Codex | `/tmp/claude-code-critic-{session}` |
 | Architecture + any | Codex | `/tmp/claude-architecture-reviewed-{session}` |
+| Plan Review + APPROVE | Codex | `/tmp/claude-plan-reviewer-{session}` |
 | Research/Other | Gemini | (no marker needed) |
 
 **Note:** agent-trace.sh detects task type from output headers.

@@ -34,12 +34,11 @@ ln -sf ~/dotfiles/claude/* ~/.claude/
 
 | Agent | Purpose |
 |-------|---------|
-| `cli-orchestrator` | Routes to Codex/Gemini for review, architecture, debugging, research |
+| `cli-orchestrator` | Routes to Codex/Gemini for review, architecture, debugging, plan review, research |
 | `test-runner` | Runs tests, returns only failures (isolates verbose output) |
 | `check-runner` | Runs typecheck/lint, returns only errors (isolates verbose output) |
 | `log-analyzer` | Analyzes logs, returns error summary (isolates verbose output) |
 | `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues before PR |
-| `plan-reviewer` | Reviews planning docs, ensures agent-executability |
 
 ## Skills
 

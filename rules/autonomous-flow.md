@@ -10,17 +10,12 @@ When executing a task from TASK*.md, **do not stop until PR is created** (or a v
 
 **Code workflow (task-workflow, bugfix-workflow):**
 ```
-/write-tests → implement → checkboxes → code-critic → architecture-critic → verification → commit → PR
-```
-
-**CLI alternative (routes to Codex/Gemini):**
-```
 /write-tests → implement → checkboxes → cli-orchestrator (review) → cli-orchestrator (arch) → verification → commit → PR
 ```
 
 **Plan workflow (plan-workflow):**
 ```
-/brainstorm (if needed) → /plan-implementation → plan-reviewer → plan PR
+/brainstorm (if needed) → /plan-implementation → cli-orchestrator (plan review) → plan PR
 ```
 
 ## Decision Matrix
@@ -36,8 +31,8 @@ These patterns indicate flow violation:
 
 | Pattern | Why It's Wrong |
 |---------|----------------|
-| "Tests pass. GREEN phase complete." [stop] | Didn't continue to checkboxes/critics |
-| "Code-critic approved." [stop] | Didn't continue to architecture-critic |
+| "Tests pass. GREEN phase complete." [stop] | Didn't continue to checkboxes/review |
+| "Review approved." [stop] | Didn't continue to arch review |
 | "All checks pass." [stop] | Didn't continue to commit/PR |
 | "Ready to create PR." [stop] | Should just create it |
 | "Should I continue?" | Just continue |
@@ -48,12 +43,12 @@ These patterns indicate flow violation:
 **Code PRs** require markers from:
 - `/pre-pr-verification` completion
 - `security-scanner` completion
-- `code-critic` OR `codex-critic` APPROVE verdict
+- `cli-orchestrator (review)` APPROVE verdict
 - `test-runner` PASS verdict
 - `check-runner` PASS/CLEAN verdict
 
-**Plan PRs** (branch prefix `plan-*`) require:
-- `plan-reviewer` APPROVE verdict
+**Plan PRs** (branch suffix `-plan`) require:
+- `cli-orchestrator (plan review)` APPROVE verdict
 
 Missing markers → `gh pr create` blocked.
 
@@ -63,14 +58,12 @@ Created automatically by `agent-trace.sh`:
 
 | Agent | Verdict | Marker |
 |-------|---------|--------|
-| code-critic | APPROVE | `/tmp/claude-code-critic-{session}` |
-| cli-orchestrator (review) | APPROVE | `/tmp/claude-code-critic-{session}` (same marker) |
+| cli-orchestrator (review) | APPROVE | `/tmp/claude-code-critic-{session}` |
+| cli-orchestrator (arch) | Any | `/tmp/claude-architecture-reviewed-{session}` |
+| cli-orchestrator (plan review) | APPROVE | `/tmp/claude-plan-reviewer-{session}` |
 | test-runner | PASS | `/tmp/claude-tests-passed-{session}` |
 | check-runner | PASS/CLEAN | `/tmp/claude-checks-passed-{session}` |
 | security-scanner | Any | `/tmp/claude-security-scanned-{session}` |
-| architecture-critic | Any | `/tmp/claude-architecture-reviewed-{session}` |
-| cli-orchestrator (arch) | Any | `/tmp/claude-architecture-reviewed-{session}` (same marker) |
 | /pre-pr-verification | Any | `/tmp/claude-pr-verified-{session}` |
-| plan-reviewer | APPROVE | `/tmp/claude-plan-reviewer-{session}` |
 
-**Plan PRs** (branch suffix `-plan`) only require `plan-reviewer` marker. Code PRs require all other markers.
+**Plan PRs** (branch suffix `-plan`) only require plan review marker. Code PRs require all other markers.

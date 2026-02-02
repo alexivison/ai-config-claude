@@ -3,17 +3,18 @@
 Sub-agents preserve context by offloading investigation/verification tasks.
 
 ## cli-orchestrator
-**Use when:** Deep reasoning, code review, debugging, architecture analysis, or research via external CLI tools (Codex, Gemini).
+**Use when:** Deep reasoning, code review, debugging, plan review, architecture analysis, or research via external CLI tools (Codex, Gemini).
 
 **Routes to appropriate CLI based on prompt:**
-- "review", "design", "debug", "investigate", "architecture" → **Codex CLI** (reasoning)
+- "review", "plan review", "design", "debug", "investigate", "architecture" → **Codex CLI** (reasoning)
 - "research", "codebase", "PDF", "library" → **Gemini CLI** (research/multimodal)
 
 **Modes:**
-| Mode | Trigger | Codex Command |
-|------|---------|---------------|
+| Mode | Trigger | CLI Command |
+|------|---------|-------------|
 | Code Review | "review" | `codex review --uncommitted` |
 | Architecture | "arch", "structure" | `codex exec -s read-only "Analyze architecture..."` |
+| Plan Review | "plan review", "SPEC", "PLAN.md" | `codex exec -s read-only "Review planning documents..."` |
 | Debug Investigation | "debug", "investigate", "bug" | `codex exec -s read-only "Investigate bug..."` |
 | Design Decision | "design", "compare" | `codex exec -s read-only "Analyze trade-offs..."` |
 | Research | "research" | `gemini -p "Research..."` |
@@ -24,6 +25,7 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 **Creates markers (Codex tasks only):**
 - Code Review + APPROVE → `/tmp/claude-code-critic-{session}`
 - Architecture + any → `/tmp/claude-architecture-reviewed-{session}`
+- Plan Review + APPROVE → `/tmp/claude-plan-reviewer-{session}`
 
 **Note:** Uses Sonnet. Keeps verbose CLI output isolated. Extensible to other CLIs.
 
@@ -58,14 +60,3 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 **Returns:** Structured findings with severity (CRITICAL/HIGH/MEDIUM/LOW), exact locations, and remediation.
 
 **Note:** Uses Haiku. Runs available tools (npm audit, pip-audit, etc.) and grep patterns.
-
-## plan-reviewer
-**Use when:** After creating planning documents (SPEC.md, DESIGN.md, PLAN.md, TASK*.md).
-
-**Pattern:** Single-pass review. Main agent controls iteration loop (create → review → fix → review → ... → APPROVED).
-
-**Returns:** Verdict (APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION) with `[must]`/`[q]`/`[nit]` feedback.
-
-**Escalates to user:** Only on NEEDS_DISCUSSION or after 3 failed iterations.
-
-**Note:** Uses Sonnet. Preloads `/plan-review` skill. Validates document structure, completeness, and agent-executability.

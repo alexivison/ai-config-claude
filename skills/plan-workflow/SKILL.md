@@ -53,20 +53,21 @@ Before planning, clarify requirements:
 Execute continuously - **no stopping until PR is created**.
 
 ```
-plan-reviewer (iteration loop) -> PR
+cli-orchestrator (plan review) (iteration loop) -> PR
 ```
 
 ### Step-by-Step
 
-1. **Run plan-reviewer agent** (MANDATORY)
-   - Reviews all documents against plan-review guidelines
+1. **Run cli-orchestrator for plan review** (MANDATORY)
+   - Prompt: "Plan review for doc/projects/<feature-name>/. Iteration: 1."
+   - Codex reviews all documents against plan-review guidelines
    - Returns APPROVE / REQUEST_CHANGES / NEEDS_DISCUSSION
 
 2. **Handle verdict:**
    | Verdict | Action |
    |---------|--------|
    | APPROVE | Continue to PR |
-   | REQUEST_CHANGES | Fix issues, re-run plan-reviewer |
+   | REQUEST_CHANGES | Fix issues, re-run cli-orchestrator with iteration N+1 |
    | NEEDS_DISCUSSION | Show findings, ask user |
    | 3rd iteration fails | Show findings, ask user |
 
@@ -105,7 +106,7 @@ implement @doc/projects/<feature>/tasks/TASK0.md
 
 Always use `-plan` suffix (e.g., `ENG-123-auth-plan` or `auth-feature-plan`). This:
 - Preserves Linear issue ID convention (`<ISSUE-ID>-<description>`)
-- Triggers plan-specific PR gate path (only requires plan-reviewer marker)
+- Triggers plan-specific PR gate path (only requires plan review APPROVE marker)
 
 ## When to Use This Workflow
 
@@ -131,5 +132,5 @@ user: implement @doc/projects/<feature>/tasks/TASK0.md
 ## Core Reference
 
 See [execution-core.md](/Users/aleksituominen/.claude/rules/execution-core.md) for:
-- plan-reviewer iteration rules
+- Plan review iteration rules
 - Pause conditions

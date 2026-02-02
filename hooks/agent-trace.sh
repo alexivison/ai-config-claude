@@ -118,6 +118,11 @@ if [ "$agent_type" = "cli-orchestrator" ]; then
   elif echo "$response_text" | grep -qi "Architecture Review (Codex)\|## Architecture Review"; then
     # Architecture mode - any completion creates marker
     touch "/tmp/claude-architecture-reviewed-$session_id"
+  elif echo "$response_text" | grep -qi "Plan Review (Codex)\|## Plan Review"; then
+    # Plan review mode - only APPROVE creates marker
+    if [ "$verdict" = "APPROVED" ]; then
+      touch "/tmp/claude-plan-reviewer-$session_id"
+    fi
   fi
   # Gemini tasks (research, etc.) don't create PR gate markers
 fi
@@ -134,7 +139,8 @@ if [ "$agent_type" = "check-runner" ]; then
   fi
 fi
 
-# plan-reviewer: only APPROVED creates marker
+# plan-reviewer: legacy agent (now handled by cli-orchestrator)
+# Kept for backwards compatibility
 if [ "$agent_type" = "plan-reviewer" ] && [ "$verdict" = "APPROVED" ]; then
   touch "/tmp/claude-plan-reviewer-$session_id"
 fi

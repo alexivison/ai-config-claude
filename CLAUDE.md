@@ -40,7 +40,7 @@ Details in `~/.claude/agents/README.md`. Quick reference:
 | Analyze logs | log-analyzer |
 | After implementing | cli-orchestrator (review) (MANDATORY) |
 | After review passes | cli-orchestrator (arch) |
-| After creating plan | plan-reviewer (MANDATORY) |
+| After creating plan | cli-orchestrator (plan review) (MANDATORY) |
 
 ## Verification Principle
 
