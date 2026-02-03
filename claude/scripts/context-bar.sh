@@ -9,13 +9,12 @@ C_BAR_EMPTY='\033[38;5;238m'
 
 input=$(cat)
 
-# Extract all fields from JSON in a single jq call for performance
-IFS=$'\t' read -r model cwd transcript_path max_context < <(echo "$input" | jq -r '[
-    .model.display_name // .model.id // "?",
-    .cwd // "",
-    .transcript_path // "",
-    .context_window.context_window_size // 200000
-] | @tsv')
+# Extract fields from JSON - use separate calls to avoid bash read IFS issues with empty fields
+model=$(echo "$input" | jq -r '.model.display_name // .model.id // "?"')
+cwd=$(echo "$input" | jq -r '.cwd // ""')
+transcript_path=$(echo "$input" | jq -r '.transcript_path // ""')
+max_context=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
+max_context=${max_context:-200000}  # Fallback if null/empty
 dir=$(basename "$cwd" 2>/dev/null || echo "?")
 
 # Get git branch
