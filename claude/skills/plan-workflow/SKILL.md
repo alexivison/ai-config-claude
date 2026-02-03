@@ -138,6 +138,6 @@ user: implement @doc/projects/<feature>/tasks/TASK0.md
 
 ## Core Reference
 
-See [execution-core.md](/Users/aleksituominen/.claude/rules/execution-core.md) for:
+See [execution-core.md](~/.claude/rules/execution-core.md) for:
 - Plan review iteration rules
 - Pause conditions
