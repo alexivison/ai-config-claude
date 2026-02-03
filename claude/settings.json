@@ -24,11 +24,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/skill-eval.sh"
+            "command": "~/.claude/hooks/skill_eval.py"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/agent-router.py"
+            "command": "~/.claude/hooks/agent_router.py"
           }
         ]
       }
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/agent-trace.sh",
+            "command": "~/.claude/hooks/agent_trace.py",
             "timeout": 5
           }
         ]

@@ -7,8 +7,26 @@ Analyzes user prompts and suggests cli-orchestrator with appropriate mode
 """
 
 import json
+import logging
+import os
 import sys
 import re
+from datetime import datetime
+from pathlib import Path
+
+# Logging setup
+LOG_DIR = Path.home() / ".claude" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "agent-router.log"
+
+logging.basicConfig(
+    level=logging.DEBUG if os.environ.get("CLAUDE_ROUTER_DEBUG") else logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler(sys.stderr)]
+    if os.environ.get("CLAUDE_ROUTER_DEBUG")
+    else [logging.FileHandler(LOG_FILE)],
+)
+logger = logging.getLogger(__name__)
 
 # Triggers for Codex (design, debugging, deep reasoning, code review)
 CODEX_TRIGGERS = [
@@ -67,26 +85,31 @@ def matches_any(text: str, patterns: list[str]) -> tuple[bool, str]:
 def detect_agent(prompt: str) -> tuple[str | None, str]:
     """Detect which CLI should handle this prompt."""
     prompt_lower = prompt.lower().strip()
-    
+
     # Skip short prompts or commands
     if len(prompt_lower) < 15:
+        logger.debug("Skipped: prompt too short (%d chars)", len(prompt_lower))
         return None, ""
-    
+
     # Skip certain patterns
     for pattern in SKIP_PATTERNS:
         if re.match(pattern, prompt_lower, re.IGNORECASE):
+            logger.debug("Skipped: matched skip pattern %s", pattern)
             return None, ""
-    
+
     # Check Codex triggers first (more specific)
     matched, trigger = matches_any(prompt_lower, CODEX_TRIGGERS)
     if matched:
+        logger.info("Routed to Codex | trigger=%s | prompt=%s", trigger, prompt[:80])
         return "codex", trigger
-    
+
     # Check Gemini triggers
     matched, trigger = matches_any(prompt_lower, GEMINI_TRIGGERS)
     if matched:
+        logger.info("Routed to Gemini | trigger=%s | prompt=%s", trigger, prompt[:80])
         return "gemini", trigger
-    
+
+    logger.debug("No match for prompt: %s", prompt[:80])
     return None, ""
 
 
@@ -94,9 +117,9 @@ def main():
     try:
         data = json.load(sys.stdin)
         prompt = data.get("prompt", "")
-        
+
         agent, trigger = detect_agent(prompt)
-        
+
         if agent == "codex":
             suggestion = (
                 f"<agent-suggestion tool=\"codex\">\n"
@@ -110,7 +133,7 @@ def main():
                 f"</agent-suggestion>"
             )
             print(json.dumps({"additionalContext": suggestion}))
-        
+
         elif agent == "gemini":
             suggestion = (
                 f"<agent-suggestion tool=\"gemini\">\n"
@@ -124,13 +147,16 @@ def main():
                 f"</agent-suggestion>"
             )
             print(json.dumps({"additionalContext": suggestion}))
-        
+
         else:
             # No suggestion
             print(json.dumps({}))
-    
-    except Exception:
-        # Fail silently
+
+    except json.JSONDecodeError as e:
+        logger.error("Failed to parse input JSON: %s", e)
+        print(json.dumps({}))
+    except Exception as e:
+        logger.exception("Unexpected error in agent-router: %s", e)
         print(json.dumps({}))
 
 
