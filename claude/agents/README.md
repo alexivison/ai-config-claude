@@ -64,7 +64,7 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 
 **Supported tasks:**
 - Code + architecture review (pre-code-PR, after code-critic)
-- Plan review (pre-plan-PR, after plan-reviewer)
+- Plan review (pre-plan-PR, sole reviewer)
 - Design decisions and trade-off analysis
 - Complex debugging analysis
 - Architectural pattern evaluation
