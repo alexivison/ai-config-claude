@@ -51,11 +51,11 @@ cat large.log | gemini -p "Analyze these logs..."
 gemini -m gemini-2.0-flash -p "Quick synthesis..."
 gemini -m gemini-2.5-pro -p "Deep analysis..."
 
-# Read-only mode (no file modifications)
+# Read-only mode (no file modifications by Gemini)
 gemini --approval-mode plan -p "Review this code..."
 
-# With images (Gemini CLI supports multimodal via extensions)
-gemini -p "Compare these images" --extensions image
+# Note: Multimodal (images) uses Gemini API directly, not CLI
+# See gemini-ui-debugger agent for implementation
 ```
 
 **Key Differences from Codex:**
@@ -279,5 +279,13 @@ export GEMINI_API_KEY="..."
 
 - API key stored in environment, never in config files
 - No sensitive data in prompts (sanitize if needed)
-- Read-only operations only (no file modifications via Gemini)
+- **Gemini is read-only:** Uses `--approval-mode plan` for CLI, API calls are analysis only
+- **Agents can write reports:** The wrapper agents (Haiku) write findings to disk; Gemini does analysis only
 - Images processed locally, not stored remotely beyond API call
+
+## Runtime Requirements
+
+- `gemini` CLI available in PATH
+- `GEMINI_API_KEY` environment variable set (for multimodal API calls)
+- `jq` available for JSON parsing (gemini-ui-debugger)
+- `base64` with `-b 0` flag support (macOS) or `tr -d '\n'` fallback (Linux)

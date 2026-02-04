@@ -21,22 +21,39 @@ Read these files first:
 
 **Implementation Pattern:**
 ```bash
+# Encode images to base64 (use -b 0 on macOS to prevent line breaks)
+SCREENSHOT_B64=$(base64 -b 0 -i "$SCREENSHOT_PATH")
+FIGMA_B64=$(base64 -b 0 -i "$FIGMA_PATH")
+
 # Send images to Gemini API for comparison
-curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent" \
+HTTP_STATUS=$(curl -s -w '%{http_code}' -o /tmp/gemini-response.json \
+  -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent" \
   -H "Content-Type: application/json" \
   -H "x-goog-api-key: $GEMINI_API_KEY" \
   -d '{
     "contents": [{
       "parts": [
         {"text": "Compare these two UI images. The first is the current implementation screenshot, the second is the Figma design. Identify all visual discrepancies including layout, spacing, colors, typography, and responsive issues. Rate each by severity (HIGH/MEDIUM/LOW) and suggest specific CSS fixes."},
-        {"inline_data": {"mime_type": "image/png", "data": "'"$(base64 -i "$SCREENSHOT_PATH")"'"}},
-        {"inline_data": {"mime_type": "image/png", "data": "'"$(base64 -i "$FIGMA_PATH")"'"}}
+        {"inline_data": {"mime_type": "image/png", "data": "'"$SCREENSHOT_B64"'"}},
+        {"inline_data": {"mime_type": "image/png", "data": "'"$FIGMA_B64"'"}}
       ]
     }]
-  }' | jq -r '.candidates[0].content.parts[0].text'
+  }')
+
+# Error handling
+if [[ "$HTTP_STATUS" -ne 200 ]]; then
+  echo "API error (HTTP $HTTP_STATUS):"
+  jq -r '.error.message // "Unknown error"' /tmp/gemini-response.json
+  exit 1
+fi
+
+# Extract response (with fallback for missing candidates)
+jq -e -r '.candidates[0].content.parts[0].text // "No response generated"' /tmp/gemini-response.json
 ```
 
-**Why API over CLI:** The Gemini CLI has no image extensions installed (`gemini extensions list` returns empty). The API provides guaranteed multimodal support without additional setup.
+**Why API over CLI:** The Gemini CLI has no image extensions installed. The API provides guaranteed multimodal support without additional setup.
+
+**Runtime Requirements:** `jq` must be available for JSON parsing.
 
 ## Files to Create
 
