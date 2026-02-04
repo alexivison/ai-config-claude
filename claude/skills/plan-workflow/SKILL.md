@@ -89,7 +89,11 @@ plan-reviewer (iteration loop) -> codex (iteration loop) -> PR
    - Are there missing edge cases or risks?
    - Is the dependency ordering correct?
 
-   Return verdict with specific concerns.
+   Return structured verdict. On approval, include "CODEX APPROVED" token:
+
+   ### Verdict
+   **APPROVE** — CODEX APPROVED
+   {reason}
    ```
 
 4. **Handle codex verdict:**
@@ -135,7 +139,7 @@ implement @doc/projects/<feature>/tasks/TASK0.md
 
 Always use `-plan` suffix (e.g., `ENG-123-auth-plan` or `auth-feature-plan`). This:
 - Preserves Linear issue ID convention (`<ISSUE-ID>-<description>`)
-- Triggers plan-specific PR gate path (only requires plan-reviewer marker)
+- Triggers plan-specific PR gate path (requires plan-reviewer + codex markers)
 
 ## When to Use This Workflow
 

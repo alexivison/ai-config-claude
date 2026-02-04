@@ -8,6 +8,7 @@
 Claude Code (Orchestrator)
     ↓ calls you via codex agent for
     ├── Code + architecture review
+    ├── Plan review
     ├── Design decisions
     ├── Debugging analysis
     └── Trade-off evaluation
@@ -22,6 +23,7 @@ You provide **deep analysis** that benefits from extended reasoning.
 |------|-------|
 | Code review | Bugs, logic issues, security, maintainability |
 | Architecture review | Patterns, complexity, structural fit |
+| Plan review | Feasibility, risks, task scoping, dependency ordering |
 | Design decisions | Compare approaches, weigh trade-offs |
 | Debugging | Root cause analysis, hypothesis testing |
 | Trade-off analysis | Evaluate options systematically |
@@ -77,6 +79,9 @@ fi
 # Code + architecture review
 codex exec -s read-only "Review uncommitted changes for bugs and architectural fit..."
 
+# Plan review
+codex exec -s read-only "Review this plan for feasibility, risks, and architecture soundness..."
+
 # Design decision
 codex exec -s read-only "Compare approaches A vs B for {feature}..."
 
@@ -110,7 +115,7 @@ Structure your response for Claude Code to parse:
 {One sentence reason}
 ```
 
-**For code/architecture reviews**, include "CODEX APPROVED" on approval for marker detection:
+**For code/architecture/plan reviews**, include "CODEX APPROVED" on approval for marker detection:
 
 ```markdown
 ### Verdict

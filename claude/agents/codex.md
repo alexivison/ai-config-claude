@@ -20,6 +20,7 @@ You don't do the analysis yourself — you invoke `codex exec -s read-only` and 
 |------|-----------------|
 | Code review | `codex exec -s read-only "Review these changes for bugs, security, maintainability"` |
 | Architecture review | `codex exec -s read-only "Analyze architecture of these files for patterns and complexity"` |
+| Plan review | `codex exec -s read-only "Review this plan for feasibility, risks, architecture soundness"` |
 | Design decision | `codex exec -s read-only "Compare approaches: {options}"` |
 | Debugging | `codex exec -s read-only "Analyze this error/behavior: {description}"` |
 | Trade-off analysis | `codex exec -s read-only "Evaluate trade-offs between: {options}"` |

@@ -71,7 +71,7 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 
 **Iteration:** Main agent controls loop. Max 3 iterations for reviews.
 
-**Marker:** agent-trace.sh creates `/tmp/claude-codex-{session}` on APPROVE.
+**Marker:** agent-trace.sh creates `/tmp/claude-codex-{session}` when output contains "CODEX APPROVED" token.
 
 **Returns:** Structured verdict (APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION) with file:line references.
 
