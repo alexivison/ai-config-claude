@@ -54,7 +54,7 @@ Integrate Google Gemini into the autonomous workflow as a complementary model fo
 ### Gemini CLI
 
 Use the existing Gemini CLI (already installed and authenticated):
-- Resolution: `GEMINI_PATH` env → `command -v gemini` → `/Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini`
+- Resolution: `GEMINI_PATH` env → `command -v gemini` → `$(npm root -g)/@google/gemini-cli/bin/gemini`
 - OAuth credentials in `gemini/` directory
 - Add `gemini/AGENTS.md` for agent instructions
 

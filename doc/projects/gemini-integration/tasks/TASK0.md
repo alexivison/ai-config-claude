@@ -28,7 +28,7 @@ Read these files first:
 ```bash
 # Check CLI is available
 which gemini
-# Expected: /Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini
+# Expected: $(npm root -g)/@google/gemini-cli/bin/gemini
 
 # Check version
 gemini --version

@@ -60,7 +60,7 @@ color: green
       - Filter by time range if timestamps available
       - Or chunk into segments and analyze sequentially
    d. Gemini invocation (stdin for large content):
-      GEMINI_CMD="${GEMINI_PATH:-$(command -v gemini || echo '/Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini')}"
+      GEMINI_CMD="${GEMINI_PATH:-$(command -v gemini || echo '$(npm root -g)/@google/gemini-cli/bin/gemini')}"
       cat /path/to/logs.log | "$GEMINI_CMD" --approval-mode plan -m gemini-2.5-pro -p "Analyze..."
 
 4. WEB SEARCH MODE:
@@ -74,9 +74,9 @@ color: green
 **CLI Path Resolution:**
 ```bash
 # Robust CLI resolution with fallback
-GEMINI_CMD="${GEMINI_PATH:-$(command -v gemini 2>/dev/null || echo '/Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini')}"
+GEMINI_CMD="${GEMINI_PATH:-$(command -v gemini 2>/dev/null || echo '$(npm root -g)/@google/gemini-cli/bin/gemini')}"
 if [[ ! -x "$GEMINI_CMD" ]]; then
-  echo "Error: Gemini CLI not found. Install via: npm install -g @anthropic-ai/gemini-cli"
+  echo "Error: Gemini CLI not found. Install via: npm install -g @google/gemini-cli"
   exit 1
 fi
 ```

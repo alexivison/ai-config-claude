@@ -26,7 +26,7 @@
 
 ### 1. Gemini CLI Configuration (`gemini/`)
 
-Use the existing Gemini CLI (already installed at `/Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini`).
+Use the existing Gemini CLI (already installed at `$(npm root -g)/@google/gemini-cli/bin/gemini`).
 
 **Existing Directory Structure:**
 ```
@@ -95,7 +95,7 @@ IF task involves web research:
 
 **CLI Path Resolution:**
 ```bash
-GEMINI_CMD="${GEMINI_PATH:-$(command -v gemini 2>/dev/null || echo '/Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini')}"
+GEMINI_CMD="${GEMINI_PATH:-$(command -v gemini 2>/dev/null || echo '$(npm root -g)/@google/gemini-cli/bin/gemini')}"
 ```
 
 ### 3. skill-eval.sh Updates
@@ -216,5 +216,5 @@ Provide structured, actionable output. Include:
 - `gemini` CLI available via one of:
   - `GEMINI_PATH` environment variable
   - System PATH (`command -v gemini`)
-  - Absolute path: `/Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini`
+  - Absolute path: `$(npm root -g)/@google/gemini-cli/bin/gemini`
 - OAuth authenticated (existing)

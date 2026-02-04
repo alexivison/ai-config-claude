@@ -73,7 +73,7 @@ TASK0 (CLI config)
 3-tier fallback chain:
 1. `GEMINI_PATH` environment variable (if set)
 2. `command -v gemini` (system PATH)
-3. `/Users/aleksituominen/.nvm/versions/node/v24.12.0/bin/gemini` (absolute fallback)
+3. `$(npm root -g)/@google/gemini-cli/bin/gemini` (absolute fallback)
 
 ### Gemini CLI Usage Pattern
 
