@@ -28,19 +28,22 @@ State which items were checked before proceeding.
 Execute continuously — **no stopping until PR is created**.
 
 ```
-/write-tests (regression) → implement fix → code-critic → codex → /pre-pr-verification → PR
+/write-tests (regression) → implement fix → early-lint → code-critic → codex → /pre-pr-verification → PR
 ```
+
+**Note:** Bugfixes typically don't have PLAN.md checkbox updates (they're not part of planned work).
 
 ### Step-by-Step
 
 1. **Regression Test** — Invoke `/write-tests` to write a test that reproduces the bug (RED phase via test-runner)
 2. **Implement Fix** — Fix the bug to make the test pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
-4. **code-critic** — MANDATORY after implementing. Fix issues until APPROVE
-5. **codex** — Spawn codex agent for combined code + architecture review
-6. **Re-run code-critic** — If Codex made changes, verify conventions
-7. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
-8. **Commit & PR** — Create commit and draft PR
+4. **Early lint/format** — Run `pnpm lint --fix` + `prettier --write` on changed files (catches issues before code-critic)
+5. **code-critic** — MANDATORY after implementing. Fix issues until APPROVE
+6. **codex** — Spawn codex agent for combined code + architecture review
+7. **Re-run code-critic** — If Codex made changes, verify conventions
+8. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
+9. **Commit & PR** — Create commit and draft PR
 
 **Important:** Always use test-runner agent for running tests, check-runner for lint/typecheck. This preserves context by isolating verbose output.
 
@@ -96,7 +99,7 @@ See [task-workflow/SKILL.md](../task-workflow/SKILL.md#codex-step) for the code 
 
 ## Core Reference
 
-See [execution-core.md](/Users/aleksituominen/.claude/rules/execution-core.md) for:
+See [execution-core.md](~/.claude/rules/execution-core.md) for:
 - Decision matrix (when to continue vs pause)
 - Sub-agent behavior rules
 - Verification requirements

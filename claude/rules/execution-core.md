@@ -5,16 +5,19 @@ Shared execution sequence for all workflow skills. This is loaded on-demand by w
 ## Core Sequence
 
 ```
-/write-tests → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
+/write-tests → implement → early-lint → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
 ```
+
+**Note:** `early-lint` = Run `pnpm lint --fix` + `prettier --write` on changed files before code-critic. Catches formatting issues early, saving iterations.
 
 ## Decision Matrix
 
 | Step | Outcome | Next Action | Pause? |
 |------|---------|-------------|--------|
 | /write-tests | Tests written (RED) | Implement code | NO |
-| Implement | Code written | Update checkboxes | NO |
-| Checkboxes | Updated | Run code-critic | NO |
+| Implement | Code written | Run early lint/format | NO |
+| Early lint | Fixed | Update checkboxes | NO |
+| Checkboxes | Updated (TASK + PLAN) | Run code-critic | NO |
 | code-critic | APPROVE | Run codex | NO |
 | code-critic | REQUEST_CHANGES | Fix and re-run | NO |
 | code-critic | NEEDS_DISCUSSION | Show findings, ask user | YES |

@@ -10,7 +10,7 @@ When executing a task from TASK*.md, **do not stop until PR is created** (or a v
 
 **Code workflow (task-workflow, bugfix-workflow):**
 ```
-/write-tests → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
+/write-tests → implement → early-lint → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
 ```
 
 **Plan workflow (plan-workflow):**
@@ -68,3 +68,29 @@ Created automatically by `agent-trace.sh`:
 <!-- | security-scanner | Any | `/tmp/claude-security-scanned-{session}` |  # Codex covers basic security -->
 
 **Plan PRs** (branch suffix `-plan`) require `codex` marker only. Code PRs require all other markers.
+
+## Post-PR Changes
+
+If changes are needed after PR creation (e.g., user points out missing PLAN.md update):
+
+**Option A — Same scope (recommended for small fixes):**
+1. Make changes in same branch
+2. Re-run `/pre-pr-verification` — MANDATORY, no exceptions
+3. Amend commit with `--no-edit`
+4. Force-push with `--force-with-lease`
+5. PR auto-updates; verification evidence refreshed
+
+**Option B — New scope (for substantial additions):**
+1. Create new issue/task
+2. Create new worktree/branch
+3. Execute full workflow sequence
+4. Create separate PR with cross-reference
+
+**Rule:** No post-PR changes without re-verification. The claim "all checks pass" becomes false the moment unverified code is added.
+
+**Violation pattern:**
+```
+User: "You forgot to update PLAN.md"
+WRONG: Update PLAN.md → amend → push (no re-verification)
+RIGHT: Update PLAN.md → /pre-pr-verification → amend → push
+```
