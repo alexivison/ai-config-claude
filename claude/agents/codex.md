@@ -2,7 +2,7 @@
 name: codex
 description: "Deep reasoning via Codex CLI. Handles code review, architecture analysis, plan review, design decisions, debugging, and trade-off evaluation."
 model: haiku
-tools: Bash, Read, Grep, Glob
+tools: Bash, Read, Grep, Glob, TaskStop
 color: blue
 ---
 
@@ -31,7 +31,37 @@ You don't do the analysis yourself — you invoke `codex exec -s read-only` and 
 2. **Gather context** — Read relevant domain rules from `claude/rules/` or `.claude/rules/` if they exist
 3. **Invoke Codex** — Run `codex exec -s read-only "..."` with appropriate prompt
 4. **Parse output** — Extract key findings and verdict
-5. **Return structured result** — Use the output format below
+5. **Cleanup** — Stop any background tasks before returning (see Cleanup Protocol)
+6. **Return structured result** — Use the output format below
+
+## Bash Execution Rules (CRITICAL)
+
+**NEVER use `run_in_background: true`** when invoking `codex exec`. Always run synchronously. If you violate this rule accidentally, the Cleanup Protocol below will catch orphaned processes.
+
+**Use extended timeout** for Codex CLI (it uses extended reasoning):
+```
+timeout: 300000  # 5 minutes - Codex needs time for deep analysis
+```
+
+Example invocation:
+```bash
+codex exec -s read-only "Your prompt here"
+```
+With Bash tool parameters: `{ "command": "codex exec -s read-only \"...\"", "timeout": 300000 }`
+
+## Cleanup Protocol
+
+**Fallback for accidental background execution.** If you mistakenly used `run_in_background: true` (violating Bash Execution Rules above), clean up before returning:
+
+1. **Detect:** If Bash tool results contain a `task_id`, a background task was created
+2. **Stop:** Use `TaskStop` to terminate the orphaned process:
+   ```
+   TaskStop with task_id: "{task_id}"
+   ```
+3. **Handle errors:** If TaskStop fails, log the task ID in your response and continue — the main agent will handle escalation
+4. **Return:** Only then return your structured response
+
+This defense-in-depth prevents orphaned Codex processes from continuing after you've returned.
 
 ## Output Format
 
