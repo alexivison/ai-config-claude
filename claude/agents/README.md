@@ -75,6 +75,8 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 
 **Returns:** Structured verdict (APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION) with file:line references.
 
+**Important:** Main agent must NOT run `codex exec` directly — always spawn this agent via Task tool. Once approved, codex step is complete (no redundant background analysis).
+
 **Escalates to user:** Only on NEEDS_DISCUSSION or after 3 failed iterations.
 
 **Note:** Uses Haiku (wrapper) + GPT5.2 High (via Codex CLI). Replaces architecture-critic. Always uses read-only sandbox.

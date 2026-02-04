@@ -88,6 +88,12 @@ On iteration 2+:
 - **DO**: Read files, run Codex CLI, parse output, return structured results
 - **DON'T**: Modify files, make commits, implement fixes yourself
 
+## Important: Agent-Only Invocation
+
+**The main agent must NEVER run `codex exec` directly.** Always use the Task tool to spawn this codex agent instead.
+
+Once this agent returns APPROVE, the codex step is complete. Do NOT run additional background codex analysis — it is redundant and wastes resources.
+
 ## Safety
 
 Always use `-s read-only` sandbox mode. Never run Codex with write permissions.
