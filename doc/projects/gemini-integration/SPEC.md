@@ -55,8 +55,10 @@ Integrate Google Gemini into the autonomous workflow as a complementary model fo
 
 Use the existing Gemini CLI (already installed and authenticated):
 - Resolution: `GEMINI_PATH` env → `command -v gemini` → `$(npm root -g)/@google/gemini-cli/bin/gemini`
-- OAuth credentials in `gemini/` directory
-- **Note:** Unlike Codex, Gemini does NOT use AGENTS.md — instructions are passed inline via `-p`
+- OAuth credentials in `gemini/` directory (existing)
+- CLI config in `.gemini/` directory (new):
+  - `.gemini/GEMINI.md` — Instructions for Gemini
+  - `.gemini/skills/context-loader/` — Load shared context from `claude/`
 
 ### CLI Usage
 
@@ -98,6 +100,8 @@ cat large.log | gemini -p "Analyze these logs..."
 
 3. **Infrastructure:**
    - [ ] Existing Gemini CLI verified working
+   - [ ] `.gemini/GEMINI.md` created with instructions
+   - [ ] `.gemini/skills/context-loader/SKILL.md` created
    - [ ] Agent definition at `claude/agents/gemini.md`
 
 ## Future Iterations

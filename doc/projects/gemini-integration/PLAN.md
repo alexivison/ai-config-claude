@@ -31,14 +31,15 @@ TASK0 (CLI config)
 
 ## Task Details
 
-### TASK0: Gemini CLI Verification
+### TASK0: Gemini CLI Configuration
 - [ ] Verify CLI is installed and authenticated
+- [ ] Create `.gemini/GEMINI.md` with instructions
+- [ ] Create `.gemini/skills/context-loader/SKILL.md`
 - [ ] Test `-p`, `-m`, and `--approval-mode plan` flags
-- [ ] Test stdin piping for large input
 
-**Deliverables:** Verified CLI working with all required flags
+**Deliverables:** `.gemini/` directory with GEMINI.md and context-loader skill
 
-**Note:** Unlike Codex, Gemini does NOT use AGENTS.md. Instructions are passed inline via `-p`.
+**Note:** `gemini/` (OAuth creds) is separate from `.gemini/` (CLI config).
 
 ### TASK1: gemini Agent
 - [ ] Create `claude/agents/gemini.md`

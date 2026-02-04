@@ -28,15 +28,21 @@
 
 Use the existing Gemini CLI (already installed at `$(npm root -g)/@google/gemini-cli/bin/gemini`).
 
-**Existing Directory Structure:**
+**Directory Structure:**
 ```
-gemini/
-├── oauth_creds.json     # OAuth credentials (existing)
-├── settings.json        # Auth settings (existing)
-└── google_accounts.json # Account info (existing)
+gemini/                           # EXISTING - OAuth credentials
+├── oauth_creds.json
+├── settings.json
+└── google_accounts.json
+
+.gemini/                          # NEW - CLI config (like .codex/)
+├── GEMINI.md                     # Instructions for Gemini
+└── skills/
+    └── context-loader/
+        └── SKILL.md              # Load shared context from claude/
 ```
 
-**Note:** Unlike Codex, Gemini does NOT use an AGENTS.md file. Instructions are passed inline via the `-p` flag.
+**Note:** The `gemini/` folder (OAuth creds) is separate from `.gemini/` (CLI config), following the same pattern as Codex.
 
 **CLI Interface (existing commands):**
 ```bash
@@ -162,19 +168,19 @@ User: "What's the best practice for X in 2026?"
 
 ## Configuration
 
-### Inline Instructions
+### .gemini/GEMINI.md
 
-Unlike Codex (which reads from AGENTS.md), Gemini receives instructions directly in the prompt via `-p`. The gemini agent includes analysis instructions in each invocation:
+Like Codex's AGENTS.md, Gemini reads instructions from `.gemini/GEMINI.md`. This file defines:
+- Gemini's role in the multi-agent system
+- Output format expectations
+- Boundaries (what Gemini should/shouldn't do)
 
-```bash
-gemini --approval-mode plan -m gemini-2.5-pro -p "Analyze these logs. Provide:
-- Clear findings with specifics
-- Severity/priority ratings
-- Actionable recommendations
+### .gemini/skills/context-loader/
 
-Logs:
-$(cat /path/to/logs.log)"
-```
+The context-loader skill ensures Gemini has access to shared project context from `claude/`:
+- Rules (`claude/rules/`)
+- Agent instructions (`claude/agents/README.md`)
+- Current task context (`TASK*.md`, `PLAN.md`)
 
 ### Model Selection
 
