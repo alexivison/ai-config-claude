@@ -30,19 +30,17 @@ Use the existing Gemini CLI (already installed at `$(npm root -g)/@google/gemini
 
 **Directory Structure:**
 ```
-gemini/                           # EXISTING - OAuth credentials
-├── oauth_creds.json
-├── settings.json
-└── google_accounts.json
-
-.gemini/                          # NEW - CLI config (like .codex/)
-├── GEMINI.md                     # Instructions for Gemini
-└── skills/
+gemini/                           # Symlinked from ~/.gemini
+├── oauth_creds.json              # EXISTING - OAuth credentials
+├── settings.json                 # EXISTING - Auth settings
+├── google_accounts.json          # EXISTING - Account info
+├── GEMINI.md                     # NEW - Instructions for Gemini
+└── skills/                       # NEW - Skills directory
     └── context-loader/
         └── SKILL.md              # Load shared context from claude/
 ```
 
-**Note:** The `gemini/` folder (OAuth creds) is separate from `.gemini/` (CLI config), following the same pattern as Codex.
+**Note:** The `gemini/` folder is symlinked from `~/.gemini`, following the same pattern as `claude/` → `~/.claude` and `codex/` → `~/.codex`.
 
 **CLI Interface (existing commands):**
 ```bash
@@ -168,14 +166,14 @@ User: "What's the best practice for X in 2026?"
 
 ## Configuration
 
-### .gemini/GEMINI.md
+### gemini/GEMINI.md
 
-Like Codex's AGENTS.md, Gemini reads instructions from `.gemini/GEMINI.md`. This file defines:
+Like Codex's AGENTS.md, Gemini reads instructions from `gemini/GEMINI.md`. This file defines:
 - Gemini's role in the multi-agent system
 - Output format expectations
 - Boundaries (what Gemini should/shouldn't do)
 
-### .gemini/skills/context-loader/
+### gemini/skills/context-loader/
 
 The context-loader skill ensures Gemini has access to shared project context from `claude/`:
 - Rules (`claude/rules/`)

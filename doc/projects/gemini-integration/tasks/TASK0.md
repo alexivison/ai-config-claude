@@ -9,7 +9,7 @@ Configure the Gemini CLI with instructions and context-loader skill, following t
 ## Required Context
 
 Read these files first:
-- `gemini/settings.json` — Existing OAuth credentials (separate from `.gemini/` config)
+- `gemini/settings.json` — Existing OAuth credentials (separate from `gemini/` config)
 - `codex/AGENTS.md` — Reference for instructions pattern
 - `codex/skills/context-loader/SKILL.md` — Reference for context-loader skill
 - Run `gemini --help` and `gemini skills --help` to understand CLI
@@ -18,29 +18,27 @@ Read these files first:
 
 | File | Purpose |
 |------|---------|
-| `.gemini/GEMINI.md` | Instructions for Gemini when invoked by agents |
-| `.gemini/skills/context-loader/SKILL.md` | Load shared context from `claude/` |
+| `gemini/GEMINI.md` | Instructions for Gemini when invoked by agents |
+| `gemini/skills/context-loader/SKILL.md` | Load shared context from `claude/` |
 
-**Note:** The `gemini/` folder (OAuth creds) is separate from `.gemini/` (CLI config).
+**Note:** The `gemini/` folder is symlinked from `~/.gemini`, so adding files here makes them available to the Gemini CLI.
 
 ## Implementation Details
 
 ### Directory Structure
 
 ```
-.gemini/                          # NEW - Gemini CLI config
-├── GEMINI.md                     # Instructions for Gemini
-└── skills/
+gemini/                           # Symlinked from ~/.gemini
+├── oauth_creds.json              # EXISTING - OAuth credentials
+├── settings.json                 # EXISTING - Auth settings
+├── google_accounts.json          # EXISTING - Account info
+├── GEMINI.md                     # NEW - Instructions for Gemini
+└── skills/                       # NEW - Skills directory
     └── context-loader/
-        └── SKILL.md              # Load shared context
-
-gemini/                           # EXISTING - OAuth credentials
-├── oauth_creds.json
-├── settings.json
-└── google_accounts.json
+        └── SKILL.md              # Load shared context from claude/
 ```
 
-### .gemini/GEMINI.md
+### gemini/GEMINI.md
 
 ```markdown
 # Gemini CLI — Research & Analysis Agent
@@ -119,7 +117,7 @@ Structure your response for Claude Code to use:
 4. **Stay in lane** — Analysis only, no code changes
 ```
 
-### .gemini/skills/context-loader/SKILL.md
+### gemini/skills/context-loader/SKILL.md
 
 ```markdown
 ---
@@ -189,8 +187,8 @@ gemini skills list
 
 | Feature | Codex | Gemini |
 |---------|-------|--------|
-| Instructions file | `codex/AGENTS.md` | `.gemini/GEMINI.md` |
-| Skills directory | `codex/skills/` | `.gemini/skills/` |
+| Instructions file | `codex/AGENTS.md` | `gemini/GEMINI.md` |
+| Skills directory | `codex/skills/` | `gemini/skills/` |
 | Prompt flag | Inline string | `-p "prompt"` |
 | Read-only mode | `-s read-only` | `--approval-mode plan` |
 
@@ -198,8 +196,8 @@ gemini skills list
 
 ```bash
 # Check directory structure
-test -f .gemini/GEMINI.md && echo "GEMINI.md exists"
-test -f .gemini/skills/context-loader/SKILL.md && echo "context-loader exists"
+test -f gemini/GEMINI.md && echo "GEMINI.md exists"
+test -f gemini/skills/context-loader/SKILL.md && echo "context-loader exists"
 
 # Test CLI invocation
 gemini -p "Respond with only: GEMINI_OK" 2>&1 | grep -q "GEMINI_OK" && echo "CLI works"
@@ -213,8 +211,8 @@ gemini -m gemini-2.0-flash -p "Say 'Flash OK'" 2>&1 | head -3
 
 ## Acceptance Criteria
 
-- [ ] `.gemini/GEMINI.md` created with agent instructions
-- [ ] `.gemini/skills/context-loader/SKILL.md` created
+- [ ] `gemini/GEMINI.md` created with agent instructions
+- [ ] `gemini/skills/context-loader/SKILL.md` created
 - [ ] CLI responds to `-p` flag queries
 - [ ] Stdin input works (pipe content to gemini)
 - [ ] Model selection works (`-m` flag)

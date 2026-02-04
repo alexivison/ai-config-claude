@@ -33,13 +33,13 @@ TASK0 (CLI config)
 
 ### TASK0: Gemini CLI Configuration
 - [ ] Verify CLI is installed and authenticated
-- [ ] Create `.gemini/GEMINI.md` with instructions
-- [ ] Create `.gemini/skills/context-loader/SKILL.md`
+- [ ] Create `gemini/GEMINI.md` with instructions
+- [ ] Create `gemini/skills/context-loader/SKILL.md`
 - [ ] Test `-p`, `-m`, and `--approval-mode plan` flags
 
-**Deliverables:** `.gemini/` directory with GEMINI.md and context-loader skill
+**Deliverables:** `gemini/` directory with GEMINI.md and context-loader skill
 
-**Note:** `gemini/` (OAuth creds) is separate from `.gemini/` (CLI config).
+**Note:** `gemini/` (OAuth creds) is separate from `gemini/` (CLI config).
 
 ### TASK1: gemini Agent
 - [ ] Create `claude/agents/gemini.md`
