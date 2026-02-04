@@ -56,7 +56,35 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 
 **Note:** Uses Sonnet. Preloads `/code-review` skill. Include iteration number and previous feedback when re-invoking.
 
-## architecture-critic
+## codex
+
+**Use when:** Deep reasoning tasks — code review, architecture analysis, plan review, design decisions, debugging, trade-off evaluation.
+
+**Pattern:** Dedicated agent that invokes Codex CLI (`codex exec -s read-only`). Isolates Codex output from main context.
+
+**Supported tasks:**
+- Code + architecture review (pre-code-PR, after code-critic)
+- Plan review (pre-plan-PR, sole reviewer)
+- Design decisions and trade-off analysis
+- Complex debugging analysis
+- Architectural pattern evaluation
+
+**Iteration:** Main agent controls loop. Max 3 iterations for reviews.
+
+**Marker:** agent-trace.sh creates `/tmp/claude-codex-{session}` when output contains "CODEX APPROVED" token.
+
+**Returns:** Structured verdict (APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION) with file:line references.
+
+**Important:** Main agent must NOT run `codex exec` directly — always spawn this agent via Task tool. Once approved, codex step is complete (no redundant background analysis).
+
+**Escalates to user:** Only on NEEDS_DISCUSSION or after 3 failed iterations.
+
+**Note:** Uses Haiku (wrapper) + GPT5.2 High (via Codex CLI). Replaces architecture-critic. Always uses read-only sandbox.
+
+## architecture-critic (DEPRECATED)
+
+**Note:** Replaced by codex agent. Files preserved for reference.
+
 **Use when:** After code-critic passes, before tests.
 
 **Pattern:** Quick metrics scan first → deep analysis only when thresholds exceeded.
@@ -72,13 +100,10 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 - `architecture-guidelines-frontend.md` (React/TypeScript)
 - `architecture-guidelines-backend.md` (Go/Python/Node.js)
 
-## plan-reviewer
-**Use when:** After creating planning documents (SPEC.md, DESIGN.md, PLAN.md, TASK*.md).
+## plan-reviewer (DEPRECATED)
 
-**Pattern:** Single-pass review. Main agent controls iteration loop (create → review → fix → review → ... → APPROVED).
+**Note:** Replaced by codex agent for plan reviews. The codex agent provides deeper reasoning for architectural soundness and feasibility.
 
-**Returns:** Verdict (APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION) with `[must]`/`[q]`/`[nit]` feedback.
+**Previously used for:** Document structure validation after creating planning documents.
 
-**Escalates to user:** Only on NEEDS_DISCUSSION or after 3 failed iterations.
-
-**Note:** Uses Sonnet. Preloads `/plan-review` skill. Validates document structure, completeness, and agent-executability.
+**Migration:** Use codex agent with plan review prompt instead. See `plan-workflow` skill for the updated flow.

@@ -9,6 +9,9 @@ model_reasoning_summary = "detailed"
 # Approval policy for commands
 approval_policy = "on-request"
 
+# NOTE: personality setting removed - not a documented Codex CLI config key
+# Codex behavior is controlled via prompts in AGENTS.md instead
+
 # Sandbox defaults
 [sandbox]
 default = "read-only"

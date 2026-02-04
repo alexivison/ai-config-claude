@@ -53,20 +53,42 @@ Before planning, clarify requirements:
 Execute continuously - **no stopping until PR is created**.
 
 ```
-plan-reviewer (iteration loop) -> PR
+codex (iteration loop) -> PR
 ```
 
 ### Step-by-Step
 
-1. **Run plan-reviewer agent** (MANDATORY)
-   - Reviews all documents against plan-review guidelines
+1. **Run codex agent** (MANDATORY)
+   - Deep reasoning review for architectural soundness, feasibility, risks
    - Returns APPROVE / REQUEST_CHANGES / NEEDS_DISCUSSION
 
-2. **Handle verdict:**
+   **Prompt template:**
+   ```
+   Review this implementation plan for architectural soundness and feasibility.
+
+   **Task:** Plan Review
+   **Iteration:** {N} of 3
+   **Previous feedback:** {summary if iteration > 1}
+
+   Evaluate:
+   - Are the requirements clear and measurable?
+   - Is the design architecturally sound?
+   - Are task scopes appropriate (~200 LOC)?
+   - Are there missing edge cases or risks?
+   - Is the dependency ordering correct?
+
+   Return structured verdict. On approval, include "CODEX APPROVED" token:
+
+   ### Verdict
+   **APPROVE** — CODEX APPROVED
+   {reason}
+   ```
+
+2. **Handle codex verdict:**
    | Verdict | Action |
    |---------|--------|
    | APPROVE | Continue to PR |
-   | REQUEST_CHANGES | Fix issues, re-run plan-reviewer |
+   | REQUEST_CHANGES | Fix issues, re-run codex |
    | NEEDS_DISCUSSION | Show findings, ask user |
    | 3rd iteration fails | Show findings, ask user |
 
@@ -105,7 +127,7 @@ implement @doc/projects/<feature>/tasks/TASK0.md
 
 Always use `-plan` suffix (e.g., `ENG-123-auth-plan` or `auth-feature-plan`). This:
 - Preserves Linear issue ID convention (`<ISSUE-ID>-<description>`)
-- Triggers plan-specific PR gate path (only requires plan-reviewer marker)
+- Triggers plan-specific PR gate path (requires codex marker)
 
 ## When to Use This Workflow
 
@@ -131,5 +153,5 @@ user: implement @doc/projects/<feature>/tasks/TASK0.md
 ## Core Reference
 
 See [execution-core.md](/Users/aleksituominen/.claude/rules/execution-core.md) for:
-- plan-reviewer iteration rules
+- codex iteration rules
 - Pause conditions

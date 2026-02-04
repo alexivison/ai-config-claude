@@ -10,12 +10,12 @@ When executing a task from TASK*.md, **do not stop until PR is created** (or a v
 
 **Code workflow (task-workflow, bugfix-workflow):**
 ```
-/write-tests → implement → checkboxes → code-critic → architecture-critic → verification → commit → PR
+/write-tests → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
 ```
 
 **Plan workflow (plan-workflow):**
 ```
-/brainstorm (if needed) → /plan-implementation → plan-reviewer → plan PR
+/brainstorm (if needed) → /plan-implementation → codex → plan PR
 ```
 
 ## Decision Matrix
@@ -32,7 +32,7 @@ These patterns indicate flow violation:
 | Pattern | Why It's Wrong |
 |---------|----------------|
 | "Tests pass. GREEN phase complete." [stop] | Didn't continue to checkboxes/critics |
-| "Code-critic approved." [stop] | Didn't continue to architecture-critic |
+| "Code-critic approved." [stop] | Didn't continue to codex |
 | "All checks pass." [stop] | Didn't continue to commit/PR |
 | "Ready to create PR." [stop] | Should just create it |
 | "Should I continue?" | Just continue |
@@ -42,13 +42,14 @@ These patterns indicate flow violation:
 
 **Code PRs** require markers from:
 - `/pre-pr-verification` completion
-- `security-scanner` completion
 - `code-critic` APPROVE verdict
+- `codex` APPROVE verdict
 - `test-runner` PASS verdict
 - `check-runner` PASS/CLEAN verdict
+<!-- - `security-scanner` completion  # Codex covers basic security -->
 
-**Plan PRs** (branch prefix `plan-*`) require:
-- `plan-reviewer` APPROVE verdict
+**Plan PRs** (branch suffix `-plan`) require:
+- `codex` APPROVE verdict
 
 Missing markers → `gh pr create` blocked.
 
@@ -59,10 +60,11 @@ Created automatically by `agent-trace.sh`:
 | Agent | Verdict | Marker |
 |-------|---------|--------|
 | code-critic | APPROVE | `/tmp/claude-code-critic-{session}` |
+| codex | APPROVE | `/tmp/claude-codex-{session}` |
 | test-runner | PASS | `/tmp/claude-tests-passed-{session}` |
 | check-runner | PASS/CLEAN | `/tmp/claude-checks-passed-{session}` |
-| security-scanner | Any | `/tmp/claude-security-scanned-{session}` |
 | /pre-pr-verification | Any | `/tmp/claude-pr-verified-{session}` |
-| plan-reviewer | APPROVE | `/tmp/claude-plan-reviewer-{session}` |
+<!-- | plan-reviewer | APPROVE | `/tmp/claude-plan-reviewer-{session}` |  # Removed: codex handles plan review -->
+<!-- | security-scanner | Any | `/tmp/claude-security-scanned-{session}` |  # Codex covers basic security -->
 
-**Plan PRs** (branch suffix `-plan`) only require `plan-reviewer` marker. Code PRs require all other markers.
+**Plan PRs** (branch suffix `-plan`) require `codex` marker only. Code PRs require all other markers.

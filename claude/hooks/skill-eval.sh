@@ -36,13 +36,15 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bbug\b|\bbroken\b|\berror\b|\bnot work|\b
 
 # plan-workflow: Build/create keywords (fallback - most general)
 # Note: task-workflow triggers first on TASK file references, so this catches new feature requests
-elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\bcreate\b|\badd (a |the |new )?[a-z]+\b'; then
-  SUGGESTION="MANDATORY: Invoke plan-workflow skill for planning workflow."
+# IMPORTANT: plan-workflow is the FULL workflow (worktree + docs + codex + PR)
+#            plan-implementation is just doc creation (embedded inside plan-workflow)
+elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\bcreate\b|\badd (a |the |new )?[a-z]+\b|\bplan\b'; then
+  SUGGESTION="MANDATORY: Invoke plan-workflow skill (NOT plan-implementation). plan-workflow creates worktree, documents, runs codex, and creates PR. plan-implementation is only the inner document creation step."
   PRIORITY="must"
 
 # Other MUST skills
 elif echo "$PROMPT_LOWER" | grep -qE '\bcreate pr\b|\bmake pr\b|\bready for pr\b|\bopen pr\b|\bsubmit pr\b'; then
-  SUGGESTION="MANDATORY: Run /pre-pr-verification + security-scanner BEFORE creating PR. PR gate will block without these."
+  SUGGESTION="MANDATORY: Run code-critic + codex + /pre-pr-verification BEFORE creating PR. PR gate will block without these."
   PRIORITY="must"
 elif echo "$PROMPT_LOWER" | grep -qE '\breview (this|my|the) code\b|\bcode review\b|\breview (this|my) pr\b|\bcheck this code\b|\bfeedback on.*code'; then
   SUGGESTION="MANDATORY: Invoke /code-review skill for systematic review."

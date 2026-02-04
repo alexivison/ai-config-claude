@@ -36,27 +36,30 @@ description=$(echo "$hook_input" | jq -r '.tool_input.description // ""')
 model=$(echo "$hook_input" | jq -r '.tool_input.model // "inherit"')
 
 # Extract result summary from tool_response
-response_text=$(echo "$hook_input" | jq -r '.tool_response // ""' | head -c 500)
+# Get full response for verdict detection (verdict may be at end)
+full_response=$(echo "$hook_input" | jq -r '.tool_response // ""')
+response_text=$(echo "$full_response" | head -c 500)
 
 # Detect verdict/status from common patterns (ordered by specificity)
+# Uses full_response for accurate detection (verdict often at end)
 verdict="unknown"
-if echo "$response_text" | grep -qi "REQUEST_CHANGES\|CHANGES REQUESTED"; then
+if echo "$full_response" | grep -qi "REQUEST_CHANGES\|CHANGES REQUESTED"; then
   verdict="REQUEST_CHANGES"
-elif echo "$response_text" | grep -qi "NEEDS_DISCUSSION"; then
+elif echo "$full_response" | grep -qi "NEEDS_DISCUSSION"; then
   verdict="NEEDS_DISCUSSION"
-elif echo "$response_text" | grep -qi "APPROVE"; then
+elif echo "$full_response" | grep -qi "APPROVE"; then
   verdict="APPROVED"
-elif echo "$response_text" | grep -qi "SKIP"; then
+elif echo "$full_response" | grep -qi "SKIP"; then
   verdict="SKIP"
-elif echo "$response_text" | grep -qi "CRITICAL\|HIGH"; then
+elif echo "$full_response" | grep -qi "CRITICAL\|HIGH"; then
   verdict="ISSUES_FOUND"
-elif echo "$response_text" | grep -qi "FAIL"; then
+elif echo "$full_response" | grep -qi "FAIL"; then
   verdict="FAIL"
-elif echo "$response_text" | grep -qi "PASS"; then
+elif echo "$full_response" | grep -qi "PASS"; then
   verdict="PASS"
-elif echo "$response_text" | grep -qi "CLEAN"; then
+elif echo "$full_response" | grep -qi "CLEAN"; then
   verdict="CLEAN"
-elif echo "$response_text" | grep -qi "complete\|done\|finished"; then
+elif echo "$full_response" | grep -qi "complete\|done\|finished"; then
   verdict="COMPLETED"
 fi
 
@@ -119,9 +122,19 @@ if [ "$agent_type" = "check-runner" ]; then
   fi
 fi
 
-# plan-reviewer: only APPROVED creates marker
+# plan-reviewer: marker no longer required (codex handles plan review)
+# Kept for observability but not enforced by pr-gate
 if [ "$agent_type" = "plan-reviewer" ] && [ "$verdict" = "APPROVED" ]; then
   touch "/tmp/claude-plan-reviewer-$session_id"
+fi
+
+# codex: dedicated Codex CLI agent for deep reasoning tasks
+# Only PR review approval creates marker (requires explicit "CODEX APPROVED" token)
+# Design decisions, debugging, and other tasks don't gate PRs
+if [ "$agent_type" = "codex" ]; then
+  if echo "$full_response" | grep -q "CODEX APPROVED"; then
+    touch "/tmp/claude-codex-$session_id"
+  fi
 fi
 
 exit 0

@@ -25,9 +25,11 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 | `test-runner` | Runs tests, returns only failures (isolates verbose output) |
 | `check-runner` | Runs typecheck/lint, returns only errors (isolates verbose output) |
 | `log-analyzer` | Analyzes logs, returns error summary (isolates verbose output) |
-| `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues before PR |
+| `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues (optional) |
 | `code-critic` | Iterative code review using `/code-review` guidelines |
-| `architecture-critic` | Reviews architectural patterns, complexity metrics (advisory) |
+| `codex` | Deep reasoning via Codex CLI for code/architecture review, design decisions, debugging |
+
+> **Note:** `architecture-critic` has been replaced by `codex` which provides combined code + architecture review.
 
 ## Skills
 
@@ -55,7 +57,7 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 |-------|---------|
 | `write-tests` | Test writing methodology (invoked by workflows) |
 | `code-review` | Code quality guidelines (preloaded by code-critic) |
-| `architecture-review` | Architecture guidelines (preloaded by architecture-critic) |
+| `architecture-review` | Architecture guidelines (reference; codex handles architecture review) |
 | `pre-pr-verification` | PR verification checklist (invoked before PR creation) |
 
 ## Commands
@@ -74,12 +76,13 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 
 ## Workflow
 
-Core sequence: `/write-tests` → implement → checkboxes → code-critic → architecture-critic → verification → commit → PR
+Core sequence: `/write-tests` → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
 
 Key principles:
 - **Evidence before claims** — never state "tests pass" without running them
 - **Autonomous flow** — no stopping between steps unless blocked
 - **Code-critic mandatory** — for all TASK*.md implementations
+- **Codex mandatory** — for combined code + architecture review before PR
 
 ## Scripts
 
