@@ -24,13 +24,14 @@ Check project's package.json or CI config for the exact commands. Common pattern
 | Types | `pnpm typecheck`, `tsc --noEmit` |
 | Lint | `pnpm lint`, `eslint src` |
 | Tests | `pnpm test`, `vitest` |
+| Security | `npm audit`, `pip-audit`, secret detection |
 
 ### Step 2: Run All Checks
 
 Delegate to sub-agents **in parallel** for efficiency:
 
-1. Launch **test-runner** and **check-runner** simultaneously using Task tool
-2. Wait for both to complete
+1. Launch **test-runner**, **check-runner**, and **security-scanner** simultaneously using Task tool
+2. Wait for all three to complete
 3. Review their summaries
 
 **Why sub-agents?**
@@ -69,6 +70,7 @@ After all checks pass, capture the output for the PR description:
 | Typecheck | ✓ No errors |
 | Lint | ✓ No errors (X warnings) |
 | Tests | ✓ X passed, 0 failed |
+| Security | ✓ 0 critical, 0 high |
 
 Run at: [timestamp]
 ```

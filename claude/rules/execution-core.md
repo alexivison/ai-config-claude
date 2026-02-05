@@ -28,9 +28,8 @@ Shared execution sequence for all workflow skills. This is loaded on-demand by w
 | test-runner | FAIL | Fix and re-run | NO |
 | check-runner | PASS/CLEAN | (handled by /pre-pr-verification) | NO |
 | check-runner | FAIL | Fix and re-run | NO |
-<!-- | security-scanner | CLEAN | Run /pre-pr-verification | NO | -->
-<!-- | security-scanner | LOW/MEDIUM | Continue, note in PR | NO | -->
-<!-- | security-scanner | HIGH/CRITICAL | Ask user for approval | YES | -->
+| security-scanner | CLEAN/LOW/MEDIUM | (handled by /pre-pr-verification) | NO |
+| security-scanner | HIGH/CRITICAL | Ask user for approval | YES |
 | /pre-pr-verification | All pass | Create commit and PR | NO |
 | /pre-pr-verification | Failures | Fix and re-run | NO |
 | codex (plan) | APPROVE | Create plan PR | NO |
@@ -50,10 +49,10 @@ Only pause for:
 | Agent Class | Examples | When to Pause | Show to User |
 |-------------|----------|---------------|--------------|
 | Investigation | codex (debugging), gemini | Always | Full findings, then AskUserQuestion |
-| Verification | test-runner, check-runner | Never (fix failures directly) | Summary only |
+| Verification | test-runner, check-runner, security-scanner | Never (fix failures directly) | Summary only |
 | Iterative | code-critic, codex | NEEDS_DISCUSSION or 3 failures | Verdict each iteration |
 
-<!-- security-scanner moved to optional; Codex covers basic security review -->
+<!-- security-scanner included in /pre-pr-verification; runs actual audit tools (npm audit, etc.) -->
 
 ## Verification Principle
 

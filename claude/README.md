@@ -24,7 +24,7 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 | `test-runner` | Runs tests, returns only failures (isolates verbose output) |
 | `check-runner` | Runs typecheck/lint, returns only errors (isolates verbose output) |
 | `gemini` | Analyzes logs (2M context), web research with synthesis |
-| `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues (optional) |
+| `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues (via /pre-pr-verification) |
 | `code-critic` | Iterative code review using `/code-review` guidelines |
 | `codex` | Deep reasoning via Codex CLI for code/architecture review, design decisions, debugging |
 

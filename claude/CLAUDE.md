@@ -39,7 +39,7 @@ Details in `~/.claude/agents/README.md`. Quick reference:
 |----------|-------|
 | Run tests | test-runner |
 | Run typecheck/lint | check-runner |
-| Security scan | security-scanner (optional — Codex covers basic security) |
+| Security scan | security-scanner (via /pre-pr-verification) |
 | Complex bug investigation | codex (debugging task) |
 | Analyze logs | gemini (replaces log-analyzer) |
 | Web research | gemini |

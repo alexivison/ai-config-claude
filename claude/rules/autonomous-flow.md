@@ -46,7 +46,7 @@ These patterns indicate flow violation:
 - `codex` APPROVE verdict
 - `test-runner` PASS verdict
 - `check-runner` PASS/CLEAN verdict
-<!-- - `security-scanner` completion  # Codex covers basic security -->
+- `security-scanner` completion (via /pre-pr-verification)
 
 **Plan PRs** (branch suffix `-plan`) require:
 - `codex` APPROVE verdict
@@ -64,8 +64,7 @@ Created automatically by `agent-trace.sh`:
 | test-runner | PASS | `/tmp/claude-tests-passed-{session}` |
 | check-runner | PASS/CLEAN | `/tmp/claude-checks-passed-{session}` |
 | /pre-pr-verification | Any | `/tmp/claude-pr-verified-{session}` |
-<!-- | plan-reviewer | APPROVE | `/tmp/claude-plan-reviewer-{session}` |  # Removed: codex handles plan review -->
-<!-- | security-scanner | Any | `/tmp/claude-security-scanned-{session}` |  # Codex covers basic security -->
+| security-scanner | Any | `/tmp/claude-security-scanned-{session}` |
 
 **Plan PRs** (branch suffix `-plan`) require `codex` marker only. Code PRs require all other markers.
 
