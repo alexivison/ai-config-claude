@@ -152,6 +152,6 @@ user: implement @doc/projects/<feature>/tasks/TASK0.md
 
 ## Core Reference
 
-See [execution-core.md](/Users/aleksituominen/.claude/rules/execution-core.md) for:
+See [execution-core.md](../../rules/execution-core.md) for:
 - codex iteration rules
 - Pause conditions
