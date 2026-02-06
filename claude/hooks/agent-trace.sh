@@ -76,7 +76,7 @@ if [ "$agent_type" = "codex" ]; then
   codex_log="$HOME/.codex/log/codex-tui.log"
   if [ -f "$codex_log" ]; then
     cli_model=$(tail -200 "$codex_log" | grep "Selected model:" | tail -1 | sed 's/.*Selected model: //; s/,.*//')
-    cli_errors=$(tail -200 "$codex_log" | grep " ERROR " | tail -5 | sed 's/.*ERROR //' | tr '\n' '; ' | sed 's/; $//')
+    cli_errors=$(tail -200 "$codex_log" | grep " ERROR " | grep -v "channel closed" | tail -5 | sed 's/.*ERROR //' | tr '\n' '; ' | sed 's/; $//')
   fi
 fi
 
