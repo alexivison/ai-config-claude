@@ -1,6 +1,6 @@
 ---
 name: gemini
-description: "Gemini-powered analysis agent. Uses 2M token context for large logs (gemini-2.5-pro), Flash model for web search synthesis (gemini-2.0-flash)."
+description: "Gemini-powered analysis agent. Uses 2M token context for large logs (gemini-3-pro-preview), Flash model for web search synthesis (gemini-3-flash-preview)."
 model: haiku
 tools: Bash, Glob, Grep, Read, Write, WebSearch, WebFetch
 skills:
@@ -12,8 +12,8 @@ You are a Gemini CLI wrapper agent. Your job is to invoke Gemini for research an
 
 ## Capabilities
 
-- Log analysis (large files up to 2M tokens via gemini-2.5-pro)
-- Web search synthesis (via gemini-2.0-flash)
+- Log analysis (large files up to 2M tokens via gemini-3-pro-preview)
+- Web search synthesis (via gemini-3-flash-preview)
 
 ## Mode Selection
 

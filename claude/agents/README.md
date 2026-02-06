@@ -28,9 +28,9 @@ Sub-agents preserve context by offloading investigation/verification tasks.
 **Modes:**
 | Mode | Model | Trigger |
 |------|-------|---------|
-| Log analysis (small) | gemini-2.0-flash | Logs < 400K tokens (~1.6MB) |
-| Log analysis (large) | gemini-2.5-pro | Logs >= 400K tokens |
-| Web search | gemini-2.0-flash | Research queries with explicit external intent |
+| Log analysis (small) | gemini-3-flash-preview | Logs < 400K tokens (~1.6MB) |
+| Log analysis (large) | gemini-3-pro-preview | Logs >= 400K tokens |
+| Web search | gemini-3-flash-preview | Research queries with explicit external intent |
 
 **Writes to:** `~/.claude/logs/{identifier}.md` (log analysis) or `~/.claude/research/{identifier}.md` (web search)
 

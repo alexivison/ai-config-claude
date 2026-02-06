@@ -19,9 +19,9 @@ user-invocable: false
 
 | Mode | Model | When |
 |------|-------|------|
-| Log analysis (small) | gemini-2.0-flash | Logs < 400K tokens (~1.6MB) |
-| Log analysis (large) | gemini-2.5-pro | Logs >= 400K tokens |
-| Web search | gemini-2.0-flash | Research queries |
+| Log analysis (small) | gemini-3-flash-preview | Logs < 400K tokens (~1.6MB) |
+| Log analysis (large) | gemini-3-pro-preview | Logs >= 400K tokens |
+| Web search | gemini-3-flash-preview | Research queries |
 
 ## Mode Detection
 
@@ -199,9 +199,9 @@ estimate_tokens() {
 
 | Estimated Tokens | Model | Action |
 |------------------|-------|--------|
-| < 400K (~1.6MB) | gemini-2.0-flash | Fast analysis |
-| 400K - 1.5M | gemini-2.5-pro | Large context analysis |
-| > 1.5M (~6MB) | gemini-2.5-pro | Warn about potential truncation, apply overflow strategy |
+| < 400K (~1.6MB) | gemini-3-flash-preview | Fast analysis |
+| 400K - 1.5M | gemini-3-pro-preview | Large context analysis |
+| > 1.5M (~6MB) | gemini-3-pro-preview | Warn about potential truncation, apply overflow strategy |
 
 ### Identifier Naming Convention
 
@@ -220,7 +220,7 @@ generate_identifier() {
 
 ```bash
 # CORRECT: Pipe logs via stdin
-cat /path/to/logs.log | gemini --approval-mode plan -m gemini-2.5-pro -p "Analyze these logs. Identify:
+cat /path/to/logs.log | gemini --approval-mode plan -m gemini-3-pro-preview -p "Analyze these logs. Identify:
 - Error patterns and frequencies
 - Time-based clusters/spikes
 - Correlations between error types
@@ -252,7 +252,7 @@ split -b 4000000 "$LOG_FILE" /tmp/chunk_
 
 # Analyze each chunk
 for chunk in /tmp/chunk_*; do
-  cat "$chunk" | gemini --approval-mode plan -m gemini-2.5-pro -p "Analyze this log segment..."
+  cat "$chunk" | gemini --approval-mode plan -m gemini-3-pro-preview -p "Analyze this log segment..."
 done
 
 # Merge findings (you summarize the individual analyses)
@@ -267,13 +267,13 @@ case "$LOG_FILE" in
   *.zip) unzip -p "$LOG_FILE" ;;
   *.tar.gz) tar -xzf "$LOG_FILE" -O ;;
   *) cat "$LOG_FILE" ;;
-esac | gemini --approval-mode plan -m gemini-2.5-pro -p "..."
+esac | gemini --approval-mode plan -m gemini-3-pro-preview -p "..."
 
 # Multiple files: concatenate with separators
 for f in "$@"; do
   echo "=== FILE: $f ==="
   cat "$f"
-done | gemini --approval-mode plan -m gemini-2.5-pro -p "..."
+done | gemini --approval-mode plan -m gemini-3-pro-preview -p "..."
 ```
 
 ### Output Format
@@ -322,7 +322,7 @@ Timeline: {start} → {end}
 3. **Optional WebFetch** — Fetch full page content for important sources
 4. **Synthesize with Gemini Flash:**
    ```bash
-   gemini --approval-mode plan -m gemini-2.0-flash -p "Based on these search results, provide a comprehensive answer to: {question}
+   gemini --approval-mode plan -m gemini-3-flash-preview -p "Based on these search results, provide a comprehensive answer to: {question}
 
    Search Results:
    {formatted_results}
