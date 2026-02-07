@@ -80,7 +80,7 @@ Event-driven shell scripts that enforce workflow rules and create checkpoint mar
 | worktree-guard.sh | PreToolUse(Bash) | Block `git checkout/switch` in shared repos |
 | pr-gate.sh | PreToolUse(Bash) | Block `gh pr create` without markers |
 | agent-trace.sh | PostToolUse(Task) | Log + create agent markers (`/tmp/claude-{agent}-*`) |
-| skill-marker.sh | PostToolUse(Skill) | Log + create skill markers (`/tmp/claude-pr-verified-*`) |
+| skill-marker.sh | PostToolUse(Skill) | Log + create skill markers (`/tmp/claude-pr-verified-*`, `/tmp/claude-skill-*`) |
 
 ### Marker System
 
@@ -94,8 +94,11 @@ Workflow enforcement relies on session-scoped marker files. Two hooks create the
 | `/tmp/claude-codex-{sid}` | agent-trace.sh (codex "CODEX APPROVED") | Code PRs + Plan PRs |
 | `/tmp/claude-security-scanned-{sid}` | agent-trace.sh (security-scanner any) | Code PRs |
 | `/tmp/claude-pr-verified-{sid}` | skill-marker.sh (pre-pr-verification) | Code PRs |
+| `/tmp/claude-skill-pre-pr-verification-{sid}` | skill-marker.sh (pre-pr-verification) | Tracking only |
+| `/tmp/claude-skill-write-tests-{sid}` | skill-marker.sh (write-tests) | Tracking only |
+| `/tmp/claude-skill-code-review-{sid}` | skill-marker.sh (code-review) | Tracking only |
 
-Plan PRs (branch suffix `-plan`) need only the codex marker. Code PRs need all.
+Plan PRs (branch suffix `-plan`) need only the codex marker. Code PRs need all six gate markers above. The `claude-skill-*` tracking markers record that a skill ran but are not checked by `pr-gate.sh`.
 
 **Cleanup caveat:** `session-cleanup.sh` cleans most markers after 24h but does not clean `claude-codex-*`. Codex markers persist until manual deletion or reboot.
 
