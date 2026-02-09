@@ -55,6 +55,8 @@ Details in `~/.claude/agents/README.md`. Quick reference:
 
 **MANDATORY agents apply to ALL implementation changes** — including ad-hoc requests outside formal workflows (task-workflow, bugfix-workflow). If you write or modify implementation code, run code-critic → codex → /pre-pr-verification before creating a PR.
 
+**Debugging output:** Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
+
 ## Verification Principle
 
 Evidence before claims. See `~/.claude/rules/execution-core.md` for full requirements.

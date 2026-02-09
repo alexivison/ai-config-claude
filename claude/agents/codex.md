@@ -16,7 +16,7 @@ You are a Codex CLI wrapper agent. Your job is to invoke Codex for deep reasonin
 - Architecture analysis (patterns, complexity)
 - Plan review (feasibility, risks, data flow)
 - Design decisions (compare approaches)
-- Debugging (error analysis)
+- Debugging (error analysis) — write findings to `~/.claude/investigations/<issue-slug>.md`
 - Trade-off evaluation
 
 ## Boundaries

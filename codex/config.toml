@@ -19,6 +19,7 @@ default = "read-only"
 # Feature toggles
 [features]
 skills = true
+collab = true
 
 # Skills configuration - load context automatically
 [[skills.config]]
