@@ -1,13 +1,62 @@
 {
-  "model": "opus",
   "attribution": {
     "commit": "",
     "pr": ""
   },
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/scripts/context-bar.sh"
+  "permissions": {
+    "allow": [
+      "Skill(*)",
+      "Bash(awk:*)",
+      "Bash(cat:*)",
+      "Bash(cd:*)",
+      "Bash(chgrp:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Bash(cut:*)",
+      "Bash(echo:*)",
+      "Bash(find:*)",
+      "Bash(gh:*)",
+      "Bash(git:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(jq:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(open:*)",
+      "Bash(pwd:*)",
+      "Bash(printf:*)",
+      "Bash(rm:*)",
+      "Bash(sed:*)",
+      "Bash(sort:*)",
+      "Bash(tail:*)",
+      "Bash(test:*)",
+      "Bash(touch:*)",
+      "Bash(tr:*)",
+      "Bash(uniq:*)",
+      "Bash(xargs:*)",
+      "Bash(xxd:*)",
+      "WebFetch(domain:*)",
+      "WebSearch",
+      "mcp__chrome-devtools__:*",
+      "mcp__figma__*",
+      "mcp__notion__*",
+      "mcp__linear__*"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets/**)"
+    ],
+    "ask": [
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr close:*)"
+    ]
   },
+  "model": "opus",
+  "effortLevel": "max",
   "hooks": {
     "SessionStart": [
       {
@@ -69,59 +118,8 @@
       }
     ]
   },
-  "permissions": {
-    "deny": [
-      "Read(.env)",
-      "Read(.env.*)",
-      "Read(**/.env)",
-      "Read(**/.env.*)",
-      "Read(**/secrets/**)"
-    ],
-    "ask": [
-      "Bash(gh pr merge:*)",
-      "Bash(gh pr close:*)"
-    ],
-    "allow": [
-      "Skill(*)",
-
-      "Bash(awk:*)",
-      "Bash(cat:*)",
-      "Bash(cd:*)",
-      "Bash(chgrp:*)",
-      "Bash(chmod:*)",
-      "Bash(chown:*)",
-      "Bash(cut:*)",
-      "Bash(echo:*)",
-      "Bash(find:*)",
-      "Bash(gh:*)",
-      "Bash(git:*)",
-      "Bash(grep:*)",
-      "Bash(head:*)",
-      "Bash(jq:*)",
-      "Bash(ls:*)",
-      "Bash(mkdir:*)",
-      "Bash(mv:*)",
-      "Bash(open:*)",
-      "Bash(pwd:*)",
-      "Bash(printf:*)",
-      "Bash(rm:*)",
-      "Bash(sed:*)",
-      "Bash(sort:*)",
-      "Bash(tail:*)",
-      "Bash(test:*)",
-      "Bash(touch:*)",
-      "Bash(tr:*)",
-      "Bash(uniq:*)",
-      "Bash(xargs:*)",
-      "Bash(xxd:*)",
-
-      "WebFetch(domain:*)",
-      "WebSearch",
-
-      "mcp__chrome-devtools__:*",
-      "mcp__figma__*",
-      "mcp__notion__*",
-      "mcp__linear__*"
-    ]
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/scripts/context-bar.sh"
   }
 }
