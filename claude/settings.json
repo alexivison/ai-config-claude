@@ -56,7 +56,6 @@
     ]
   },
   "model": "opus",
-  "effortLevel": "max",
   "hooks": {
     "SessionStart": [
       {
@@ -121,5 +120,6 @@
   "statusLine": {
     "type": "command",
     "command": "~/.claude/scripts/context-bar.sh"
-  }
+  },
+  "effortLevel": "max"
 }
