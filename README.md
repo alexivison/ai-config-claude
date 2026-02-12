@@ -1,6 +1,20 @@
 # ai-config-claude
 
-Unified configuration repository for AI coding assistants. Houses configurations for multiple tools with symlink-based installation.
+<p align="center">
+  <img src="assets/the-adventuring-party.png" alt="The Adventuring Party — Claude the Adventurer, Codex the Wizard, Gemini the Sage" width="700">
+</p>
+
+<p align="center"><em>"Evidence before claims. Tests before implementation."</em></p>
+
+Shared configuration for an adventuring party of AI coding assistants. Each member brings unique strengths; this repo equips them all through symlink-based installation.
+
+## The Party
+
+| Member | Role | Strength |
+|--------|------|----------|
+| **Claude** | The Adventurer | Blade and code alike — handles all implementation. Companion and tactician of the party. |
+| **Codex** | The Wizard | Dispatched for deep reasoning and arcane logic. Sees truths hidden from lesser minds. |
+| **Gemini** | The Sage | Keeper of lore and seeker of knowledge. Consulted for research and ancient wisdom. |
 
 ## Structure
 
@@ -35,8 +49,8 @@ The installer will:
 
 ### CLI Installation Methods
 
-| Tool | Install Command |
-|------|-----------------|
+| Member | Install Command |
+|--------|-----------------|
 | Claude | `curl -fsSL https://cli.anthropic.com/install.sh \| sh` |
 | Gemini | `npm install -g @google/gemini-cli` |
 | Codex | `brew install --cask codex` |
@@ -50,15 +64,15 @@ cd ~/Code/ai-config-claude
 
 Removes symlinks but keeps the repository.
 
-## Adding a New Tool
+## Recruiting a New Member
 
 1. Create a directory for the tool: `mkdir -p newtool`
 2. Add a `setup_newtool()` function in `install.sh`
 3. Add the tool to `uninstall.sh`
 4. Run `./install.sh` to create the symlink
 
-## Tool Documentation
+## Documentation
 
-- **Claude Code**: See [claude/README.md](claude/README.md) for Claude-specific configuration
+- **Claude Code**: See [claude/README.md](claude/README.md) for the Adventurer's full configuration
 - **Gemini**: Google Gemini CLI settings and credentials
 - **Codex**: OpenAI Codex CLI settings, skills, and agents
