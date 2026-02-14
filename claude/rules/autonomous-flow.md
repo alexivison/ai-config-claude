@@ -15,7 +15,7 @@ When executing a task from TASK*.md, **do not stop until PR is created** (or a v
 
 **Plan workflow (plan-workflow):**
 ```
-/brainstorm (if needed) → /plan-implementation → codex → plan PR
+/brainstorm (if needed) → /plan-workflow → codex → plan PR
 ```
 
 ## Decision Matrix
