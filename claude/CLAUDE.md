@@ -31,7 +31,8 @@ tests → implement → checkboxes → code-critic → codex → /pre-pr-verific
 
 **Checkboxes = TASK*.md + PLAN.md** — Update both files. Forgetting PLAN.md is a common violation.
 
-**Only pause for:** Investigation findings, NEEDS_DISCUSSION, 3 strikes.
+**task-workflow:** Never pause — handle escalations inline, flag in PR description.
+**bugfix-workflow / ad-hoc:** Pause for investigation findings, NEEDS_DISCUSSION, 3 strikes.
 
 **Post-PR changes:** Re-run `/pre-pr-verification` before amending. See `~/.claude/rules/autonomous-flow.md`.
 

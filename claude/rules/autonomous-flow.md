@@ -4,7 +4,10 @@ Detailed rules for continuous execution during TASK*.md implementation. See CLAU
 
 ## Core Principle
 
-When executing a task from TASK*.md, **do not stop until PR is created** (or a valid pause condition is met).
+When executing a task from TASK*.md, **do not stop until PR is created**.
+
+- **task-workflow:** No pause conditions. Handle NEEDS_DISCUSSION, 3-strikes, and HIGH/CRITICAL findings inline. See task-workflow/SKILL.md § No-Pause Rule.
+- **bugfix-workflow:** May pause for investigation findings, NEEDS_DISCUSSION, 3 strikes, or explicit blockers.
 
 ## The Flow
 
@@ -21,8 +24,8 @@ When executing a task from TASK*.md, **do not stop until PR is created** (or a v
 ## Decision Matrix
 
 See [execution-core.md](execution-core.md) for the complete decision matrix including:
-- When to continue vs pause
-- Valid pause conditions
+- When to continue vs pause (workflow-dependent — task-workflow never pauses)
+- Valid pause conditions (bugfix-workflow and ad-hoc only)
 - Sub-agent behavior rules
 
 ## Violation Patterns

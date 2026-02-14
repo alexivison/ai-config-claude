@@ -22,11 +22,24 @@ State which items were checked before proceeding.
 
 ## Execution Flow
 
-After passing the gate, execute continuously — **no stopping until PR is created**.
+After passing the gate, execute continuously — **never stop until PR is created. No exceptions.**
 
 ```
 /write-tests (if needed) → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
 ```
+
+### No-Pause Rule
+
+This workflow **never pauses for user input** during execution. Unlike bugfix-workflow, there are no valid pause conditions. Handle escalations inline:
+
+| Situation | Action (do NOT pause) |
+|-----------|----------------------|
+| code-critic → NEEDS_DISCUSSION | Attempt the suggested fix. If genuinely ambiguous, pick the simpler option and note the tradeoff in a code comment. |
+| code-critic → 3 failures on same issue | Try a different approach entirely. If still failing, revert the problematic change and proceed without it. |
+| codex → NEEDS_DISCUSSION | Apply best-judgment fix. Document the concern as a TODO comment for human review. |
+| security-scanner → HIGH/CRITICAL | Apply the recommended remediation. If no clear fix, add a `// SECURITY: <description>` comment and continue. |
+
+The PR description is the right place to flag unresolved concerns — not a mid-workflow pause.
 
 ### Step-by-Step
 
@@ -77,13 +90,13 @@ The codex agent will:
 **On REQUEST_CHANGES:** Fix issues and re-invoke codex agent.
 
 **Iteration protocol:**
-- Max 3 iterations, then NEEDS_DISCUSSION
+- Max 3 iterations. If still NEEDS_DISCUSSION after 3, apply best-judgment fix with a TODO comment and proceed (no pause).
 - Do NOT re-run codex after code-critic convention fixes
 
 ## Core Reference
 
 See [execution-core.md](~/.claude/rules/execution-core.md) for:
-- Decision matrix (when to continue vs pause)
+- Decision matrix (base rules — this workflow overrides all pause conditions)
 - Sub-agent behavior rules
 - Verification requirements
 - PR gate requirements

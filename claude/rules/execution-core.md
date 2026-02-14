@@ -38,11 +38,13 @@ Shared execution sequence for all workflow skills. This is loaded on-demand by w
 
 ## Valid Pause Conditions
 
-Only pause for:
+**bugfix-workflow and ad-hoc work** — pause for:
 1. **Investigation findings** — codex (debugging), gemini always require user review
 2. **NEEDS_DISCUSSION** — From code-critic or codex
 3. **3 strikes** — 3 failed fix attempts on same issue
 4. **Explicit blockers** — Missing dependencies, unclear requirements
+
+**task-workflow** — never pause. Handle all of the above inline (see task-workflow/SKILL.md § No-Pause Rule). Flag unresolved concerns in the PR description instead.
 
 ## Sub-Agent Behavior
 
