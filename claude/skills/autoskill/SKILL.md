@@ -112,7 +112,7 @@ If neither tier matches → skip Lane 2 silently (ad-hoc sessions have no flow t
 | /write-tests | C | M | -- |
 | implement | M | M | -- |
 | GREEN verification (test-runner) | M | M | -- |
-| /plan-implementation | -- | -- | M |
+| /plan-workflow | -- | -- | M |
 | checkboxes (TASK+PLAN) | M | -- | -- |
 | code-critic | M | M | -- |
 | codex | M | M | M |

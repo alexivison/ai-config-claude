@@ -38,13 +38,14 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bbug\b|\bbroken\b|\berror\b|\bnot work|\b
 # If prompt references a DESIGN.md -> plan-workflow (task breakdown from existing design)
 # If no DESIGN.md -> design-workflow (create SPEC.md + DESIGN.md first)
 # Note: task-workflow triggers first on TASK file references
-# IMPORTANT: plan-implementation is just the inner doc creation step (used by both workflows)
+# plan-workflow handles the full planning lifecycle (SPEC, DESIGN, PLAN, TASKs)
+# design-workflow handles the design-only phase when no DESIGN.md exists yet
 elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\bcreate\b|\badd (a |the |new )?[a-z]+\b|\bplan\b'; then
   if echo "$PROMPT" | grep -qiE 'DESIGN\.md|design\.md'; then
     SUGGESTION="MANDATORY: Invoke plan-workflow skill. DESIGN.md is referenced — skip design phase, go straight to task breakdown (PLAN.md + TASKs)."
     PRIORITY="must"
   else
-    SUGGESTION="MANDATORY: Invoke design-workflow skill (NOT plan-workflow or plan-implementation). design-workflow creates worktree, SPEC.md + DESIGN.md, runs codex architecture review, and creates PR. Task breakdown happens later via plan-workflow when user provides the DESIGN.md."
+    SUGGESTION="MANDATORY: Invoke design-workflow skill (NOT plan-workflow). design-workflow creates worktree, SPEC.md + DESIGN.md, runs codex architecture review, and creates PR. Task breakdown happens later via plan-workflow when user provides the DESIGN.md."
     PRIORITY="must"
   fi
 

@@ -1,141 +1,270 @@
 ---
 name: plan-workflow
-description: Task breakdown from an existing DESIGN.md. Creates PLAN.md and TASK*.md files with codex validation. For design-first planning (no DESIGN.md yet), use design-workflow instead.
+description: Create implementation plans before coding substantial features.
 user-invocable: true
 ---
 
 # Plan Workflow
 
-Take an existing DESIGN.md and break it down into PLAN.md and TASK*.md files. Submit as a documentation-only PR for review.
+Use for substantial feature work before implementation. This workflow creates planning docs only.
 
-## Purpose
+## Invocation Requirements
 
-This is **Phase 2** of a two-phase planning flow:
-1. **design-workflow** — Produce SPEC.md + DESIGN.md, validate architecture
-2. **plan-workflow** (this skill) — Take approved DESIGN.md, produce PLAN.md + TASKs
+Use this workflow when any of the following is true:
 
-The DESIGN.md referenced in the user's prompt is the input. Architecture decisions are already validated — this skill focuses on task scoping, coverage, and dependency ordering.
+1. The user explicitly asks for a plan/spec/design before coding.
+2. The user explicitly requests planning docs (`SPEC.md`, `DESIGN.md`, `PLAN.md`, `TASK*.md`) and the expected output is docs, not implementation changes.
+3. Scope is broad or ambiguous enough that implementation targets are not yet concrete.
 
-## Entry Phase
+If not:
 
-1. **Read the referenced DESIGN.md** and its associated SPEC.md (same directory)
-2. **Verify design completeness** — DESIGN.md must contain:
-   - File structure / modified files
-   - Data flow with transformation points
-   - Integration points
-3. **If DESIGN.md is incomplete** -> Flag gaps, ask user whether to proceed or fix first
+- Use `task-workflow` for clear implementation requests.
+- Use `bugfix-workflow` for concrete defect/regression fixes.
+- Use `code-review` for review-only requests.
 
-## Setup Phase
+## Setup
 
-1. **Check if worktree exists** — If a `-plan` worktree already exists from design-workflow, use it. Otherwise create one:
-   ```bash
-   # With issue ID:
-   git worktree add ../<repo>-<ISSUE-ID>-<feature>-plan -b <ISSUE-ID>-<feature>-plan
-   # Without issue ID:
-   git worktree add ../<repo>-<feature>-plan -b <feature>-plan
-   ```
+1. Create dedicated planning branch/worktree using `<ISSUE-ID>-<kebab-case-description>-plan`.
+2. Create project folder: `doc/projects/<feature-name>/`.
 
-2. **Create tasks directory** (if not present):
-   ```bash
-   mkdir -p doc/projects/<feature-name>/tasks
-   ```
+## Output Location
 
-## Planning Phase
+`doc/projects/<feature-name>/`
 
-1. **Invoke `/plan-implementation`** to create task documents:
-   - PLAN.md - Task breakdown with dependencies and Coverage Matrix
-   - tasks/TASK*.md - Individual implementation tasks
+## Process
 
-   The SPEC.md and DESIGN.md already exist — `/plan-implementation` reads them as input and produces only the task breakdown files.
+1. Confirm scope, constraints, and non-goals.
+2. Explore existing code patterns and integration points.
+3. Create docs by adapting the template examples:
+   - `SPEC.md`
+   - `DESIGN.md`
+   - `PLAN.md`
+   - `tasks/TASK*.md`
+4. Ensure tasks are small and independently executable (target about 200 LOC of implementation per task).
+5. Go back and evaluate your plan against the Required Planning Checks and Review Checklist, including source reconciliation against the planning inputs used to draft the plan and a whole-architecture coherence pass across all planned tasks.
+6. If evaluation finds gaps, source mismatches, or whole-architecture coherence issues, refine docs and repeat evaluation until it passes.
+7. Link docs together and verify cross-references.
+8. Stop after planning delivery; do not start `task-workflow` unless the user explicitly requests implementation.
 
-2. **Wait for user review** of task breakdown
+## Outputs
 
-## Validation Phase
+- `SPEC.md`
+- `DESIGN.md`
+- `PLAN.md`
+- `tasks/TASK*.md`
 
-Execute continuously — **no stopping until PR is created**.
+## Execution Flow
 
+`clarify requirements -> generate planning docs -> go back and evaluate your plan -> refine docs + reevaluate until pass -> pre-pr-verification -> commit -> draft docs-only PR -> stop`
+
+## When to Create Which Docs
+
+| Scenario | Files Created |
+|----------|---------------|
+| Small change | SPEC.md only |
+| New feature | SPEC.md + DESIGN.md |
+| Migration | LEGACY_DESIGN.md + DESIGN.md + SPEC.md |
+| Ready to implement | Add PLAN.md + tasks/TASK*.md |
+
+**Don't use for**: Bug fixes, quick refactors, or changes under ~50 lines.
+
+## Deep Exploration (CRITICAL)
+
+**Before writing DESIGN.md**, conduct thorough codebase exploration:
+
+1. **Find existing standards** — Search for similar patterns in the codebase
+   - How is similar data already handled?
+   - Are there existing abstractions to extend (e.g., DataSource pattern)?
+   - What naming conventions are used?
+
+2. **Map data transformation points** — Identify ALL places where data changes shape
+   - Proto -> Domain converters
+   - Params conversion functions (e.g., `convertToParams`, `adaptRequest`)
+   - Adapter patterns between layers
+
+3. **List integration points** — Where will new code touch existing code?
+   - Entry points (handlers, routes)
+   - Layer boundaries (handler -> usecase -> domain)
+   - Shared utilities or helpers
+
+**Why this matters:** Shallow exploration leads to:
+- Missing existing patterns (reimplementing what exists)
+- Forgetting transformation points (fields silently dropped)
+- Scope mismatches between tasks
+
+## Documentation
+
+| Document | Purpose | Template |
+|----------|---------|----------|
+| SPEC.md | Requirements, acceptance criteria | [spec.md](./templates/spec.md) |
+| DESIGN.md | Architecture, file structure, APIs | [design.md](./templates/design.md) |
+| LEGACY_DESIGN.md | Current system (migrations only) | [legacy-design.md](./templates/legacy-design.md) |
+| PLAN.md | Task order, dependencies | [plan.md](./templates/plan.md) |
+| tasks/TASK*.md | Step-by-step implementation | [task.md](./templates/task.md) |
+
+## Plan Header (Required)
+
+Every PLAN.md must start with:
+
+```markdown
+# <Feature Name> Implementation Plan
+
+> **Goal:** [One sentence — what this achieves]
+>
+> **Architecture:** [2-3 sentences — key technical approach]
+>
+> **Tech Stack:** [Relevant technologies]
+>
+> **Specification:** [SPEC.md](./SPEC.md) | **Design:** [DESIGN.md](./DESIGN.md)
 ```
-codex (iteration loop) -> PR
+
+This ensures any agent (or human) can understand the plan without reading other docs first.
+
+## Task Granularity
+
+Choose based on complexity:
+
+### Standard Mode (default)
+
+- ~200 lines of implementation code (tests excluded from count)
+- Each task fits in single agent context window
+- If task touches >5 files, split it
+
+### Atomic Mode (for complex/risky changes)
+
+Break tasks into 2-5 minute steps:
+
+```markdown
+## Steps
+
+1. [ ] Write failing test for [specific behavior]
+2. [ ] Run test, verify it fails
+3. [ ] Implement minimal code to pass
+4. [ ] Run test, verify it passes
+5. [ ] Commit: "[type]: [description]"
 ```
 
-### Step-by-Step
+Use atomic mode when:
+- High-risk changes (auth, payments, data migrations)
+- Unfamiliar codebase or technology
+- Complex state management
+- User explicitly requests granular breakdown
 
-1. **Run codex agent** (MANDATORY)
-   - Task-scoping focused review (architecture already validated in design-workflow)
-   - Returns APPROVE / REQUEST_CHANGES / NEEDS_DISCUSSION
+## Agent-Optimized Guidelines
 
-   **Prompt template:**
-   ```
-   Review this task breakdown for an already-approved design.
+### Testing in Tasks
 
-   **Task:** Plan Review
-   **Iteration:** {N} of 3
-   **Previous feedback:** {summary if iteration > 1}
+- Include tests in the same task/PR as implementation
+- Each task should have its own test requirements
+- Reference `@write-tests` skill for methodology
 
-   The DESIGN.md has already been architecturally validated. Focus on:
-   - Are task scopes appropriate (~200 LOC)?
-   - Is the dependency ordering correct?
-   - Are there missing edge cases in task definitions?
-   - Do tasks have clear acceptance criteria?
+### Every Task Must Include
 
-   **CRITICAL CHECKS (Scope & Coverage):**
-   - [ ] Cross-Task Scope: If TASK1 adds X to endpoints A and B, do tasks exist for BOTH?
-   - [ ] Coverage Matrix: Does PLAN.md show which tasks handle which new fields/endpoints?
-   - [ ] Task Independence: Can each task be executed without assuming agent remembers previous tasks?
-   - [ ] Verification Commands: Does every task include type check, tests, lint commands?
-   - [ ] Scope Boundaries: Does every task state what IS and ISN'T in scope?
+- **Issue:** Link to issue tracker (e.g., `ENG-123`) or descriptive slug
+- **Required context**: Files agent reads first
+- **Files to modify**: Exact paths with actions
+- **Verification commands**: Type check, tests, lint
+- **Acceptance criteria**: Machine-verifiable
+- **Scope boundary**: What IS and ISN'T in scope (prevents cross-task mismatch)
 
-   Return structured verdict. On approval, include "CODEX APPROVED" token:
+### Explicit Over Implicit
 
-   ### Verdict
-   **APPROVE** — CODEX APPROVED
-   {reason}
-   ```
+- Exact file paths, not patterns
+- Before/after code, not descriptions
+- Line numbers when modifying existing code
 
-2. **Handle codex verdict:**
-   | Verdict | Action |
-   |---------|--------|
-   | APPROVE | Continue to PR |
-   | REQUEST_CHANGES | Fix issues, re-run codex |
-   | NEEDS_DISCUSSION | Show findings, ask user |
-   | 3rd iteration fails | Show findings, ask user |
+### Context Independence
 
-3. **Create PR** with plan files only:
-   ```bash
-   git add doc/projects/<feature-name>/
-   git commit -m "docs: add implementation plan for <feature-name>"
-   gh pr create --draft --title "Plan: <feature-name>" --body "..."
-   ```
+- Each task independently executable
+- Don't assume agent remembers previous tasks
+- List all dependencies explicitly
 
-## Branch Naming
+### Documentation Verbosity
 
-Always use `-plan` suffix (e.g., `ENG-123-auth-plan` or `auth-feature-plan`). This:
-- Preserves Linear issue ID convention (`<ISSUE-ID>-<description>`)
-- Triggers plan-specific PR gate path (requires codex marker only)
+- **SPEC.md / PLAN.md / DESIGN.md**: High-level requirements only. Avoid implementation code examples.
+- **TASK files**: Include implementation details needed for execution (function signatures, type definitions, patterns). Keep focused on *what* to build, not full consumer integration examples.
+- Link between documents rather than duplicating content (e.g., "See TASK6.md for details")
 
-## When to Use This Workflow
+### Requirements Over Implementation
 
-- User references a DESIGN.md in their prompt
-- Design phase is complete, ready for task breakdown
+- Focus on requirements, references, and key gotchas
+- Reference existing implementations rather than duplicating code
+- Don't provide near-complete code implementations in tasks
+- List test cases as bullet points, not detailed test code
+- Trust implementer agents to handle detailed implementation decisions
 
-## When NOT to Use
+## Required Planning Checks
 
-- No DESIGN.md exists yet -> use `design-workflow`
-- Bug fixes -> use `bugfix-workflow`
-- Implementing planned tasks -> use `task-workflow`
-- Small changes (<50 lines) -> implement directly
+1. Existing standards are referenced with concrete paths.
+2. Data transformation points are explicitly mapped for schema/field changes.
+3. Tasks contain explicit scope boundaries (in scope / out of scope).
+4. Dependencies and verification commands are listed per task.
+5. Requirements and tasks are reconciled against source inputs (local docs and external planning inputs such as Notion/Linear/Figma), and any unresolved mismatches are documented.
+6. Whole-architecture coherence is evaluated across the full task sequence (combined end state, hotspot files, cross-task invariants, and cleanup/convergence path).
 
-## Post-PR
+## Plan Evaluation Output Contract (Required)
 
-After plan PR is merged, implementation proceeds via `task-workflow`:
+Record evaluation evidence in `PLAN.md` under `## Plan Evaluation Record` before `pre-pr-verification`:
 
-```
-user: implement @doc/projects/<feature>/tasks/TASK0.md
--> task-workflow executes with full code verification
-```
+1. Explicit verdict marker: `PLAN_EVALUATION_VERDICT: PASS` or `PLAN_EVALUATION_VERDICT: FAIL`.
+2. Checklist evidence covering all items in:
+   - Required Planning Checks
+   - Review Checklist
+3. Source reconciliation evidence with references and mismatch notes (or explicit "None").
+4. If verdict is `FAIL`: blocking gaps are listed and docs are revised before rerunning evaluation.
+
+## Required Gates
+
+1. Requirements gate: requirements and non-goals are explicit.
+2. Design gate: architecture, integration points, and transformation points are explicit.
+3. Scope gate: tasks are small, ordered, and independently testable.
+4. Architecture coherence gate: the plan defines and validates the intended end-state architecture across all tasks, not only per-task changes.
+5. Plan evaluation gate: the "go back and evaluate your plan" step passes against required planning checks and this skill's review checklist.
+6. Automated gate: `pre-pr-verification` is required before PR creation and must complete with command evidence.
+7. Delivery gate: commit plan docs and create draft docs-only PR.
+
+## Review Checklist
+
+1. Requirements are measurable.
+2. Existing code patterns are referenced with concrete file paths.
+3. Data transformation points are mapped for new/changed fields.
+4. Task boundaries are clear and include in-scope/out-of-scope notes.
+5. Risks and dependencies are called out.
+6. Plan requirements and task scopes are traceable to source inputs, and source conflicts are called out explicitly.
+7. Combined end-state architecture is coherent: hotspot files have target shapes, invariants are preserved through task order, and temporary structures have a cleanup/convergence path.
+
+## Skill References
+
+Reference other skills inline using `@skill-name`:
+
+| Reference | Meaning |
+|-----------|---------|
+| `@write-tests` | Use Testing Trophy methodology |
+| `@code-review` | Run code review before PR |
+| `@minimize` | Check for bloat before finalizing |
+| `@brainstorm` | Use if requirements unclear |
+
+Example in task: "Write tests following `@write-tests` methodology."
+
+## Post-Planning Handoff
+
+After plan is complete, offer:
+
+1. **Implement now** — Start with Task 1
+2. **Review first** — User reviews plan before implementation
+3. **Parallel tasks** — Identify which tasks can run concurrently
+
+Always wait for user confirmation before starting implementation.
+
+## Templates
+
+Use the existing scaffolds:
+
+- `./templates/spec.md`
+- `./templates/design.md`
+- `./templates/plan.md`
+- `./templates/task.md`
 
 ## Core Reference
 
-See [execution-core.md](../../rules/execution-core.md) for:
-- codex iteration rules
-- Pause conditions
+See `../../rules/execution-core.md`.

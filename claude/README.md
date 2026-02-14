@@ -39,7 +39,6 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 | Skill | Triggers |
 |-------|----------|
 | `brainstorm` | New features with unclear requirements, multiple approaches |
-| `plan-implementation` | Feature planning, creating specs |
 | `minimize` | Identifies bloat and unnecessary complexity |
 | `address-pr` | "address PR comments", "check feedback" |
 | `autoskill` | "learn from this session", "remember this pattern", `/autoskill` |
