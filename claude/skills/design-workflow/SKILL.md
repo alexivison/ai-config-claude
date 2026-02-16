@@ -19,6 +19,13 @@ Create SPEC.md + DESIGN.md, validate architecture via codex, submit as draft PR.
 
 **Discovery convention:** Check `doc/projects/<feature>/DESIGN.md` or user-provided path. The hook (`skill-eval.sh`) uses keyword-only heuristics — this skill's entry gate owns the actual routing decision based on filesystem state.
 
+## Entry Gate
+
+Check `doc/projects/<feature>/DESIGN.md` or user-provided path:
+
+- **DESIGN.md exists → STOP. Redirect:** "DESIGN.md already exists. Run `/plan-workflow` to create task breakdown."
+- **No DESIGN.md → proceed to Entry Phase below.**
+
 ## Entry Phase
 
 1. **External spec provided?** (Notion, PRD, etc.) → skip SPEC.md, create DESIGN.md only
