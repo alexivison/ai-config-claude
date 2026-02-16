@@ -34,24 +34,18 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bbug\b|\bbroken\b|\berror\b|\bnot work|\b
   SUGGESTION="MANDATORY: Invoke bugfix-workflow skill FIRST, before fetching tickets, reading code, or any investigation. The workflow itself handles investigation steps."
   PRIORITY="must"
 
-# design-workflow / plan-workflow: Two-phase planning dispatch
-# Route based on DESIGN.md existence: present → plan-workflow, absent → design-workflow
-# Check both: prompt reference AND file system (doc/projects/**/DESIGN.md)
-elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\bcreate\b|\badd (a |the |new )?[a-z]+\b|\bplan\b'; then
-  DESIGN_EXISTS=false
-  if echo "$PROMPT" | grep -qiE 'DESIGN\.md|design\.md'; then
-    DESIGN_EXISTS=true
-  elif ls doc/projects/*/DESIGN.md doc/projects/*/*/DESIGN.md 2>/dev/null | grep -q .; then
-    DESIGN_EXISTS=true
-  fi
+# plan-workflow: Explicit task-breakdown triggers (check BEFORE general feature keywords)
+# Keyword-only heuristic — actual DESIGN.md validation is in the skill entry gate.
+elif echo "$PROMPT_LOWER" | grep -qE '\btask breakdown\b|\bbreak.*(design|plan) into tasks\b|\bcreate tasks from\b|\bplan from design\b|\bplan-workflow\b'; then
+  SUGGESTION="MANDATORY: Invoke plan-workflow skill. Create task breakdown (PLAN.md + TASKs) from the approved DESIGN.md."
+  PRIORITY="must"
 
-  if [ "$DESIGN_EXISTS" = true ]; then
-    SUGGESTION="MANDATORY: Invoke plan-workflow skill. DESIGN.md exists — create task breakdown (PLAN.md + TASKs) from the approved design."
-    PRIORITY="must"
-  else
-    SUGGESTION="MANDATORY: Invoke design-workflow skill (Phase 1). No DESIGN.md found — create SPEC.md + DESIGN.md first. Task breakdown via plan-workflow happens after design is approved."
-    PRIORITY="must"
-  fi
+# design-workflow: New feature keywords (default entry point for two-phase planning)
+# The skill entry gate redirects to plan-workflow if DESIGN.md already exists.
+# No filesystem or prompt-content detection here — skills own the routing contract.
+elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\bcreate\b|\badd (a |the |new )?[a-z]+\b|\bplan\b'; then
+  SUGGESTION="MANDATORY: Invoke design-workflow skill (Phase 1). Create SPEC.md + DESIGN.md. If DESIGN.md already exists, the skill redirects to plan-workflow."
+  PRIORITY="must"
 
 # Other MUST skills
 elif echo "$PROMPT_LOWER" | grep -qE '\bcreate pr\b|\bmake pr\b|\bready for pr\b|\bopen pr\b|\bsubmit pr\b'; then

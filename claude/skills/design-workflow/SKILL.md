@@ -12,10 +12,12 @@ Create SPEC.md + DESIGN.md, validate architecture via codex, submit as draft PR.
 
 | Condition | Workflow |
 |-----------|----------|
-| No DESIGN.md | **design-workflow** (this) |
-| DESIGN.md exists | plan-workflow (task breakdown) |
+| No DESIGN.md for this feature | **design-workflow** (this) |
+| DESIGN.md exists for this feature | plan-workflow (task breakdown) |
 | Bug/error | bugfix-workflow |
 | TASK*.md referenced | task-workflow |
+
+**Discovery convention:** Check `doc/projects/<feature>/DESIGN.md` or user-provided path. The hook (`skill-eval.sh`) uses keyword-only heuristics — this skill's entry gate owns the actual routing decision based on filesystem state.
 
 ## Entry Phase
 
