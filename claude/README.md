@@ -27,6 +27,7 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 | `security-scanner` | Scans for secrets, vulnerabilities, OWASP issues (via /pre-pr-verification) |
 | `code-critic` | Iterative code review using `/code-review` guidelines |
 | `codex` | Deep reasoning via Codex CLI for code/architecture review, design decisions, debugging |
+| `minimizer` | Bloat/complexity review, runs parallel with code-critic |
 
 ## Skills
 
@@ -35,7 +36,6 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 | Skill | Triggers |
 |-------|----------|
 | `brainstorm` | New features with unclear requirements, multiple approaches |
-| `minimize` | Identifies bloat and unnecessary complexity |
 | `address-pr` | "address PR comments", "check feedback" |
 | `autoskill` | "learn from this session", "remember this pattern", `/autoskill` |
 
@@ -72,12 +72,12 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 
 ## Workflow
 
-Core sequence: `/write-tests` → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
+Core sequence: `/write-tests` → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 
 Key principles:
 - **Evidence before claims** — never state "tests pass" without running them
 - **Autonomous flow** — no stopping between steps unless blocked
-- **Code-critic mandatory** — for all implementation changes (not just TASK*.md)
+- **Code-critic + minimizer mandatory** — for all implementation changes (not just TASK*.md)
 - **Codex mandatory** — for combined code + architecture review before PR
 - **Pre-PR verification mandatory** — for all PRs, including ad-hoc changes
 

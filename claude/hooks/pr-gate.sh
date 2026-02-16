@@ -3,6 +3,7 @@
 # Blocks `gh pr create` unless ALL required markers exist:
 #   - /tmp/claude-pr-verified-{session_id} (from /pre-pr-verification)
 #   - /tmp/claude-code-critic-{session_id} (from code-critic APPROVE)
+#   - /tmp/claude-minimizer-{session_id} (from minimizer APPROVE)
 #   - /tmp/claude-codex-{session_id} (from codex agent APPROVE)
 #   - /tmp/claude-tests-passed-{session_id} (from test-runner PASS)
 #   - /tmp/claude-checks-passed-{session_id} (from check-runner PASS)
@@ -56,6 +57,7 @@ EOF
   CODEX_MARKER="/tmp/claude-codex-$SESSION_ID"
   TESTS_MARKER="/tmp/claude-tests-passed-$SESSION_ID"
   CHECKS_MARKER="/tmp/claude-checks-passed-$SESSION_ID"
+  MINIMIZE_MARKER="/tmp/claude-minimizer-$SESSION_ID"
 
   MISSING=""
   [ ! -f "$VERIFY_MARKER" ] && MISSING="$MISSING /pre-pr-verification"
@@ -64,6 +66,7 @@ EOF
   [ ! -f "$CODEX_MARKER" ] && MISSING="$MISSING codex"
   [ ! -f "$TESTS_MARKER" ] && MISSING="$MISSING test-runner"
   [ ! -f "$CHECKS_MARKER" ] && MISSING="$MISSING check-runner"
+  [ ! -f "$MINIMIZE_MARKER" ] && MISSING="$MISSING minimizer"
 
   if [ -n "$MISSING" ]; then
     cat << EOF

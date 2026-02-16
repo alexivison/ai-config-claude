@@ -51,6 +51,7 @@ Declarative definitions specifying model, tools, and preloaded skills. Spawned v
 | Agent | Purpose | Model |
 |-------|---------|-------|
 | code-critic | Code review, iterates to APPROVE | sonnet |
+| minimizer | Bloat/complexity review, iterates to APPROVE | haiku |
 | codex | Deep reasoning via Codex CLI | haiku wrapper |
 | gemini | Log analysis + web research via Gemini CLI | haiku wrapper |
 | test-runner | Run tests, return failures only | haiku |
@@ -62,7 +63,7 @@ Declarative definitions specifying model, tools, and preloaded skills. Spawned v
 Procedural workflows invoked via Skill tool:
 
 - **Orchestrators** (auto-suggested by `hooks/skill-eval.sh`; invoked explicitly): `task-workflow`, `design-workflow`, `plan-workflow`, `bugfix-workflow`
-- **User-invocable**: `brainstorm`, `minimize`, `address-pr`, `autoskill`, `write-tests`, `code-review`, `pre-pr-verification`
+- **User-invocable**: `brainstorm`, `address-pr`, `autoskill`, `write-tests`, `code-review`, `pre-pr-verification`
 - **Reference** (preloaded by agents): `codex-cli`, `gemini-cli`
 
 ### Rules (`claude/rules/*.md`)
@@ -91,6 +92,7 @@ Workflow enforcement relies on session-scoped marker files. Two hooks create the
 | `/tmp/claude-tests-passed-{sid}` | agent-trace.sh (test-runner PASS) | Code PRs |
 | `/tmp/claude-checks-passed-{sid}` | agent-trace.sh (check-runner PASS/CLEAN) | Code PRs |
 | `/tmp/claude-code-critic-{sid}` | agent-trace.sh (code-critic APPROVE) | Code PRs |
+| `/tmp/claude-minimizer-{sid}` | agent-trace.sh (minimizer APPROVE) | Code PRs |
 | `/tmp/claude-codex-{sid}` | agent-trace.sh (codex "CODEX APPROVED") | Code PRs + Plan PRs |
 | `/tmp/claude-security-scanned-{sid}` | agent-trace.sh (security-scanner any) | Code PRs |
 | `/tmp/claude-pr-verified-{sid}` | skill-marker.sh (pre-pr-verification) | Code PRs |

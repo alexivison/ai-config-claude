@@ -27,7 +27,7 @@ Workflow skills load on-demand. See `~/.claude/skills/*/SKILL.md` for details.
 
 **Do NOT stop between steps.** Core sequence:
 ```
-tests → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
+tests → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 ```
 
 **Checkboxes = TASK*.md + PLAN.md** — Update both files. Forgetting PLAN.md is a common violation.
@@ -50,11 +50,11 @@ Details in `~/.claude/agents/README.md`. Quick reference:
 | Complex bug investigation | codex (debugging task) |
 | Analyze logs | gemini (replaces log-analyzer) |
 | Web research | gemini |
-| After implementing | code-critic (MANDATORY) |
-| After code-critic | codex (MANDATORY) |
+| After implementing | code-critic + minimizer (MANDATORY, parallel) |
+| After code-critic + minimizer | codex (MANDATORY) |
 | After creating plan | codex (MANDATORY) |
 
-**MANDATORY agents apply to ALL implementation changes** — including ad-hoc requests outside formal workflows (task-workflow, bugfix-workflow). If you write or modify implementation code, run code-critic → codex → /pre-pr-verification before creating a PR.
+**MANDATORY agents apply to ALL implementation changes** — including ad-hoc requests outside formal workflows (task-workflow, bugfix-workflow). If you write or modify implementation code, run code-critic + minimizer → codex → /pre-pr-verification before creating a PR.
 
 **Debugging output:** Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 
@@ -78,7 +78,6 @@ Evidence before claims. See `~/.claude/rules/execution-core.md` for full require
 | New feature (no DESIGN.md) | `/design-workflow` |
 | Task breakdown (DESIGN.md exists) | `/plan-workflow` |
 | PR has comments | `/address-pr` |
-| Large PR (>200 LOC) | `/minimize` |
 | User corrects 2+ times | `/autoskill` |
 
 **Invoke via Skill tool.** Hook `skill-eval.sh` suggests skills; `pr-gate.sh` enforces markers.

@@ -49,7 +49,7 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\b
 
 # Other MUST skills
 elif echo "$PROMPT_LOWER" | grep -qE '\bcreate pr\b|\bmake pr\b|\bready for pr\b|\bopen pr\b|\bsubmit pr\b'; then
-  SUGGESTION="MANDATORY: Run code-critic + codex + /pre-pr-verification BEFORE creating PR. PR gate will block without these."
+  SUGGESTION="MANDATORY: Run code-critic + minimizer + codex + /pre-pr-verification BEFORE creating PR. PR gate will block without these."
   PRIORITY="must"
 elif echo "$PROMPT_LOWER" | grep -qE '\breview (this|my|the) code\b|\bcode review\b|\breview (this|my) pr\b|\bcheck this code\b|\bfeedback on.*code'; then
   SUGGESTION="MANDATORY: Invoke /code-review skill for systematic review."
@@ -64,9 +64,6 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bsecurity\b|\bvulnerab\b|\baudit\b|\bsecr
   PRIORITY="should"
 elif echo "$PROMPT_LOWER" | grep -qE '\bpr comment|\breview(er)? (comment|feedback|request)|\baddress (the |this |pr )?feedback|\bfix.*comment|\brespond to.*review'; then
   SUGGESTION="RECOMMENDED: Invoke /address-pr to systematically address comments."
-  PRIORITY="should"
-elif echo "$PROMPT_LOWER" | grep -qE '\bbloat\b|\btoo (big|large|much)\b|\bminimize\b|\bsimplify\b|\bover.?engineer'; then
-  SUGGESTION="RECOMMENDED: Invoke /minimize to identify unnecessary complexity."
   PRIORITY="should"
 elif echo "$PROMPT_LOWER" | grep -qE '\bunclear\b|\bmultiple (approach|option|way)|\bnot sure (how|which|what)\b|\bbest (approach|way)\b|\bbrainstorm\b|\bhow should (we|i)\b'; then
   SUGGESTION="RECOMMENDED: Invoke /brainstorm to capture context before planning."

@@ -5,7 +5,7 @@ Shared execution sequence for all workflow skills.
 ## Core Sequence
 
 ```
-/write-tests → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
+/write-tests → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 ```
 
 ## Decision Matrix
@@ -14,13 +14,17 @@ Shared execution sequence for all workflow skills.
 |------|---------|-------------|--------|
 | /write-tests | Tests written (RED) | Implement code | NO |
 | Implement | Code written | Update checkboxes | NO |
-| Checkboxes | Updated (TASK + PLAN) | Run code-critic | NO |
-| code-critic | APPROVE | Run codex | NO |
+| Checkboxes | Updated (TASK + PLAN) | Run code-critic + minimizer (parallel) | NO |
+| code-critic | APPROVE | Wait for minimizer | NO |
 | code-critic | REQUEST_CHANGES | Fix and re-run | NO |
 | code-critic | NEEDS_DISCUSSION | Ask user | YES |
 | code-critic | 3rd failure | Ask user | YES |
+| minimizer | APPROVE | Wait for code-critic | NO |
+| minimizer | REQUEST_CHANGES | Fix and re-run | NO |
+| minimizer | 3rd failure | Ask user | YES |
+| code-critic + minimizer | Both APPROVE | Run codex | NO |
 | codex | APPROVE (no changes) | Run /pre-pr-verification | NO |
-| codex | APPROVE (with changes) | Re-run code-critic | NO |
+| codex | APPROVE (with changes) | Re-run code-critic + minimizer | NO |
 | codex | REQUEST_CHANGES | Fix and re-run | NO |
 | codex | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | All pass | Create commit and PR | NO |
@@ -43,7 +47,7 @@ Shared execution sequence for all workflow skills.
 |-------|---------------|--------------|
 | Investigation (codex debug, gemini) | Always | Full findings |
 | Verification (test-runner, check-runner, security-scanner) | Never | Summary only |
-| Iterative (code-critic, codex) | NEEDS_DISCUSSION or 3 failures | Verdict each iteration |
+| Iterative (code-critic, minimizer, codex) | NEEDS_DISCUSSION or 3 failures | Verdict each iteration |
 
 ## Verification Principle
 

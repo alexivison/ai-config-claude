@@ -10,5 +10,6 @@ find /tmp -name "claude-skill-*" -mtime +1 -delete 2>/dev/null
 find /tmp -name "claude-code-critic-*" -mtime +1 -delete 2>/dev/null
 find /tmp -name "claude-tests-passed-*" -mtime +1 -delete 2>/dev/null
 find /tmp -name "claude-checks-passed-*" -mtime +1 -delete 2>/dev/null
+find /tmp -name "claude-minimizer-*" -mtime +1 -delete 2>/dev/null
 
 echo '{}'

@@ -129,6 +129,11 @@ if [ "$agent_type" = "code-critic" ] && [ "$verdict" = "APPROVED" ]; then
   touch "/tmp/claude-code-critic-$session_id"
 fi
 
+# minimizer: only APPROVE creates marker (must pass before PR)
+if [ "$agent_type" = "minimizer" ] && [ "$verdict" = "APPROVED" ]; then
+  touch "/tmp/claude-minimizer-$session_id"
+fi
+
 # test-runner: only PASS creates marker
 if [ "$agent_type" = "test-runner" ] && [ "$verdict" = "PASS" ]; then
   touch "/tmp/claude-tests-passed-$session_id"

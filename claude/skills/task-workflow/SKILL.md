@@ -25,7 +25,7 @@ State which items were checked before proceeding.
 After passing the gate, execute continuously — **no stopping until PR is created**.
 
 ```
-/write-tests (if needed) → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR
+/write-tests (if needed) → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 ```
 
 ### Step-by-Step
@@ -34,9 +34,9 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 2. **Implement** — Write the code to make tests pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
 4. **Checkboxes** — Update both TASK*.md AND PLAN.md: `- [ ]` → `- [x]` (MANDATORY — both files)
-5. **code-critic** — MANDATORY after implementing. Fix issues until APPROVE
+5. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE
 6. **codex** — Spawn codex agent for combined code + architecture review
-7. **Re-run code-critic** — If Codex made changes, verify conventions
+7. **Re-run code-critic + minimizer** — If Codex made changes, verify conventions and minimalism
 8. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 9. **Commit & PR** — Create commit and draft PR
 

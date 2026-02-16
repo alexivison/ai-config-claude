@@ -4,7 +4,7 @@ When executing a task from TASK*.md, **do not stop until PR is created** (or a v
 
 ## The Flow
 
-**Code workflow:** `/write-tests → implement → checkboxes → code-critic → codex → /pre-pr-verification → commit → PR`
+**Code workflow:** `/write-tests → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR`
 
 **Plan workflow:** `/brainstorm (if needed) → /plan-workflow → codex → plan PR`
 
@@ -17,14 +17,14 @@ See [execution-core.md](execution-core.md) for the complete matrix.
 | Pattern | Correct Action |
 |---------|---------------|
 | "Tests pass." [stop] | Continue to checkboxes/critics |
-| "Code-critic approved." [stop] | Continue to codex |
+| "Code-critic approved." [stop] | Continue to minimizer (or codex if both done) |
 | "All checks pass." [stop] | Continue to commit/PR |
 | "Ready to create PR." [stop] | Just create it |
 | "Should I continue?" | Just continue |
 
 ## Enforcement
 
-**Code PRs** require all markers: pre-pr-verification, code-critic, codex, test-runner, check-runner, security-scanner.
+**Code PRs** require all markers: pre-pr-verification, code-critic, minimizer, codex, test-runner, check-runner, security-scanner.
 
 **Plan PRs** (branch suffix `-plan`) require: codex marker only.
 

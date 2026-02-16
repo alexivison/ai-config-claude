@@ -28,7 +28,7 @@ State which items were checked before proceeding.
 Execute continuously — **no stopping until PR is created**.
 
 ```
-/write-tests (regression) → implement fix → code-critic → codex → /pre-pr-verification → PR
+/write-tests (regression) → implement fix → [code-critic + minimizer] → codex → /pre-pr-verification → PR
 ```
 
 **Note:** Bugfixes typically don't have PLAN.md checkbox updates (they're not part of planned work).
@@ -38,9 +38,9 @@ Execute continuously — **no stopping until PR is created**.
 1. **Regression Test** — Invoke `/write-tests` to write a test that reproduces the bug (RED phase via test-runner)
 2. **Implement Fix** — Fix the bug to make the test pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
-4. **code-critic** — MANDATORY after implementing. Fix issues until APPROVE
+4. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE
 5. **codex** — Spawn codex agent for combined code + architecture review
-6. **Re-run code-critic** — If Codex made changes, verify conventions
+6. **Re-run code-critic + minimizer** — If Codex made changes, verify conventions and minimalism
 7. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 8. **Commit & PR** — Create commit and draft PR
 
