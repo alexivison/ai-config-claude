@@ -9,8 +9,8 @@ Claude Code (Orchestrator — Claude Opus)
     ├── Internal agents (via Task tool)
     │   ├── code-critic, minimizer, security-scanner  (sonnet)
     │   └── test-runner, check-runner                  (haiku)
-    ├── Codex CLI wrapper (sonnet → GPT-5.3 xhigh reasoning)
-    └── Gemini CLI wrapper (sonnet → Gemini Pro/Flash)
+    ├── Wizard — Codex CLI wrapper (sonnet → GPT-5.3 xhigh reasoning)
+    └── Sage — Gemini CLI wrapper (sonnet → Gemini Pro/Flash)
 ```
 
 ## Installation
@@ -33,7 +33,7 @@ Symlinks: `~/.claude` → `claude/`, `~/.gemini` → `gemini/`, `~/.codex` → `
 ## Workflow
 
 ```
-/write-tests → implement → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
+/write-tests → implement → [code-critic + minimizer] → wizard → /pre-pr-verification → commit → PR
 ```
 
 PR gate (`hooks/pr-gate.sh`) blocks until all required markers exist in `/tmp/claude-*-{session_id}`.

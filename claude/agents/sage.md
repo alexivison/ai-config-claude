@@ -1,5 +1,5 @@
 ---
-name: gemini
+name: sage
 description: "Gemini-powered analysis agent. Uses 2M token context for large logs (gemini-3-pro-preview), Flash model for web search synthesis (gemini-3-flash-preview)."
 model: sonnet
 tools: Bash, Glob, Grep, Read, Write, WebSearch, WebFetch

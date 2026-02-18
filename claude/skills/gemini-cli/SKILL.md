@@ -1,6 +1,6 @@
 ---
 name: gemini-cli
-description: Procedural CLI invocation details for the Gemini agent
+description: Procedural CLI invocation details for the sage agent
 user-invocable: false
 ---
 
