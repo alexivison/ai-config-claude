@@ -1,3 +1,12 @@
+---
+name: planning
+description: >
+  Feature planning from discovery through task breakdown. Produces design docs
+  and implementation plans, then submits a draft PR for review. Use when asked
+  to plan a feature, create a design doc, break work into tasks, or produce
+  SPEC.md / DESIGN.md / PLAN.md / TASK files.
+---
+
 # Planning Skill
 
 Feature planning from discovery through task breakdown. Produces design docs and implementation plans, then submits a draft PR for Claude to review.

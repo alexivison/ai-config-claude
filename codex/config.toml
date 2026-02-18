@@ -10,13 +10,13 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 
 [tui]
-alternate_screen = true
+alternate_screen = "always"
 animations = true
 notifications = true
 
 [features]
 skills = true
-collab = true
+multi_agent = true
 
 [mcp_servers.notion]
 url = "https://mcp.notion.com/mcp"
