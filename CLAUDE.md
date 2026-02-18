@@ -51,12 +51,12 @@ Declarative definitions specifying model, tools, and preloaded skills. Spawned v
 | Agent | Purpose | Model |
 |-------|---------|-------|
 | code-critic | Code review, iterates to APPROVE | sonnet |
-| minimizer | Bloat/complexity review, iterates to APPROVE | haiku |
-| codex | Deep reasoning via Codex CLI | haiku wrapper |
-| gemini | Log analysis + web research via Gemini CLI | haiku wrapper |
+| minimizer | Bloat/complexity review, iterates to APPROVE | sonnet |
+| codex | Deep reasoning via Codex CLI | sonnet wrapper |
+| gemini | Log analysis + web research via Gemini CLI | sonnet wrapper |
 | test-runner | Run tests, return failures only | haiku |
 | check-runner | Typecheck/lint, return errors only | haiku |
-| security-scanner | Vulnerability + secret scanning | haiku |
+| security-scanner | Vulnerability + secret scanning | sonnet |
 
 ### Skills (`claude/skills/*/SKILL.md`)
 
