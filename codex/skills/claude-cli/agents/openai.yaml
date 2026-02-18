@@ -1,0 +1,3 @@
+interface:
+  display_name: "Claude CLI"
+  short_description: "Invoke Claude CLI safely from Codex"

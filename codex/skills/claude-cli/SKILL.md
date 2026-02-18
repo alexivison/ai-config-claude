@@ -1,9 +1,9 @@
 ---
-name: call-claude
+name: claude-cli
 description: Invoke Claude CLI from Codex for one-shot analysis, review, synthesis, or structured outputs. Use when the user explicitly asks to consult Claude (for example "ask Claude to review this") or when a second-model opinion from Opus/Sonnet is needed without leaving Codex.
 ---
 
-# Call Claude
+# Claude CLI
 
 ## Overview
 
@@ -31,7 +31,7 @@ Run Claude non-interactively from Codex and return the result in the current ses
 ### General one-shot analysis (safe default)
 
 ```bash
-codex/skills/call-claude/scripts/call_claude.sh \
+codex/skills/claude-cli/scripts/call_claude.sh \
   --model opus \
   --prompt "Analyze this proposal and list the top 5 risks with mitigations: ..."
 ```
@@ -39,7 +39,7 @@ codex/skills/call-claude/scripts/call_claude.sh \
 ### Plan/document review from files
 
 ```bash
-codex/skills/call-claude/scripts/call_claude.sh \
+codex/skills/claude-cli/scripts/call_claude.sh \
   --model opus \
   --tools Read \
   --permission-mode bypassPermissions \
@@ -49,7 +49,7 @@ codex/skills/call-claude/scripts/call_claude.sh \
 ### Structured JSON result
 
 ```bash
-codex/skills/call-claude/scripts/call_claude.sh \
+codex/skills/claude-cli/scripts/call_claude.sh \
   --model opus \
   --output-format json \
   --json-schema '{"type":"object","properties":{"verdict":{"type":"string"},"findings":{"type":"array","items":{"type":"string"}}},"required":["verdict","findings"]}' \
