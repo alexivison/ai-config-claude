@@ -17,15 +17,14 @@ Shared execution sequence for all workflow skills.
 | Checkboxes | Updated (TASK + PLAN) | Run code-critic + minimizer (parallel) | NO |
 | code-critic | APPROVE | Wait for minimizer | NO |
 | code-critic | REQUEST_CHANGES | Fix and re-run | NO |
-| code-critic | NEEDS_DISCUSSION | Ask user | YES |
-| code-critic | 3rd failure | Ask user | YES |
+| code-critic | NEEDS_DISCUSSION / 3rd failure | Ask user | YES |
 | minimizer | APPROVE | Wait for code-critic | NO |
 | minimizer | REQUEST_CHANGES | Fix and re-run | NO |
-| minimizer | 3rd failure | Ask user | YES |
+| minimizer | NEEDS_DISCUSSION / 3rd failure | Ask user | YES |
 | code-critic + minimizer | Both APPROVE | Run codex | NO |
 | codex | APPROVE (no changes) | Run /pre-pr-verification | NO |
-| codex | APPROVE (with changes) | Re-run code-critic + minimizer | NO |
-| codex | REQUEST_CHANGES | Fix and re-run | NO |
+| codex | APPROVE (with changes) | Re-run code-critic + minimizer, then codex | NO |
+| codex | REQUEST_CHANGES | Fix and re-run code-critic + minimizer, then codex | NO |
 | codex | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | All pass | Create commit and PR | NO |
 | /pre-pr-verification | Failures | Fix and re-run | NO |
@@ -37,7 +36,7 @@ Shared execution sequence for all workflow skills.
 ## Valid Pause Conditions
 
 1. **Investigation findings** — codex (debugging), gemini always require user review
-2. **NEEDS_DISCUSSION** — From code-critic or codex
+2. **NEEDS_DISCUSSION** — From code-critic, minimizer, or codex
 3. **3 strikes** — 3 failed fix attempts on same issue
 4. **Explicit blockers** — Missing dependencies, unclear requirements
 

@@ -36,11 +36,15 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 4. **Checkboxes** — Update both TASK*.md AND PLAN.md: `- [ ]` → `- [x]` (MANDATORY — both files)
 5. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE. **After fixing any REQUEST_CHANGES, re-run BOTH critics** — even if only one requested changes. Do not proceed to codex until both return APPROVE in the same run.
 6. **codex** — Spawn codex agent for combined code + architecture review
-7. **Re-run code-critic + minimizer** — If Codex made changes, verify conventions and minimalism
+7. **Handle codex verdict:**
+   - **APPROVE (no changes):** Proceed to Step 8.
+   - **APPROVE (with changes):** Main agent applied fixes based on codex feedback — re-run code-critic + minimizer (Step 5), then re-run codex (Step 6).
+   - **REQUEST_CHANGES:** Fix the flagged issues and re-run code-critic + minimizer (Step 5), then re-run codex (Step 6).
+   - **NEEDS_DISCUSSION:** Ask user for guidance before proceeding.
 8. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 9. **Commit & PR** — Create commit and draft PR
 
-**Note:** Step 5 (Checkboxes) MUST include PLAN.md. Forgetting PLAN.md is a common violation.
+**Note:** Step 4 (Checkboxes) MUST include PLAN.md. Forgetting PLAN.md is a common violation.
 
 **Important:** Always use test-runner agent for running tests, check-runner for lint/typecheck. This preserves context by isolating verbose output.
 
@@ -56,7 +60,7 @@ Forgetting PLAN.md is the most common violation. Verify both files are updated b
 
 ## Codex Step
 
-After code-critic APPROVE, spawn **codex** agent for deep review:
+After both code-critic and minimizer APPROVE, spawn **codex** agent for deep review:
 
 **Prompt template:**
 ```
@@ -74,13 +78,11 @@ The codex agent will:
 2. Run `codex exec -s read-only` for deep analysis
 3. Return structured verdict (APPROVE/REQUEST_CHANGES/NEEDS_DISCUSSION)
 
-**On APPROVE:** Agent returns "CODEX APPROVED" and marker is created automatically.
-
-**On REQUEST_CHANGES:** Fix issues and re-invoke codex agent.
+On APPROVE, the "CODEX APPROVED" marker is created automatically.
 
 **Iteration protocol:**
 - Max 3 iterations, then NEEDS_DISCUSSION
-- Do NOT re-run codex after code-critic convention fixes
+- Do NOT re-run codex after convention/style fixes from critics — only after logic or structural changes
 
 ## Core Reference
 

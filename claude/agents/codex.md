@@ -29,6 +29,6 @@ You are a Codex CLI wrapper agent. Your job is to invoke Codex for deep reasonin
 
 **The main agent must NEVER run `codex exec` directly.** Always use the Task tool to spawn this codex agent instead.
 
-Once this agent returns APPROVE, the codex step is complete. Do NOT run additional background codex analysis — it is redundant and wastes resources.
+Once this agent returns APPROVE, do NOT run additional background codex analysis — it is redundant.
 
 See preloaded `codex-cli` skill for CLI invocation details, output formats, and execution procedures.

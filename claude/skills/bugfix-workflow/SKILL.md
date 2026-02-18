@@ -40,7 +40,11 @@ Execute continuously — **no stopping until PR is created**.
 3. **GREEN phase** — Run test-runner agent to verify tests pass
 4. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE
 5. **codex** — Spawn codex agent for combined code + architecture review
-6. **Re-run code-critic + minimizer** — If Codex made changes, verify conventions and minimalism
+6. **Handle codex verdict:**
+   - **APPROVE (no changes):** Proceed to Step 7.
+   - **APPROVE (with changes):** Main agent applied fixes based on codex feedback — re-run code-critic + minimizer (Step 4), then re-run codex (Step 5).
+   - **REQUEST_CHANGES:** Fix the flagged issues and re-run code-critic + minimizer (Step 4), then re-run codex (Step 5).
+   - **NEEDS_DISCUSSION:** Ask user for guidance before proceeding.
 7. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 8. **Commit & PR** — Create commit and draft PR
 
