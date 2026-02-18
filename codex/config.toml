@@ -22,7 +22,3 @@ url = "https://mcp.linear.app/mcp"
 
 [mcp_servers.figma]
 url = "https://mcp.figma.com/mcp"
-
-[[skills.config]]
-enabled = true
-path = ".codex/skills/context-loader"
