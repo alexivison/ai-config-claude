@@ -27,7 +27,7 @@ State which items were checked before proceeding.
 Execute continuously — **no stopping until PR is created**.
 
 ```
-/write-tests (regression) → implement fix → [code-critic + minimizer] → wizard → /pre-pr-verification → PR
+/write-tests (regression) → implement fix → [code-critic + minimizer] → wizard → /pre-pr-verification → commit → PR
 ```
 
 **Note:** Bugfixes typically don't have PLAN.md checkbox updates (they're not part of planned work).
@@ -37,9 +37,13 @@ Execute continuously — **no stopping until PR is created**.
 1. **Regression Test** — Invoke `/write-tests` to write a test that reproduces the bug (RED phase via test-runner)
 2. **Implement Fix** — Fix the bug to make the test pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
-4. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE
+4. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE. **After fixing any REQUEST_CHANGES, re-run BOTH critics.** If either returns NEEDS_DISCUSSION, ask user for guidance.
 5. **wizard** — Spawn wizard agent for combined code + architecture review
-6. **Re-run code-critic + minimizer** — If wizard made changes, verify conventions and minimalism
+6. **Handle wizard verdict:**
+   - **APPROVE (no changes):** Proceed to Step 7.
+   - **APPROVE (with changes):** Apply wizard's suggested fixes → re-run code-critic + minimizer (Step 4). Re-run wizard (Step 5) only if logic or structural changes were made; skip if changes were convention/style only.
+   - **REQUEST_CHANGES:** Fix the flagged issues and re-run code-critic + minimizer (Step 4), then re-run wizard (Step 5).
+   - **NEEDS_DISCUSSION:** Ask user for guidance before proceeding.
 7. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 8. **Commit & PR** — Create commit and draft PR
 

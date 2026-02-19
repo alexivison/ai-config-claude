@@ -1,6 +1,6 @@
 # Execution Core Reference
 
-Shared execution sequence for all workflow skills.
+Shared execution sequence for all workflow skills. Bugfix-workflow omits the checkboxes step (no PLAN.md for bugfixes).
 
 ## Core Sequence
 
@@ -16,16 +16,15 @@ Shared execution sequence for all workflow skills.
 | Implement | Code written | Update checkboxes | NO |
 | Checkboxes | Updated (TASK + PLAN) | Run code-critic + minimizer (parallel) | NO |
 | code-critic | APPROVE | Wait for minimizer | NO |
-| code-critic | REQUEST_CHANGES | Fix and re-run | NO |
-| code-critic | NEEDS_DISCUSSION | Ask user | YES |
-| code-critic | 3rd failure | Ask user | YES |
+| code-critic | REQUEST_CHANGES | Fix and re-run both critics | NO |
+| code-critic | NEEDS_DISCUSSION / 5th iteration | Ask user | YES |
 | minimizer | APPROVE | Wait for code-critic | NO |
-| minimizer | REQUEST_CHANGES | Fix and re-run | NO |
-| minimizer | 3rd failure | Ask user | YES |
+| minimizer | REQUEST_CHANGES | Fix and re-run both critics | NO |
+| minimizer | NEEDS_DISCUSSION / 5th iteration | Ask user | YES |
 | code-critic + minimizer | Both APPROVE | Run wizard | NO |
 | wizard | APPROVE (no changes) | Run /pre-pr-verification | NO |
-| wizard | APPROVE (with changes) | Re-run code-critic + minimizer | NO |
-| wizard | REQUEST_CHANGES | Fix and re-run | NO |
+| wizard | APPROVE (with changes) | Re-run code-critic + minimizer; re-run wizard unless changes were style-only | NO |
+| wizard | REQUEST_CHANGES | Fix, re-run code-critic + minimizer, then wizard | NO |
 | wizard | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | All pass | Create commit and PR | NO |
 | /pre-pr-verification | Failures | Fix and re-run | NO |
@@ -37,7 +36,7 @@ Shared execution sequence for all workflow skills.
 ## Valid Pause Conditions
 
 1. **Investigation findings** — wizard (debugging) always requires user review
-2. **NEEDS_DISCUSSION** — From code-critic or wizard
+2. **NEEDS_DISCUSSION** — From code-critic, minimizer, or wizard
 3. **3 strikes** — 3 failed fix attempts on same issue
 4. **Explicit blockers** — Missing dependencies, unclear requirements
 
@@ -47,7 +46,7 @@ Shared execution sequence for all workflow skills.
 |-------|---------------|--------------|
 | Investigation (wizard debug) | Always | Full findings |
 | Verification (test-runner, check-runner, security-scanner) | Never | Summary only |
-| Iterative (code-critic, minimizer, wizard) | NEEDS_DISCUSSION or 3 failures | Verdict each iteration |
+| Iterative (code-critic, minimizer, wizard) | NEEDS_DISCUSSION or 5th iteration | Verdict each iteration |
 
 ## Verification Principle
 

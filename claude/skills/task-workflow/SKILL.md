@@ -34,13 +34,17 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 2. **Implement** — Write the code to make tests pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
 4. **Checkboxes** — Update both TASK*.md AND PLAN.md: `- [ ]` → `- [x]` (MANDATORY — both files)
-5. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE. **After fixing any REQUEST_CHANGES, re-run BOTH critics** — even if only one requested changes. Do not proceed to wizard until both return APPROVE in the same run.
+5. **code-critic + minimizer** — MANDATORY after implementing. Run in parallel. Fix issues until both APPROVE. **After fixing any REQUEST_CHANGES, re-run BOTH critics** — even if only one requested changes. If either returns NEEDS_DISCUSSION, ask user for guidance. Do not proceed to wizard until both return APPROVE in the same run.
 6. **wizard** — Spawn wizard agent for combined code + architecture review
-7. **Re-run code-critic + minimizer** — If wizard made changes, verify conventions and minimalism
+7. **Handle wizard verdict:**
+   - **APPROVE (no changes):** Proceed to Step 8.
+   - **APPROVE (with changes):** Apply wizard's suggested fixes → re-run code-critic + minimizer (Step 5). Re-run wizard (Step 6) only if logic or structural changes were made; skip if changes were convention/style only.
+   - **REQUEST_CHANGES:** Fix the flagged issues and re-run code-critic + minimizer (Step 5), then re-run wizard (Step 6).
+   - **NEEDS_DISCUSSION:** Ask user for guidance before proceeding.
 8. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 9. **Commit & PR** — Create commit and draft PR
 
-**Note:** Step 5 (Checkboxes) MUST include PLAN.md. Forgetting PLAN.md is a common violation.
+**Note:** Step 4 (Checkboxes) MUST include PLAN.md. Forgetting PLAN.md is a common violation.
 
 **Important:** Always use test-runner agent for running tests, check-runner for lint/typecheck. This preserves context by isolating verbose output.
 
@@ -56,14 +60,14 @@ Forgetting PLAN.md is the most common violation. Verify both files are updated b
 
 ## Wizard Step
 
-After code-critic APPROVE, spawn **wizard** agent for deep review:
+After both code-critic and minimizer APPROVE, spawn **wizard** agent for deep review:
 
 **Prompt template:**
 ```
 Review uncommitted changes for bugs, security, and architectural fit.
 
 **Task:** Code + Architecture Review
-**Iteration:** {N} of 3
+**Iteration:** {N} of 5
 **Previous feedback:** {summary if iteration > 1}
 
 Check imports, callers, and related files. Return verdict with file:line issues.
@@ -74,13 +78,11 @@ The wizard agent will:
 2. Run `codex exec -s read-only` for deep analysis
 3. Return structured verdict (APPROVE/REQUEST_CHANGES/NEEDS_DISCUSSION)
 
-**On APPROVE:** Agent returns "CODEX APPROVED" and marker is created automatically.
-
-**On REQUEST_CHANGES:** Fix issues and re-invoke wizard agent.
+On APPROVE, the "CODEX APPROVED" marker is created automatically.
 
 **Iteration protocol:**
-- Max 3 iterations, then NEEDS_DISCUSSION
-- Do NOT re-run wizard after code-critic convention fixes
+- Max 5 iterations, then NEEDS_DISCUSSION
+- Do NOT re-run wizard after convention/style fixes from critics — only after logic or structural changes
 
 ## Core Reference
 

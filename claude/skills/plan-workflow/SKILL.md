@@ -95,7 +95,7 @@ After evaluation passes, run wizard agent:
 Review this implementation plan for architectural soundness and feasibility.
 
 **Task:** Plan Review
-**Iteration:** {N} of 3
+**Iteration:** {N} of 5
 
 Evaluate: requirements clarity, design soundness, task scopes (~200 LOC),
 edge cases, dependency ordering, data flow integrity, cross-task coverage.
@@ -108,6 +108,10 @@ Return structured verdict. On approval: "CODEX APPROVED"
 | APPROVE | Create PR |
 | REQUEST_CHANGES | Fix, re-run |
 | NEEDS_DISCUSSION | Ask user |
+
+**Iteration protocol:**
+- Max 5 iterations, then NEEDS_DISCUSSION
+- Pass `previous_feedback` summary on iteration 2+
 
 ## Review Checklist
 
