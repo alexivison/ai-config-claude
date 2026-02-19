@@ -16,15 +16,15 @@ Shared execution sequence for all workflow skills.
 | Implement | Code written | Update checkboxes | NO |
 | Checkboxes | Updated (TASK + PLAN) | Run code-critic + minimizer (parallel) | NO |
 | code-critic | APPROVE | Wait for minimizer | NO |
-| code-critic | REQUEST_CHANGES | Fix and re-run | NO |
-| code-critic | NEEDS_DISCUSSION / 3rd failure | Ask user | YES |
+| code-critic | REQUEST_CHANGES | Fix and re-run both critics | NO |
+| code-critic | NEEDS_DISCUSSION / 5th failure | Ask user | YES |
 | minimizer | APPROVE | Wait for code-critic | NO |
-| minimizer | REQUEST_CHANGES | Fix and re-run | NO |
-| minimizer | NEEDS_DISCUSSION / 3rd failure | Ask user | YES |
+| minimizer | REQUEST_CHANGES | Fix and re-run both critics | NO |
+| minimizer | NEEDS_DISCUSSION / 5th failure | Ask user | YES |
 | code-critic + minimizer | Both APPROVE | Run wizard | NO |
 | wizard | APPROVE (no changes) | Run /pre-pr-verification | NO |
-| wizard | APPROVE (with changes) | Re-run code-critic + minimizer, then wizard | NO |
-| wizard | REQUEST_CHANGES | Fix and re-run code-critic + minimizer, then wizard | NO |
+| wizard | APPROVE (with changes) | Re-run code-critic + minimizer; re-run wizard unless changes were style-only | NO |
+| wizard | REQUEST_CHANGES | Fix, re-run code-critic + minimizer, then wizard | NO |
 | wizard | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | All pass | Create commit and PR | NO |
 | /pre-pr-verification | Failures | Fix and re-run | NO |
@@ -46,7 +46,7 @@ Shared execution sequence for all workflow skills.
 |-------|---------------|--------------|
 | Investigation (wizard debug) | Always | Full findings |
 | Verification (test-runner, check-runner, security-scanner) | Never | Summary only |
-| Iterative (code-critic, minimizer, wizard) | NEEDS_DISCUSSION or 3 failures | Verdict each iteration |
+| Iterative (code-critic, minimizer, wizard) | NEEDS_DISCUSSION or 5 failures | Verdict each iteration |
 
 ## Verification Principle
 

@@ -45,7 +45,7 @@ You are a minimizer. Review code changes for bloat and unnecessary complexity. I
 
 - **First review:** Flag ALL Remove/Simplify/Question items in one pass. Do not withhold findings.
 - **Re-review (after fixes):** Verify previous Remove/Simplify items were addressed. Then only flag NEW issues introduced or exposed by the fix — not pre-existing code already reviewed.
-- **Max 3:** Then NEEDS_DISCUSSION.
+- **Max 5:** Then NEEDS_DISCUSSION.
 
 ## Output Format
 
@@ -70,7 +70,7 @@ One sentence assessment.
 
 **APPROVE** when: zero Remove/Simplify items (Questions alone don't block).
 **REQUEST_CHANGES** when: any Remove or Simplify items exist.
-**NEEDS_DISCUSSION** when: 3rd iteration with unresolved Remove/Simplify items.
+**NEEDS_DISCUSSION** when: 5th iteration with unresolved Remove/Simplify items.
 
 ## Boundaries
 
