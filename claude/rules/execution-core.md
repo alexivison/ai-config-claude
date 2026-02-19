@@ -1,6 +1,6 @@
 # Execution Core Reference
 
-Shared execution sequence for all workflow skills.
+Shared execution sequence for all workflow skills. Bugfix-workflow omits the checkboxes step (no PLAN.md for bugfixes).
 
 ## Core Sequence
 
@@ -17,10 +17,10 @@ Shared execution sequence for all workflow skills.
 | Checkboxes | Updated (TASK + PLAN) | Run code-critic + minimizer (parallel) | NO |
 | code-critic | APPROVE | Wait for minimizer | NO |
 | code-critic | REQUEST_CHANGES | Fix and re-run both critics | NO |
-| code-critic | NEEDS_DISCUSSION / 5th failure | Ask user | YES |
+| code-critic | NEEDS_DISCUSSION / 5th iteration | Ask user | YES |
 | minimizer | APPROVE | Wait for code-critic | NO |
 | minimizer | REQUEST_CHANGES | Fix and re-run both critics | NO |
-| minimizer | NEEDS_DISCUSSION / 5th failure | Ask user | YES |
+| minimizer | NEEDS_DISCUSSION / 5th iteration | Ask user | YES |
 | code-critic + minimizer | Both APPROVE | Run wizard | NO |
 | wizard | APPROVE (no changes) | Run /pre-pr-verification | NO |
 | wizard | APPROVE (with changes) | Re-run code-critic + minimizer; re-run wizard unless changes were style-only | NO |
@@ -46,7 +46,7 @@ Shared execution sequence for all workflow skills.
 |-------|---------------|--------------|
 | Investigation (wizard debug) | Always | Full findings |
 | Verification (test-runner, check-runner, security-scanner) | Never | Summary only |
-| Iterative (code-critic, minimizer, wizard) | NEEDS_DISCUSSION or 5 failures | Verdict each iteration |
+| Iterative (code-critic, minimizer, wizard) | NEEDS_DISCUSSION or 5th iteration | Verdict each iteration |
 
 ## Verification Principle
 

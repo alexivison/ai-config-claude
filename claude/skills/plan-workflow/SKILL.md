@@ -109,6 +109,10 @@ Return structured verdict. On approval: "CODEX APPROVED"
 | REQUEST_CHANGES | Fix, re-run |
 | NEEDS_DISCUSSION | Ask user |
 
+**Iteration protocol:**
+- Max 5 iterations, then NEEDS_DISCUSSION
+- Pass `previous_feedback` summary on iteration 2+
+
 ## Review Checklist
 
 1. Requirements are measurable.
