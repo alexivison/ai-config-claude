@@ -52,22 +52,22 @@ Capture if: repeated or stated as general rule, applies to future sessions, spec
 
 ### Workflow Identification
 
-**Tier 1 (authoritative):** Explicit skill invocations (`task-workflow`, `bugfix-workflow`, `plan-workflow`).
+**Tier 1 (authoritative):** Explicit skill invocations (`task-workflow`, `bugfix-workflow`).
 
-**Tier 2 (fallback):** Heuristic — TASK*.md + implementation = task-workflow, bug + regression test = bugfix-workflow, planning docs only = plan-workflow. Flag as "inferred."
+**Tier 2 (fallback):** Heuristic — TASK*.md + implementation = task-workflow, bug + regression test = bugfix-workflow. Flag as "inferred."
 
 ### Expected Sequences
 
-| Step | task | bugfix | plan |
-|------|:----:|:------:|:----:|
-| /write-tests | C | M | -- |
-| implement | M | M | -- |
-| GREEN (test-runner) | M | M | -- |
-| checkboxes (TASK+PLAN) | M | -- | -- |
-| code-critic | M | M | -- |
-| wizard | M | M | M |
-| /pre-pr-verification | M | M | -- |
-| commit + PR | M | M | M |
+| Step | task | bugfix |
+|------|:----:|:------:|
+| /write-tests | C | M |
+| implement | M | M |
+| GREEN (test-runner) | M | M |
+| checkboxes (TASK+PLAN) | M | -- |
+| code-critic | M | M |
+| wizard | M | M |
+| /pre-pr-verification | M | M |
+| commit + PR | M | M |
 
 M = mandatory, C = conditional, -- = N/A
 

@@ -6,7 +6,6 @@ When executing a task from TASK*.md, **do not stop until PR is created** (or a v
 
 **Code workflow:** `/write-tests → implement → checkboxes → [code-critic + minimizer] → wizard → /pre-pr-verification → commit → PR`
 
-**Plan workflow:** `/brainstorm (if needed) → /plan-workflow → wizard → plan PR`
 
 ## Decision Matrix
 
@@ -25,8 +24,6 @@ See [execution-core.md](execution-core.md) for the complete matrix.
 ## Enforcement
 
 **Code PRs** require all markers: pre-pr-verification, code-critic, minimizer, wizard, test-runner, check-runner, security-scanner.
-
-**Plan PRs** (branch suffix `-plan`) require: wizard marker only.
 
 ## Checkpoint Markers
 

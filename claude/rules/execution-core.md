@@ -28,9 +28,6 @@ Shared execution sequence for all workflow skills. Bugfix-workflow omits the che
 | wizard | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | All pass | Create commit and PR | NO |
 | /pre-pr-verification | Failures | Fix and re-run | NO |
-| wizard (plan) | APPROVE | Create plan PR | NO |
-| wizard (plan) | REQUEST_CHANGES | Fix and re-run | NO |
-| wizard (plan) | NEEDS_DISCUSSION | Ask user | YES |
 | security-scanner | HIGH/CRITICAL | Ask user | YES |
 
 ## Valid Pause Conditions

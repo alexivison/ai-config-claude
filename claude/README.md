@@ -34,7 +34,6 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 
 | Skill | Triggers |
 |-------|----------|
-| `brainstorm` | New features with unclear requirements, multiple approaches |
 | `address-pr` | "address PR comments", "check feedback" |
 | `autoskill` | "learn from this session", "remember this pattern", `/autoskill` |
 
@@ -43,8 +42,6 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 | Skill | Triggers |
 |-------|----------|
 | `task-workflow` | TASK*.md execution, "pick up task", "from the plan" |
-| `design-workflow` | New feature (no DESIGN.md) — Phase 1: creates SPEC.md + DESIGN.md |
-| `plan-workflow` | DESIGN.md exists — Phase 2: creates PLAN.md + TASKs from approved design |
 | `bugfix-workflow` | "bug", "broken", "error", "debug", "fix" |
 
 ### Reference Skills (loaded by agents/workflows)

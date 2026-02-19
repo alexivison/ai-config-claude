@@ -25,31 +25,6 @@ fi
 # Only check PR creation (not git push - allow pushing during development)
 # Note: Don't anchor with ^ since command may be chained (e.g., "cd ... && gh pr create")
 if echo "$COMMAND" | grep -qE 'gh pr create'; then
-  # Detect plan PR by branch name (*-plan suffix)
-  # Uses suffix to preserve Linear convention: ENG-123-feature-plan
-  # Note: Can't use "only doc files" detection because task PRs also update PLAN.md checkboxes
-  BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-
-  if echo "$BRANCH_NAME" | grep -qE '\-plan$'; then
-    # Plan PR - need wizard (codex) marker only
-    CODEX_MARKER="/tmp/claude-codex-$SESSION_ID"
-
-    if [ ! -f "$CODEX_MARKER" ]; then
-      cat << EOF
-{
-  "hookSpecificOutput": {
-    "permissionDecision": "deny",
-    "permissionDecisionReason": "BLOCKED: Plan PR requires wizard APPROVE. Missing: wizard"
-  }
-}
-EOF
-      exit 0
-    fi
-    # Plan PR approved - allow
-    echo '{}'
-    exit 0
-  fi
-
   # Code PR - require all verification markers
   VERIFY_MARKER="/tmp/claude-pr-verified-$SESSION_ID"
   SECURITY_MARKER="/tmp/claude-security-scanned-$SESSION_ID"

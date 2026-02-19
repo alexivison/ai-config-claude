@@ -34,19 +34,6 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bbug\b|\bbroken\b|\berror\b|\bnot work|\b
   SUGGESTION="MANDATORY: Invoke bugfix-workflow skill FIRST, before fetching tickets, reading code, or any investigation. The workflow itself handles investigation steps."
   PRIORITY="must"
 
-# plan-workflow: Explicit task-breakdown triggers (check BEFORE general feature keywords)
-# Keyword-only heuristic — actual DESIGN.md validation is in the skill entry gate.
-elif echo "$PROMPT_LOWER" | grep -qE '\btask breakdown\b|\bbreak.*(design|plan) into tasks\b|\bcreate tasks from\b|\bplan from design\b|\bplan-workflow\b'; then
-  SUGGESTION="MANDATORY: Invoke plan-workflow skill. Create task breakdown (PLAN.md + TASKs) from the approved DESIGN.md."
-  PRIORITY="must"
-
-# design-workflow: New feature keywords (default entry point for two-phase planning)
-# The skill entry gate redirects to plan-workflow if DESIGN.md already exists.
-# No filesystem or prompt-content detection here — skills own the routing contract.
-elif echo "$PROMPT_LOWER" | grep -qE '\bnew feature\b|\bimplement\b|\bbuild\b|\bcreate\b|\badd (a |the |new )?[a-z]+\b|\bplan\b'; then
-  SUGGESTION="MANDATORY: Invoke design-workflow skill (Phase 1). Create SPEC.md + DESIGN.md. If DESIGN.md already exists, the skill redirects to plan-workflow."
-  PRIORITY="must"
-
 # Other MUST skills
 elif echo "$PROMPT_LOWER" | grep -qE '\bcreate pr\b|\bmake pr\b|\bready for pr\b|\bopen pr\b|\bsubmit pr\b'; then
   SUGGESTION="MANDATORY: Run code-critic + minimizer + wizard + /pre-pr-verification BEFORE creating PR. PR gate will block without these."
@@ -64,9 +51,6 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bsecurity\b|\bvulnerab\b|\baudit\b|\bsecr
   PRIORITY="should"
 elif echo "$PROMPT_LOWER" | grep -qE '\bpr comment|\breview(er)? (comment|feedback|request)|\baddress (the |this |pr )?feedback|\bfix.*comment|\brespond to.*review'; then
   SUGGESTION="RECOMMENDED: Invoke /address-pr to systematically address comments."
-  PRIORITY="should"
-elif echo "$PROMPT_LOWER" | grep -qE '\bunclear\b|\bmultiple (approach|option|way)|\bnot sure (how|which|what)\b|\bbest (approach|way)\b|\bbrainstorm\b|\bhow should (we|i)\b'; then
-  SUGGESTION="RECOMMENDED: Invoke /brainstorm to capture context before planning."
   PRIORITY="should"
 elif echo "$PROMPT_LOWER" | grep -qE '\blearn from (this|session)\b|\bremember (this|that)\b|\bsave (this |that |)preference\b|\bextract pattern\b|/autoskill'; then
   SUGGESTION="RECOMMENDED: Invoke /autoskill to learn from this session."
