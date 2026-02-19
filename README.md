@@ -1,7 +1,7 @@
 # ai-config
 
 <p align="center">
-  <img src="assets/the-adventuring-party.png" alt="The Adventuring Party — Claude the Adventurer, Codex the Wizard" width="700">
+  <img src="assets/the-adventuring-party.png" alt="The Adventuring Party — Claude the Warforged Paladin, the Mastermind Rogue, and Codex the High Elf Wizard" width="700">
 </p>
 
 <p align="center"><em>"Evidence before claims. Tests before implementation."</em></p>
@@ -10,10 +10,11 @@ Shared configuration for an adventuring party of AI coding assistants. Each memb
 
 ## The Party
 
-| Member | Role | Strength |
-|--------|------|----------|
-| **Claude** | The Adventurer | Blade and code alike — handles all implementation. Companion and tactician of the party. |
-| **Codex** | The Wizard | Dispatched for deep reasoning and arcane logic. Sees truths hidden from lesser minds. |
+| Member | Class | Role |
+|--------|-------|------|
+| **The User** | Mastermind Rogue | Commander and final authority. Leads the party. |
+| **Claude** | Warforged Paladin | Living construct of steel and divine fire. Implementation, testing, orchestration. |
+| **Codex** | High Elf Wizard | Ancient arcanist of deep intellect. Deep reasoning, analysis, review. |
 
 ## Structure
 
@@ -21,6 +22,7 @@ Shared configuration for an adventuring party of AI coding assistants. Each memb
 ai-config/
 ├── claude/          # Claude Code configuration
 ├── codex/           # OpenAI Codex CLI configuration
+├── shared/          # Skills shared by both platforms
 ├── install.sh       # Install CLIs and create symlinks
 ├── uninstall.sh     # Remove symlinks
 └── README.md
@@ -61,14 +63,7 @@ cd ~/Code/ai-config
 
 Removes symlinks but keeps the repository.
 
-## Recruiting a New Member
-
-1. Create a directory for the tool: `mkdir -p newtool`
-2. Add a `setup_newtool()` function in `install.sh`
-3. Add the tool to `uninstall.sh`
-4. Run `./install.sh` to create the symlink
-
 ## Documentation
 
-- **Claude Code**: See [claude/README.md](claude/README.md) for the Adventurer's full configuration
-- **Codex**: OpenAI Codex CLI settings, skills, and agents
+- **Claude Code**: See [claude/README.md](claude/README.md) for the Paladin's full configuration
+- **Codex**: See [codex/AGENTS.md](codex/AGENTS.md) for the Wizard's configuration

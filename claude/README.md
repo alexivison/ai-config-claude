@@ -36,6 +36,7 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 |-------|----------|
 | `address-pr` | "address PR comments", "check feedback" |
 | `autoskill` | "learn from this session", "remember this pattern", `/autoskill` |
+| `pr-descriptions` | Auto-loaded by workflows when creating PRs |
 
 ### Workflow Orchestrators (auto-invoked)
 
@@ -64,7 +65,6 @@ Personal configuration for [Claude Code](https://claude.ai/claude-code) CLI.
 |------|---------|
 | `execution-core.md` | Core sequence, decision matrix, verification principle |
 | `autonomous-flow.md` | Continuous execution rules, valid pause conditions |
-| `development.md` | Git conventions, PRs, worktrees, task management |
 
 ## Workflow
 

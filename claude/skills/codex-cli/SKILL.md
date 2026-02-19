@@ -24,7 +24,7 @@ codex exec review --base main --title "{PR title or change summary}" --json 2>/d
 - `--base main` diffs the current branch against `main` (uses merge-base).
 - `--title` gives GPT-5.3 context about the intent of the changes.
 - `--json` outputs JSONL events; the jq pipeline extracts the final agent message (the actual review findings). Without `--json`, `codex exec review` can silently return nothing.
-- **No custom prompt** — GPT-5.3 uses its own built-in review logic at `xhigh` reasoning. This is intentional: it eliminates prompt-direction loss through the Haiku relay.
+- **No custom prompt** — GPT-5.3 uses its own built-in review logic at `xhigh` reasoning. This is intentional: it eliminates prompt-direction loss through the Sonnet relay.
 - Output after jq: review findings as plain text (no reasoning traces — those are separate JSONL items filtered out by the pipeline).
 
 ### Non-Review Tasks (use `codex exec`)

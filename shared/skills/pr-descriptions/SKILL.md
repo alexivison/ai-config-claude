@@ -1,3 +1,9 @@
+---
+name: pr-descriptions
+description: Rules for writing PR descriptions useful to human and agent reviewers. Covers template discovery, section content, and what to avoid.
+user-invocable: false
+---
+
 # PR Description Rules
 
 How to fill PR descriptions so they are useful to both human and agent reviewers.
@@ -28,7 +34,7 @@ Even if the template doesn't have a dedicated section, state both in the overvie
 
 ```
 Previously: expired tokens returned 200 with empty body
-Now: expired tokens return 401 with `{"error": "token_expired"}`
+Now: expired tokens return 401 with {"error": "token_expired"}
 ```
 
 ### List changed files with rationale
