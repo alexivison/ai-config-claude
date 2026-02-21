@@ -282,15 +282,15 @@ The coordinator's core loop. Replaces the hook-based governance with an explicit
 **States:**
 
 ```
-IDLE → IMPLEMENT → SELF_REVIEW → CRITICS → CODEX_REVIEW → CLAUDE_TRIAGE → VERIFY → PR_READY
-                ↑                                                │
-                └────────────────────────────────────────────────┘
+IDLE → IMPLEMENT → SELF_REVIEW → CRITICS → CODEX_REVIEW → VERIFY → PR_READY
+                ↑                                   │
+                └───────────────────────────────────┘
                      (Claude signals --re-review after fixing)
 
-                                              CLAUDE_TRIAGE → NEEDS_DISCUSSION (iteration cap or Claude escalates)
+                                        CODEX_REVIEW → NEEDS_DISCUSSION (iteration cap or Claude escalates)
 ```
 
-`CLAUDE_TRIAGE` is the critical new state. After Codex produces findings and the coordinator delivers them to Claude, the coordinator **waits in CLAUDE_TRIAGE for Claude to signal a verdict**. Claude reads the full findings, triages them (blocking/non-blocking/out-of-scope), fixes blocking issues if needed, chooses the re-review tier, and then signals the coordinator with the result. The coordinator never decides verdicts.
+`CODEX_REVIEW` has two internal phases: (1) **dispatch** — coordinator sends diff to Codex and waits for findings, and (2) **verdict** — coordinator delivers findings to Claude and waits for Claude's verdict signal. Both phases are passive waiting, so they share a single state. Claude reads the full findings, triages them (blocking/non-blocking/out-of-scope), fixes blocking issues if needed, chooses the re-review tier, and then signals the coordinator with the result. The coordinator never decides verdicts.
 
 Additional states for non-review flows:
 
@@ -309,10 +309,9 @@ IDLE → PLANNING → CODEX_DIALOGUE → PLANNING
 | IMPLEMENT | SELF_REVIEW | Claude signals `self-review-pass` | Claude |
 | SELF_REVIEW | CRITICS | Claude signals `codex-request.json` (implicit self-review pass) | Claude |
 | CRITICS | CODEX_REVIEW | Both critic APPROVE markers exist | Coordinator (polls markers) |
-| CODEX_REVIEW | CLAUDE_TRIAGE | Codex writes findings file | Coordinator (detects file) |
-| CLAUDE_TRIAGE | VERIFY | Claude signals `--approve` | **Claude** |
-| CLAUDE_TRIAGE | IMPLEMENT | Claude signals `--re-review` (fixes needed) | **Claude** |
-| CLAUDE_TRIAGE | NEEDS_DISCUSSION | Claude signals `--needs-discussion` OR iteration cap hit | **Claude** or coordinator (cap) |
+| CODEX_REVIEW | VERIFY | Claude signals `--approve` | **Claude** |
+| CODEX_REVIEW | IMPLEMENT | Claude signals `--re-review` (fixes needed) | **Claude** |
+| CODEX_REVIEW | NEEDS_DISCUSSION | Claude signals `--needs-discussion` OR iteration cap hit | **Claude** or coordinator (cap) |
 | VERIFY | PR_READY | All verification markers present | Coordinator (polls markers) |
 | PR_READY | IDLE | PR created | Claude |
 | NEEDS_DISCUSSION | IDLE | User resolves | User |
@@ -377,9 +376,9 @@ watch_signals() {
     case "$filename" in
       self-review-pass)                    transition_state "CRITICS" ;;
       codex-request.json)                  handle_codex_request ;;
-      codex-verdict-approve.json)          ;; # handled in CLAUDE_TRIAGE case
-      codex-verdict-re-review.json)        ;; # handled in CLAUDE_TRIAGE case
-      codex-verdict-needs-discussion.json) ;; # handled in CLAUDE_TRIAGE case
+      codex-verdict-approve.json)          ;; # handled in CODEX_REVIEW case (phase 2)
+      codex-verdict-re-review.json)        ;; # handled in CODEX_REVIEW case (phase 2)
+      codex-verdict-needs-discussion.json) ;; # handled in CODEX_REVIEW case (phase 2)
       ready-for-pr)                        transition_state "PR_READY" ;;
     esac
     # NOTE: signals are consumed by the core loop's check_for_signal(), not here
@@ -437,8 +436,13 @@ while true; do
       ;;
 
     CODEX_REVIEW)
-      # Coordinator dispatches review to Codex pane, waits for findings file.
-      # Enforces iteration cap BEFORE dispatching.
+      # Two phases, one state:
+      #   Phase 1 (dispatch): Send diff to Codex, wait for findings file.
+      #   Phase 2 (verdict):  Deliver findings to Claude, wait for Claude's verdict signal.
+      #
+      # The coordinator is passive in both phases — it waits for external events.
+
+      # --- Phase 1: Dispatch (if not already dispatched) ---
       if [[ ! -f "$STATE_DIR/codex-review-active" ]]; then
         if ! enforce_iteration_cap; then
           continue  # cap hit — already transitioned to NEEDS_DISCUSSION
@@ -447,13 +451,13 @@ while true; do
         touch "$STATE_DIR/codex-review-active"
       fi
 
-      # Check if Codex has written its findings file
+      # Check if Codex has written its findings file.
+      # dispatch_codex_review handles the wait loop and delivery internally.
+      # Once findings are delivered to Claude, the codex-findings-delivered
+      # marker is written and we fall through to Phase 2.
       check_codex_findings_complete
-      # On completion: delivers findings to Claude, transitions to CLAUDE_TRIAGE
-      ;;
 
-    CLAUDE_TRIAGE)
-      # WAITING FOR CLAUDE. Coordinator does NOT decide the verdict.
+      # --- Phase 2: Wait for Claude's verdict signal ---
       # Claude reads Codex's full findings, triages them, fixes if needed,
       # then signals one of:
       #   --approve          → VERIFY (creates codex evidence markers)
@@ -520,7 +524,7 @@ while true; do
 done
 ```
 
-**Key design principle: the coordinator is a switchboard, not a judge.** During IMPLEMENT and CLAUDE_TRIAGE, the coordinator is passive — it waits for Claude's signals. Claude drives the critic loop, the finding triage, the fix-impact classification, and the verdict. The coordinator only acts autonomously on mechanical triggers: file existence (markers, Codex output) and the iteration cap.
+**Key design principle: the coordinator is a switchboard, not a judge.** During IMPLEMENT and CODEX_REVIEW (verdict phase), the coordinator is passive — it waits for Claude's signals. Claude drives the critic loop, the finding triage, the fix-impact classification, and the verdict. The coordinator only acts autonomously on mechanical triggers: file existence (markers, Codex output) and the iteration cap.
 
 **State transition helper:**
 
@@ -554,14 +558,14 @@ marker_exists() {
 ```
 
 **Deliverables:**
-- [ ] `coordinator/state-machine.sh` — main loop with all state transitions including CLAUDE_TRIAGE and NEEDS_DISCUSSION
+- [ ] `coordinator/state-machine.sh` — main loop with all state transitions including NEEDS_DISCUSSION
 - [ ] State persistence in `$STATE_DIR/state.json`
 - [ ] State transition logging to `$STATE_DIR/transitions.log`
 - [ ] File-based signal detection via `$STATE_DIR/signals/`
 - [ ] Marker polling for critic/verification states
 - [ ] `fswatch`-based signal watching (macOS) with polling fallback
 - [ ] Iteration cap enforcement (max 3 → NEEDS_DISCUSSION)
-- [ ] CLAUDE_TRIAGE state: passive wait for Claude's verdict signal
+- [ ] CODEX_REVIEW state: two-phase (dispatch + verdict wait) in a single state
 - [ ] NEEDS_DISCUSSION state: pause for user intervention with resume signal
 
 ### 1.3 Pane I/O (`pane-io.sh`)
@@ -794,7 +798,7 @@ evidence_complete() {
 }
 ```
 
-**`marker-invalidate.sh` interaction:** When Claude fixes code during CLAUDE_TRIAGE (after reading Codex findings), `marker-invalidate.sh` fires on each Edit/Write and deletes all markers — including the codex-ran marker. This is correct: it forces a full re-review. Claude must then re-run critics (via Task tool, which recreates critic markers), then signal `--re-review` (which triggers a new codex dispatch). The coordinator doesn't need to know about any of this — it just waits in CLAUDE_TRIAGE for Claude's signal.
+**`marker-invalidate.sh` interaction:** When Claude fixes code during CODEX_REVIEW (after reading Codex findings), `marker-invalidate.sh` fires on each Edit/Write and deletes all markers — including the codex-ran marker. This is correct: it forces a full re-review. Claude must then re-run critics (via Task tool, which recreates critic markers), then signal `--re-review` (which triggers a new codex dispatch). The coordinator doesn't need to know about any of this — it just waits in CODEX_REVIEW for Claude's signal.
 
 **Deliverables:**
 - [ ] `coordinator/evidence.sh` — evidence creation (triggered by Claude's verdict signal, not Codex output)
@@ -934,7 +938,7 @@ In the current system, Claude reads Codex output directly (because it's a subpro
 5. Coordinator sends diff + instructions to Codex pane (via prompt file)
 6. Codex reviews and writes findings to file (Claude is NOT blocked)
 7. Coordinator detects findings file, delivers it to Claude (via relay_to_claude)
-8.     → Coordinator transitions to CLAUDE_TRIAGE and WAITS
+8.     → Coordinator remains in CODEX_REVIEW (verdict phase) and WAITS
 9. Claude reads full findings, triages each one (blocking/non-blocking/out-of-scope)
 10. Claude maintains issue ledger (same as current system — ledger is in Claude's context)
 11. Claude decides:
@@ -1088,8 +1092,9 @@ Read this file to see all findings with file:line references and severity classi
 - Logic change within function: re-run critics (code-critic + minimizer) + test-runner, then \`--re-review\`
 - New export / changed signature / security path: full cascade (critics → codex → verify)"
 
-    # Transition to CLAUDE_TRIAGE — coordinator WAITS for Claude's verdict signal
-    transition_state "CLAUDE_TRIAGE"
+    # Findings delivered. Coordinator stays in CODEX_REVIEW (verdict phase),
+    # waiting for Claude's verdict signal. No state transition needed.
+    log "STATE" "CODEX_REVIEW: findings delivered, waiting for Claude's verdict"
 
   else
     log "ERROR" "Codex review timed out after ${timeout}s"
@@ -1098,7 +1103,7 @@ Read this file to see all findings with file:line references and severity classi
 - Wait and check if Codex is still working
 - Signal \`request-codex.sh --needs-discussion\` to pause for user intervention
 - Signal \`request-codex.sh --re-review\` to retry"
-    transition_state "CLAUDE_TRIAGE"  # still let Claude decide what to do
+    # Stay in CODEX_REVIEW — let Claude decide what to do via verdict signal
   fi
 }
 
@@ -1111,7 +1116,7 @@ check_codex_findings_complete() {
   # dispatch_codex_review handles the wait loop and delivery internally
   # This function is a no-op placeholder for the core loop structure
   # (dispatch_codex_review blocks within CODEX_REVIEW until findings arrive
-  #  or timeout, then transitions to CLAUDE_TRIAGE)
+  #  or timeout; coordinator stays in CODEX_REVIEW for the verdict phase)
 }
 ```
 
@@ -1168,7 +1173,7 @@ Claude reads the file with its Read tool and acts on the content. This approach:
 - [ ] Gate check (critic markers) built into coordinator
 - [ ] Codex produces findings-only JSON (no verdict field)
 - [ ] Full findings file delivered to Claude via `relay_to_claude`
-- [ ] CLAUDE_TRIAGE state: coordinator waits for Claude's verdict signal
+- [ ] CODEX_REVIEW verdict phase: coordinator stays in same state, waits for Claude's verdict signal
 - [ ] Triage instructions embedded in coordinator message (matches current SKILL.md rules)
 - [ ] Iteration tracking in state file
 
@@ -1286,7 +1291,7 @@ The current system's tiered re-review (task-workflow/SKILL.md lines 101-107) wor
 2. **Logic change**: Claude re-runs critics (code-critic + minimizer via Task tool). If critics approve, Claude calls `request-codex.sh --re-review` — coordinator dispatches another codex review.
 3. **Full cascade**: Same as logic change but Claude also re-runs test-runner before signaling `--re-review`.
 
-The coordinator is passive during all of this. It sits in CLAUDE_TRIAGE waiting for a signal. Claude drives the entire fix-and-re-review decision tree internally.
+The coordinator is passive during all of this. It sits in CODEX_REVIEW (verdict phase) waiting for a signal. Claude drives the entire fix-and-re-review decision tree internally.
 
 **Deliverables:**
 - [ ] `claude/skills/codex-cli/scripts/request-codex.sh` — unified dispatch + verdict script
@@ -1380,7 +1385,7 @@ fi
 exit 0
 ```
 
-**Note:** In the tmux model, evidence creation happens in the coordinator (`evidence.sh`), not in hooks. The `coordinator-trace.sh` hook is for **logging only** — it creates an audit trail of all `request-codex.sh` invocations (both dispatch requests and verdict signals). The actual markers (`/tmp/claude-codex-*`) are created by `evidence.sh` when the coordinator processes Claude's verdict signal in the CLAUDE_TRIAGE state. This preserves the current system's guarantee: markers are created in response to Claude's explicit verdict signal, not Codex's self-assessment.
+**Note:** In the tmux model, evidence creation happens in the coordinator (`evidence.sh`), not in hooks. The `coordinator-trace.sh` hook is for **logging only** — it creates an audit trail of all `request-codex.sh` invocations (both dispatch requests and verdict signals). The actual markers (`/tmp/claude-codex-*`) are created by `evidence.sh` when the coordinator processes Claude's verdict signal in the CODEX_REVIEW state (verdict phase). This preserves the current system's guarantee: markers are created in response to Claude's explicit verdict signal, not Codex's self-assessment.
 
 **Deliverables:**
 - [ ] `claude/hooks/coordinator-gate.sh` — gate for `request-codex.sh --review`
@@ -1779,13 +1784,13 @@ Week 5:   Side-by-side evaluation vs current system
 | Codex ignores file-write instruction | Medium | Retry with explicit instruction; fall back to pane capture |
 | ANSI artifacts corrupt pane capture | Medium | Primary strategy is file-based (avoids pane capture for data) |
 | Agent crashes during review | Medium | Health check respawns; state file preserves progress |
-| Race condition: code edit during Codex review | Medium | `marker-invalidate.sh` still fires on Claude's Edit/Write; coordinator detects stale evidence. Claude is in CLAUDE_TRIAGE during this — it knows markers will be invalidated |
+| Race condition: code edit during Codex review | Medium | `marker-invalidate.sh` still fires on Claude's Edit/Write; coordinator detects stale evidence. Claude is in CODEX_REVIEW (verdict phase) during this — it knows markers will be invalidated |
 | iTerm2 `tmux -CC` behavior differences | Low | Test both `tmux -CC` and raw tmux; `--raw` flag as fallback |
-| Coordinator daemon crashes | Medium | PID file + wrapper script that restarts; state file survives; CLAUDE_TRIAGE state is recoverable (re-read pending signals) |
+| Coordinator daemon crashes | Medium | PID file + wrapper script that restarts; state file survives; CODEX_REVIEW state is recoverable (re-read pending signals) |
 | Large diff exceeds tmux send-keys limit | Medium | Write diff to file, tell Codex to read the file instead (already implemented in dispatch) |
 | Codex `--sandbox read-only` incompatible with file-write handoff | High | Test that `--sandbox read-only` allows writing to `/tmp/`; if not, use `workspace-write` with AGENTS.md constraints or write output via stdout capture |
 | Claude ignores triage responsibility and rubber-stamps --approve | Medium | `coordinator-gate.sh` gate 2 requires `codex-ran` marker; `create_codex_evidence` verifies findings file exists. But true defense is Claude's SKILL.md instructions — same as current system |
-| CLAUDE_TRIAGE stalls (Claude doesn't signal verdict) | Medium | Coordinator logs a warning after 30 min in CLAUDE_TRIAGE. Dashboard shows state duration. User can intervene manually |
+| CODEX_REVIEW verdict stalls (Claude doesn't signal verdict) | Medium | Coordinator logs a warning after 30 min in CODEX_REVIEW verdict phase. Dashboard shows state duration. User can intervene manually |
 | Iteration cap too aggressive (3 may be insufficient) | Low | Cap is a constant (`MAX_CODEX_ITERATIONS`) — easy to adjust. NEEDS_DISCUSSION pauses for user, doesn't kill the session |
 | Claude signals --approve for non-blocking findings without reading full findings file | Low | Same risk as current system (Claude could call `codex-verdict.sh approve` without reading output). Mitigated by SKILL.md instructions and issue ledger convention |
 | Coordinator creates duplicate signals (race between fswatch and polling) | Low | Signals are consumed (rm -f) on first read. Core loop uses `check_for_signal()` which atomically checks and removes. fswatch is advisory only |
