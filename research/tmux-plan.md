@@ -1028,7 +1028,83 @@ Adapted from `ai-config/install.sh`. Symlinks the new `claude/` and `codex/` dir
                                 # User switches by re-symlinking ~/.claude
 ```
 
-### 6.2 Migration path
+### 6.2 iTerm2 Keybindings
+
+Set up keybindings so launching and managing party sessions is a single keystroke.
+
+**Setup (one-time, via iTerm2 Settings):**
+
+1. **Create a "Party" profile:**
+   - iTerm2 → Settings → Profiles → `+`
+   - Name: `Party`
+   - General → Command: `~/ai-config-tmux/coordinator/party.sh`
+   - General → Working Directory: "Reuse previous session's directory"
+   - This profile launches a party session rooted in whatever directory the current tab is in
+
+2. **Add keybindings** (Settings → Keys → Key Bindings → `+`):
+
+| Keybind | Action | Effect |
+|---------|--------|--------|
+| `Cmd+Shift+P` | New Tab with Profile → Party | Launch a new party session in a new tab, inheriting the current working directory |
+| `Cmd+Shift+K` | Send Text: `party.sh --stop\n` | Kill the current party session (stops coordinator, closes agent panes) |
+
+**Usage:**
+
+```
+# You're in ~/projects/my-app in an iTerm2 tab
+# Hit Cmd+Shift+P → new tab opens with Claude, Codex, and dashboard panes
+# Do your work
+# Hit Cmd+Shift+P again → another tab opens for a second parallel session
+# Hit Cmd+Shift+K in a party tab → shuts that session down cleanly
+```
+
+**Programmatic setup (installer can automate this):**
+
+iTerm2 profiles and keybindings live in `~/Library/Preferences/com.googlecode.iterm2.plist`. The installer can write these via `defaults write`:
+
+```bash
+setup_iterm2_keybindings() {
+  # This is handled by install.sh — creates the Party profile
+  # and registers keybindings via iTerm2's dynamic profiles feature.
+  #
+  # Dynamic profiles: drop a JSON file into ~/Library/Application Support/iTerm2/DynamicProfiles/
+  # This avoids modifying the main plist directly.
+
+  local profile_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+  mkdir -p "$profile_dir"
+
+  cat > "$profile_dir/party.json" << 'EOF'
+{
+  "Profiles": [
+    {
+      "Name": "Party",
+      "Guid": "party-session-profile",
+      "Custom Command": "Yes",
+      "Command": "~/ai-config-tmux/coordinator/party.sh",
+      "Working Directory": "",
+      "Custom Directory": "Recycle",
+      "Keyboard Map": {},
+      "Tags": ["ai-config", "party"]
+    }
+  ]
+}
+EOF
+
+  echo "iTerm2 Party profile installed."
+  echo "To add keybindings manually:"
+  echo "  Cmd+Shift+P → New Tab with Profile: Party"
+  echo "  Cmd+Shift+K → Send Text: party.sh --stop"
+}
+```
+
+**Note:** iTerm2 keybindings can't be set programmatically via dynamic profiles — only profiles can. The keybindings (`Cmd+Shift+P`, `Cmd+Shift+K`) must be added manually in Settings → Keys → Key Bindings. The installer prints instructions.
+
+**Deliverables:**
+- [ ] iTerm2 dynamic profile JSON (`party.json`) for auto-installing the Party profile
+- [ ] `install.sh` writes dynamic profile and prints keybinding instructions
+- [ ] Documentation for manual keybinding setup
+
+### 6.3 Migration path
 
 ```
 Week 1-2: Build coordinator core (Phase 1) + tests
