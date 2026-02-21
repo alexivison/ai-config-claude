@@ -174,8 +174,8 @@ party_start() {
   tmux send-keys -t "$SESSION:work.2" \
     "watch -n 1 cat $STATE_DIR/state.json | jq -C ." C-m
 
-  # Initialize state
-  cat > "$STATE_DIR/state.json" << 'INIT'
+  # Initialize state (session_id populated later — see below)
+  cat > "$STATE_DIR/state.json" << INIT
   {
     "state": "IDLE",
     "session_id": "",
@@ -183,7 +183,10 @@ party_start() {
     "codex_reviews": 0,
     "last_code_edit": null
   }
-  INIT
+INIT
+
+  # Initialize signal directory
+  mkdir -p "$STATE_DIR/signals" "$STATE_DIR/messages"
 
   # Start coordinator daemon
   nohup coordinator/state-machine.sh "$SESSION" "$STATE_DIR" \
@@ -207,11 +210,70 @@ party_stop() {
 }
 ```
 
+**How the coordinator discovers Claude's session ID:**
+
+The marker system uses Claude Code's internal `session_id` (e.g., `/tmp/claude-code-critic-abc123`). The coordinator needs this ID to create compatible codex markers. Problem: the coordinator runs outside Claude's process and can't access Claude Code internals.
+
+**Solution: SessionStart hook writes the session ID to the coordinator's state directory.**
+
+Add a new hook (or extend `session-cleanup.sh`) that runs on SessionStart:
+
+```bash
+# In session-cleanup.sh (or a new coordinator-init.sh hook)
+# Writes Claude's session_id to any active party state directory
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+if [[ -n "$SESSION_ID" ]]; then
+  # Find active party state directory
+  for state_dir in /tmp/party-*/; do
+    if [[ -d "$state_dir" ]]; then
+      jq --arg sid "$SESSION_ID" '.session_id = $sid' \
+        "$state_dir/state.json" > "$state_dir/state.json.tmp" \
+        && mv "$state_dir/state.json.tmp" "$state_dir/state.json"
+      echo "$SESSION_ID" > "$state_dir/claude-session-id"
+    fi
+  done
+fi
+```
+
+The coordinator reads `SESSION_ID` from `$STATE_DIR/claude-session-id` or from `state.json`. Until Claude starts (and the hook fires), the coordinator waits in IDLE — it can't create markers without the session ID anyway.
+
+**Fallback:** If the hook doesn't fire (e.g., Claude was already running when party.sh launched), the coordinator can also discover the session ID by watching for the first marker file to appear in `/tmp/claude-*` and extracting the ID suffix.
+
+```bash
+discover_session_id() {
+  # Primary: read from state file (set by SessionStart hook)
+  local sid
+  sid=$(jq -r '.session_id // ""' "$STATE_DIR/state.json")
+  if [[ -n "$sid" && "$sid" != "" ]]; then
+    echo "$sid"
+    return 0
+  fi
+
+  # Fallback: find any recent claude marker and extract session ID
+  local marker
+  marker=$(ls -t /tmp/claude-*-* 2>/dev/null | head -1)
+  if [[ -n "$marker" ]]; then
+    # Markers are named /tmp/claude-{type}-{session_id}
+    sid=$(echo "$marker" | sed 's/.*-\([^-]*\)$/\1/')
+    # Write it to state for future use
+    jq --arg s "$sid" '.session_id = $s' \
+      "$STATE_DIR/state.json" > "$STATE_DIR/state.json.tmp" \
+      && mv "$STATE_DIR/state.json.tmp" "$STATE_DIR/state.json"
+    echo "$sid"
+    return 0
+  fi
+
+  return 1  # not yet known
+}
+```
+
 **Deliverables:**
 - [ ] `coordinator/party.sh` — session launcher with iTerm2 detection
 - [ ] iTerm2 control mode (`tmux -CC`) integration tested
 - [ ] `--raw` fallback for non-iTerm terminals
 - [ ] Clean teardown on SIGTERM/SIGINT
+- [ ] Session ID discovery via SessionStart hook + marker fallback
+- [ ] `$STATE_DIR/signals/` and `$STATE_DIR/messages/` directories created on startup
 
 ### 1.2 State Machine (`state-machine.sh`)
 
@@ -251,36 +313,103 @@ IDLE → PLANNING → CODEX_DIALOGUE → PLANNING
 | CODEX_DIALOGUE | PLANNING | Claude responds, coordinator relays to Codex |
 | Any | IMPLEMENT | Code edit detected (marker invalidation) |
 
+**Signal detection — how the coordinator knows what Claude/Codex are doing:**
+
+The coordinator does NOT parse pane output to detect workflow phases. Instead, it uses two mechanisms:
+
+1. **File-based signals (primary).** Claude and Codex write signal files to the coordinator's `$STATE_DIR/signals/` directory. The coordinator watches this directory with `inotifywait` (Linux) or `fswatch` (macOS) for new files.
+
+2. **Marker file polling (fallback).** The coordinator polls for marker files in `/tmp/claude-*` every 2 seconds. Since `agent-trace.sh`, `skill-marker.sh`, and `marker-invalidate.sh` all run inside Claude's process and create/delete markers, the coordinator can detect state changes by watching markers appear and disappear.
+
+**Signal file protocol:**
+
+Claude signals the coordinator by writing to `$STATE_DIR/signals/`:
+
+```bash
+# Claude (or its hooks) writes these signal files:
+$STATE_DIR/signals/self-review-pass     # Self-review passed, ready for critics
+$STATE_DIR/signals/critics-complete     # Critics finished (coordinator also checks markers)
+$STATE_DIR/signals/codex-request.json   # Request for Codex review (written by request-codex.sh)
+$STATE_DIR/signals/ready-for-pr         # All verification passed
+```
+
+The coordinator detects signals via filesystem watching:
+
+```bash
+# macOS: use fswatch (brew install fswatch)
+watch_signals() {
+  fswatch -1 "$STATE_DIR/signals/" | while read -r event; do
+    local filename
+    filename=$(basename "$event")
+    case "$filename" in
+      self-review-pass)   transition_state "CRITICS" ;;
+      codex-request.json) transition_state "CODEX_REVIEW" ;;
+      ready-for-pr)       transition_state "PR_READY" ;;
+    esac
+    rm -f "$event"  # consume the signal
+  done
+}
+```
+
+**How Claude produces these signals:**
+
+Claude doesn't need to know about signal files. The existing hooks produce them as side effects:
+
+- `agent-trace.sh` already creates markers like `/tmp/claude-code-critic-{sid}`. The coordinator polls for these.
+- `request-codex.sh` already writes `codex-request.json` to `$STATE_DIR/`. No change needed.
+- For self-review, the `coordinator-trace.sh` hook (PostToolUse on Bash) detects when Claude outputs "PASS — proceeding to critics" and writes the signal file. This is the one place pane monitoring is NOT used — the hook catches it inside Claude's process.
+
+**Why not parse pane output for signals?** Pane output is unreliable for structured detection — ANSI codes, line wrapping, scrollback limits. Signal files are atomic, deterministic, and easy to test. The coordinator only uses pane capture for extracting Codex's review content (via the file-based handoff), never for state transitions.
+
 **Core loop:**
 
 ```bash
+# Initialize signal directory
+mkdir -p "$STATE_DIR/signals"
+
 while true; do
   state=$(jq -r '.state' "$STATE_DIR/state.json")
 
   case "$state" in
     IDLE)
-      monitor_for_task_start
+      # Watch for: codex-request.json (planning) or task start signal
+      check_for_signal "codex-request.json" && transition_state "CODEX_REVIEW"
+      check_for_signal "planning-request.json" && transition_state "PLANNING"
       ;;
     IMPLEMENT)
-      monitor_claude_pane_for_signal "self-review"
-      watch_for_code_edits  # marker invalidation
+      # Watch for: self-review-pass signal
+      check_for_signal "self-review-pass" && transition_state "SELF_REVIEW"
+      # Also watch for direct codex request (skips self-review tracking)
+      check_for_signal "codex-request.json" && handle_codex_request
       ;;
     SELF_REVIEW)
-      monitor_claude_pane_for_signal "PASS — proceeding to critics"
+      # Self-review is tracked by signal, but coordinator also accepts
+      # direct codex request as implicit "self-review passed"
+      check_for_signal "codex-request.json" && handle_codex_request
       ;;
     CRITICS)
-      wait_for_critic_markers
+      # Poll for critic markers (created by agent-trace.sh inside Claude)
+      if marker_exists "code-critic" && marker_exists "minimizer"; then
+        transition_state "CODEX_REVIEW"
+      fi
       ;;
     CODEX_REVIEW)
-      dispatch_codex_review
-      capture_codex_verdict
+      # Coordinator dispatches review, then waits for Codex output file
+      if [[ ! -f "$STATE_DIR/codex-review-active" ]]; then
+        dispatch_codex_review
+        touch "$STATE_DIR/codex-review-active"
+      fi
+      check_codex_review_complete
       ;;
     VERIFY)
-      wait_for_verification_markers
+      # Poll for all verification markers
+      if evidence_complete "$SESSION_ID"; then
+        transition_state "PR_READY"
+      fi
       ;;
     PR_READY)
       # pr-gate.sh still enforces markers — coordinator just tracks state
-      monitor_for_pr_creation
+      check_for_signal "pr-created" && transition_state "IDLE"
       ;;
     PLANNING)
       monitor_codex_pane_for_planning_output
@@ -290,15 +419,54 @@ while true; do
       ;;
   esac
 
+  # Health check every 30 iterations (30 seconds)
+  ((loop_count++)) || true
+  if (( loop_count % 30 == 0 )); then
+    agent_health_check
+  fi
+
   sleep 1
 done
+```
+
+**State transition helper:**
+
+```bash
+transition_state() {
+  local new_state="$1"
+  local old_state
+  old_state=$(jq -r '.state' "$STATE_DIR/state.json")
+
+  jq --arg s "$new_state" '.state = $s' \
+    "$STATE_DIR/state.json" > "$STATE_DIR/state.json.tmp" \
+    && mv "$STATE_DIR/state.json.tmp" "$STATE_DIR/state.json"
+
+  # Log transition
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $old_state → $new_state" >> "$STATE_DIR/transitions.log"
+}
+
+check_for_signal() {
+  local signal_name="$1"
+  if [[ -f "$STATE_DIR/signals/$signal_name" ]]; then
+    rm -f "$STATE_DIR/signals/$signal_name"
+    return 0
+  fi
+  return 1
+}
+
+marker_exists() {
+  local name="$1"
+  [[ -f "/tmp/claude-${name}-${SESSION_ID}" ]]
+}
 ```
 
 **Deliverables:**
 - [ ] `coordinator/state-machine.sh` — main loop with all state transitions
 - [ ] State persistence in `$STATE_DIR/state.json`
 - [ ] State transition logging to `$STATE_DIR/transitions.log`
-- [ ] Signal detection from pane output (see 1.3)
+- [ ] File-based signal detection via `$STATE_DIR/signals/`
+- [ ] Marker polling for critic/verification states
+- [ ] `fswatch`-based signal watching (macOS) with polling fallback
 
 ### 1.3 Pane I/O (`pane-io.sh`)
 
@@ -535,8 +703,82 @@ agent_health_check() {
 }
 ```
 
+**Coordinator crash recovery:**
+
+If the coordinator daemon itself crashes (not the agents), it must be able to restart and re-attach to the existing tmux session:
+
+```bash
+coordinator_recover() {
+  # Find existing party session
+  local session
+  session=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^party-' | head -1)
+
+  if [[ -z "$session" ]]; then
+    log "ERROR" "No party session found to recover"
+    return 1
+  fi
+
+  # Find the state directory
+  STATE_DIR="/tmp/$session"
+  if [[ ! -d "$STATE_DIR" ]]; then
+    log "ERROR" "State directory $STATE_DIR not found"
+    return 1
+  fi
+
+  SESSION="$session"
+
+  # Read session_id from state file
+  SESSION_ID=$(jq -r '.session_id // ""' "$STATE_DIR/state.json")
+
+  # Verify agent panes are still alive
+  agent_health_check
+
+  # Resume from last known state — the state file persists across crashes
+  local current_state
+  current_state=$(jq -r '.state' "$STATE_DIR/state.json")
+  log "INFO" "Recovered. Resuming from state: $current_state"
+
+  # If we were mid-review when we crashed, check if Codex already wrote output
+  if [[ "$current_state" == "CODEX_REVIEW" ]]; then
+    local latest_review
+    latest_review=$(ls -t "$STATE_DIR"/codex-review-*.json 2>/dev/null | head -1)
+    if [[ -n "$latest_review" ]]; then
+      log "INFO" "Found completed Codex review output from before crash — processing"
+      # Process the review output that was waiting
+    else
+      log "INFO" "Codex review was in-progress — re-dispatching"
+      rm -f "$STATE_DIR/codex-review-active"  # allow re-dispatch
+    fi
+  fi
+}
+```
+
+The coordinator is launched with a wrapper that auto-restarts:
+
+```bash
+# In party.sh — launch coordinator with restart wrapper
+launch_coordinator() {
+  while true; do
+    coordinator/state-machine.sh "$SESSION" "$STATE_DIR"
+    local exit_code=$?
+
+    # Exit code 0 = clean shutdown (party.sh --stop)
+    [[ $exit_code -eq 0 ]] && break
+
+    log "WARN" "Coordinator exited with code $exit_code — restarting in 2s"
+    sleep 2
+    coordinator_recover
+  done
+}
+
+nohup launch_coordinator > "$STATE_DIR/coordinator.log" 2>&1 &
+echo $! > "$STATE_DIR/coordinator.pid"
+```
+
 **Deliverables:**
-- [ ] `coordinator/health.sh` — crash detection and respawn
+- [ ] `coordinator/health.sh` — crash detection and respawn for agents
+- [ ] Coordinator auto-restart wrapper in `party.sh`
+- [ ] `coordinator_recover()` — re-attach to existing tmux session after coordinator crash
 - [ ] Periodic health check (every 30 seconds)
 - [ ] Log crash/respawn events
 
@@ -584,27 +826,49 @@ dispatch_codex_review() {
   merge_base=$(git merge-base HEAD "$base")
   git diff "$merge_base"..HEAD > "$diff_file"
 
-  # Build review prompt
+  # Build review prompt — NEVER inline the diff in send-keys.
+  # Large diffs exceed tmux send-keys character limits and corrupt with special chars.
+  # Instead: write prompt to file, tell Codex to read it.
   local output_file="$STATE_DIR/codex-review-$iteration.json"
-  local prompt="Review this code change against the $base branch.
+  local prompt_file="$STATE_DIR/codex-review-prompt-$iteration.md"
 
-TITLE: ${title:-Code review}
-ITERATION: $iteration
+  cat > "$prompt_file" << PROMPT
+# Code Review Request
+
+**Title:** ${title:-Code review}
+**Base branch:** $base
+**Iteration:** $iteration
+**Diff file:** $diff_file
+
 $(if [[ $iteration -gt 1 ]]; then
-    echo "PREVIOUS FINDINGS: $(jq -r '.evidence.codex_review.findings // "none"' "$STATE_DIR/state.json")"
-    echo "Focus on verifying previous issues were addressed and flag only new issues."
+    echo "## Previous Review Context"
+    echo "Previous findings: $(jq -r '.evidence.codex_review.summary // "none"' "$STATE_DIR/state.json")"
+    echo "Focus on: verifying previous issues addressed, flagging only new issues."
   fi)
 
-DIFF:
-$(cat "$diff_file")
+## Instructions
 
-Write your complete review to: $output_file
-JSON format: {\"verdict\": \"APPROVE|REQUEST_CHANGES|NEEDS_DISCUSSION\", \"findings\": [...], \"summary\": \"...\"}
+1. Read the diff file at: $diff_file
+2. Review the changes for bugs, security issues, architecture concerns
+3. Write your complete review to: $output_file
 
-After writing the file, say: REVIEW_COMPLETE"
+Use this exact JSON format for the output file:
+\`\`\`json
+{
+  "verdict": "APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION",
+  "findings": [
+    {"file": "path/to/file.ts", "line": 42, "severity": "blocking|non-blocking", "description": "..."}
+  ],
+  "summary": "One paragraph summary of the review"
+}
+\`\`\`
 
-  # Send to Codex pane
-  tmux send-keys -t "$SESSION:work.1" "$prompt" C-m
+4. After writing the output file, say: REVIEW_COMPLETE
+PROMPT
+
+  # Send a SHORT command to Codex pane — just tell it to read the prompt file
+  tmux send-keys -t "$SESSION:work.1" \
+    "Read the review request at $prompt_file and follow the instructions." C-m
 
   # Wait for output file (non-blocking to Claude)
   local timeout=900
@@ -646,6 +910,47 @@ Fix blocking issues and signal when ready for re-review."
 - Start preparing the next task
 - Fix documentation
 - Any non-code-edit work (code edits would invalidate markers)
+
+**Coordinator-to-Claude message format:**
+
+When the coordinator needs to send information to Claude (e.g., Codex review findings), it does NOT inject raw text into Claude's pane via `tmux send-keys`. That would look like user input and confuse Claude's session.
+
+Instead, the coordinator writes a message file and then sends a short notification:
+
+```bash
+# Coordinator writes findings to a known file
+relay_to_claude() {
+  local message_type="$1"  # "codex-review", "codex-planning", etc.
+  local content="$2"
+  local message_file="$STATE_DIR/messages/to-claude-$(date +%s%N).md"
+
+  mkdir -p "$STATE_DIR/messages"
+  cat > "$message_file" << EOF
+## Coordinator Message: $message_type
+Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+$content
+EOF
+
+  # Send a short notification to Claude's pane that a message is waiting
+  # This appears as user input, which Claude will process
+  tmux send-keys -t "$SESSION:work.0" \
+    "[COORDINATOR] $message_type result ready. Read: $message_file" C-m
+}
+```
+
+Claude sees a single line like:
+```
+[COORDINATOR] codex-review result ready. Read: /tmp/party-xyz/messages/to-claude-123.md
+```
+
+Claude reads the file with its Read tool and acts on the content. This approach:
+- Avoids injecting large text blocks via `send-keys` (which can corrupt with special characters)
+- Gives Claude a clean, structured file to parse
+- Is clearly distinguishable from user input (prefixed with `[COORDINATOR]`)
+- Works with Claude's existing Read tool permissions (files in `/tmp/` are readable)
+
+**CLAUDE.md must document this convention:** Add a section explaining that `[COORDINATOR]` prefixed messages are from the tmux coordinator and should be treated as system directives, not user messages. Claude should read the referenced file and act according to the message type.
 
 **Deliverables:**
 - [ ] `coordinator/codex-review.sh` — review dispatch and verdict capture
@@ -1146,3 +1451,229 @@ Week 5:   Side-by-side evaluation vs current system
 7. **iTerm2 UX:** `tmux -CC` gives native panes with scrollback and search
 8. **Tests pass:** All test suites green
 9. **Rollback works:** Single symlink change reverts to subprocess model
+
+---
+
+## Appendix A: File Copy Manifest
+
+Exact instructions for what to copy from `ai-config` to `ai-config-tmux` and what to modify. A fresh session implementing this plan should follow this manifest exactly.
+
+### Copy unchanged (no modifications)
+
+```bash
+# Hooks that work identically in tmux
+cp ai-config/claude/hooks/session-cleanup.sh    ai-config-tmux/claude/hooks/
+cp ai-config/claude/hooks/skill-eval.sh         ai-config-tmux/claude/hooks/
+cp ai-config/claude/hooks/worktree-guard.sh     ai-config-tmux/claude/hooks/
+cp ai-config/claude/hooks/agent-trace.sh        ai-config-tmux/claude/hooks/
+cp ai-config/claude/hooks/marker-invalidate.sh  ai-config-tmux/claude/hooks/
+cp ai-config/claude/hooks/skill-marker.sh       ai-config-tmux/claude/hooks/
+cp ai-config/claude/hooks/pr-gate.sh            ai-config-tmux/claude/hooks/
+
+# Agent definitions (sub-agents unchanged)
+cp -r ai-config/claude/agents/                  ai-config-tmux/claude/agents/
+
+# Technology rules (unchanged)
+cp -r ai-config/claude/rules/backend/           ai-config-tmux/claude/rules/backend/
+cp -r ai-config/claude/rules/frontend/          ai-config-tmux/claude/rules/frontend/
+
+# Skills that don't reference codex invocation
+cp -r ai-config/claude/skills/pre-pr-verification/  ai-config-tmux/claude/skills/
+cp -r ai-config/claude/skills/write-tests/           ai-config-tmux/claude/skills/
+cp -r ai-config/claude/skills/code-review/           ai-config-tmux/claude/skills/
+
+# Scripts (status line, etc.)
+cp -r ai-config/claude/scripts/                 ai-config-tmux/claude/scripts/
+
+# Shared skills (unchanged)
+cp -r ai-config/shared/                         ai-config-tmux/shared/
+
+# Codex rules (unchanged)
+cp -r ai-config/codex/rules/                    ai-config-tmux/codex/rules/
+
+# Codex planning skill (unchanged)
+cp -r ai-config/codex/skills/planning/          ai-config-tmux/codex/skills/planning/
+```
+
+### Copy and modify
+
+Each file below is copied, then specific edits are applied. The required edits are described in the plan sections referenced.
+
+```
+ai-config/claude/CLAUDE.md → ai-config-tmux/claude/CLAUDE.md
+  Edits: Replace 3 occurrences of "call_codex.sh" with "request-codex.sh"
+         Add [COORDINATOR] message convention section
+         Update Sub-Agents table (see Phase 4.1)
+
+ai-config/claude/settings.json → ai-config-tmux/claude/settings.json
+  Edits: Replace permission lines and hook config (see Phase 4.3)
+
+ai-config/claude/rules/execution-core.md → ai-config-tmux/claude/rules/execution-core.md
+  Edits: Update Codex Review Gate section (see Phase 4.2)
+         Update enforcement chain description
+         Same decision matrix logic, different mechanism description
+
+ai-config/claude/rules/autonomous-flow.md → ai-config-tmux/claude/rules/autonomous-flow.md
+  Edits: Update violation patterns: call_codex.sh → request-codex.sh
+         Update checkpoint markers note: codex markers created by coordinator
+
+ai-config/claude/skills/task-workflow/SKILL.md → ai-config-tmux/claude/skills/task-workflow/SKILL.md
+  Edits: Step 7: replace call_codex.sh invocation with request-codex.sh (see Phase 4.1)
+         Step 8: remove codex-verdict.sh reference (coordinator handles verdict)
+         Codex Step section: rewrite for coordinator-mediated flow
+
+ai-config/claude/skills/bugfix-workflow/SKILL.md → ai-config-tmux/claude/skills/bugfix-workflow/SKILL.md
+  Edits: Step 3: replace call_codex.sh with request-codex.sh for investigation
+         Step 6: replace call_codex.sh with request-codex.sh for review
+         Step 7: remove codex-verdict.sh reference
+         Codex Review Step section: reference updated task-workflow
+
+ai-config/codex/AGENTS.md → ai-config-tmux/codex/AGENTS.md
+  Edits: Add section explaining tmux context:
+         "You are running as a persistent interactive session in a tmux pane.
+          A coordinator process mediates communication between you and Claude.
+          When asked to write output to a file, always comply — the coordinator
+          reads your results from files, not from your terminal output.
+          You retain context across reviews within this session."
+
+ai-config/codex/config.toml → ai-config-tmux/codex/config.toml
+  Edits: No changes needed (sandbox_mode is set at launch time by party.sh)
+```
+
+### Do NOT copy (replaced entirely)
+
+```
+ai-config/claude/hooks/codex-gate.sh      → REPLACED BY: ai-config-tmux/claude/hooks/coordinator-gate.sh (new file)
+ai-config/claude/hooks/codex-trace.sh     → REPLACED BY: ai-config-tmux/claude/hooks/coordinator-trace.sh (new file)
+ai-config/claude/skills/codex-cli/scripts/call_codex.sh    → REPLACED BY: request-codex.sh (new file)
+ai-config/claude/skills/codex-cli/scripts/codex-verdict.sh → DELETED (coordinator handles verdict)
+ai-config/codex/skills/claude-cli/scripts/call_claude.sh   → REPLACED BY: request-claude.sh (new file)
+```
+
+### New files (don't exist in ai-config)
+
+```
+ai-config-tmux/coordinator/party.sh           # Session launcher (Phase 1.1)
+ai-config-tmux/coordinator/state-machine.sh   # Core state machine (Phase 1.2)
+ai-config-tmux/coordinator/evidence.sh        # Evidence collection (Phase 1.4)
+ai-config-tmux/coordinator/pane-io.sh         # Pane I/O library (Phase 1.3)
+ai-config-tmux/coordinator/codex-review.sh    # Review dispatch (Phase 2.1)
+ai-config-tmux/coordinator/codex-dialogue.sh  # Planning dialogue (Phase 3.1)
+ai-config-tmux/coordinator/health.sh          # Health check (Phase 1.5)
+
+ai-config-tmux/claude/hooks/coordinator-gate.sh   # Replaces codex-gate.sh (Phase 2.3)
+ai-config-tmux/claude/hooks/coordinator-trace.sh  # Replaces codex-trace.sh (Phase 2.3)
+
+ai-config-tmux/claude/skills/codex-cli/scripts/request-codex.sh   # Non-blocking Codex request (Phase 2.2)
+ai-config-tmux/claude/skills/codex-cli/SKILL.md                   # Rewritten skill doc (Phase 4.1)
+
+ai-config-tmux/codex/skills/claude-cli/scripts/request-claude.sh  # Non-blocking Claude request
+ai-config-tmux/codex/skills/claude-cli/SKILL.md                   # Rewritten skill doc
+
+ai-config-tmux/tests/test-state-machine.sh    # State transition tests (Phase 5.2)
+ai-config-tmux/tests/test-evidence.sh         # Evidence tests (Phase 5.2)
+ai-config-tmux/tests/test-pane-io.sh          # Pane I/O tests (Phase 5.2)
+ai-config-tmux/tests/test-hooks.sh            # Hook integration tests (Phase 5.2)
+ai-config-tmux/tests/mock-claude.sh           # Mock Claude agent (Phase 5.1)
+ai-config-tmux/tests/mock-codex.sh            # Mock Codex agent (Phase 5.1)
+ai-config-tmux/tests/run-tests.sh             # Test runner (Phase 5.2)
+
+ai-config-tmux/install.sh                     # Installer (Phase 6.1)
+```
+
+---
+
+## Appendix B: `request-claude.sh` (Codex → Claude)
+
+The plan focuses on Claude → Codex communication, but Codex also needs to request Claude's help during planning. This is the Codex-side equivalent of `request-codex.sh`:
+
+```bash
+#!/usr/bin/env bash
+# request-claude.sh — Signal coordinator to dispatch a question to Claude
+# This is what Codex invokes instead of call_claude.sh
+set -euo pipefail
+
+PROMPT="${1:?Usage: request-claude.sh \"question for Claude\"}"
+
+STATE_DIR=$(find /tmp -maxdepth 1 -name 'party-*' -type d | head -1)
+if [[ -z "$STATE_DIR" ]]; then
+  echo "Error: No active party session found" >&2
+  exit 1
+fi
+
+# Write request to coordinator's inbox
+cat > "$STATE_DIR/signals/claude-request.json" << EOF
+{"type": "claude-question", "prompt": "$PROMPT", "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+EOF
+
+echo "CLAUDE_REQUEST_DISPATCHED — coordinator will relay to Claude."
+echo "Await coordinator response."
+```
+
+The coordinator detects `claude-request.json`, enters `CODEX_DIALOGUE` state, and mediates the exchange per Phase 3.1.
+
+---
+
+## Appendix C: `coordinator-init.sh` Hook (Session ID Bridge)
+
+Full implementation of the SessionStart hook that bridges Claude's session ID to the coordinator:
+
+```bash
+#!/usr/bin/env bash
+# coordinator-init.sh — Bridges Claude's session_id to the party coordinator
+# Triggered: SessionStart (runs alongside session-cleanup.sh)
+
+INPUT=$(cat)
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+
+# Fail silently if no session ID
+if [[ -z "$SESSION_ID" ]]; then
+  echo '{}'
+  exit 0
+fi
+
+# Find active party state directories and register session ID
+for state_dir in /tmp/party-*/; do
+  if [[ -d "$state_dir" && -f "$state_dir/state.json" ]]; then
+    # Write session ID to dedicated file (atomic)
+    echo "$SESSION_ID" > "$state_dir/claude-session-id"
+
+    # Also update state.json
+    if command -v jq >/dev/null 2>&1; then
+      jq --arg sid "$SESSION_ID" '.session_id = $sid' \
+        "$state_dir/state.json" > "$state_dir/state.json.tmp" 2>/dev/null \
+        && mv "$state_dir/state.json.tmp" "$state_dir/state.json"
+    fi
+  fi
+done
+
+echo '{}'
+```
+
+Add to `settings.json` hooks:
+
+```json
+"SessionStart": [
+  {
+    "hooks": [
+      { "type": "command", "command": "~/.claude/hooks/session-cleanup.sh" },
+      { "type": "command", "command": "~/.claude/hooks/coordinator-init.sh" }
+    ]
+  }
+]
+```
+
+---
+
+## Appendix D: Dependencies
+
+Software that must be installed on the host machine:
+
+| Dependency | Required | Install | Purpose |
+|-----------|----------|---------|---------|
+| `tmux` | Yes | `brew install tmux` | Terminal multiplexer — core infrastructure |
+| `jq` | Yes | `brew install jq` | JSON parsing for state files and hook input |
+| `fswatch` | Recommended | `brew install fswatch` | File system watching for signal detection (macOS). Falls back to polling if absent |
+| `claude` | Yes | `curl -fsSL https://cli.anthropic.com/install.sh \| sh` | Claude Code CLI |
+| `codex` | Yes | `brew install --cask codex` | Codex CLI |
+| iTerm2 | Recommended | `brew install --cask iterm2` | Terminal with native tmux integration. Raw tmux works without it |
