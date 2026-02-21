@@ -282,11 +282,15 @@ The coordinator's core loop. Replaces the hook-based governance with an explicit
 **States:**
 
 ```
-IDLE → IMPLEMENT → SELF_REVIEW → CRITICS → CODEX_REVIEW → VERIFY → PR_READY
-                ↑                                    │
-                └────────────────────────────────────┘
-                         (REQUEST_CHANGES)
+IDLE → IMPLEMENT → SELF_REVIEW → CRITICS → CODEX_REVIEW → CLAUDE_TRIAGE → VERIFY → PR_READY
+                ↑                                                │
+                └────────────────────────────────────────────────┘
+                     (Claude signals --re-review after fixing)
+
+                                              CLAUDE_TRIAGE → NEEDS_DISCUSSION (iteration cap or Claude escalates)
 ```
+
+`CLAUDE_TRIAGE` is the critical new state. After Codex produces findings and the coordinator delivers them to Claude, the coordinator **waits in CLAUDE_TRIAGE for Claude to signal a verdict**. Claude reads the full findings, triages them (blocking/non-blocking/out-of-scope), fixes blocking issues if needed, chooses the re-review tier, and then signals the coordinator with the result. The coordinator never decides verdicts.
 
 Additional states for non-review flows:
 
@@ -298,20 +302,44 @@ IDLE → PLANNING → CODEX_DIALOGUE → PLANNING
 
 **State transitions:**
 
-| From | To | Trigger |
-|------|----|---------|
-| IDLE | IMPLEMENT | User sends task to Claude pane |
-| IDLE | PLANNING | User asks Codex for planning |
-| IMPLEMENT | SELF_REVIEW | Claude signals "self-review" in output |
-| SELF_REVIEW | CRITICS | Claude signals "PASS — proceeding to critics" |
-| CRITICS | CODEX_REVIEW | Both critic APPROVE markers exist |
-| CODEX_REVIEW | IMPLEMENT | Codex verdict: REQUEST_CHANGES |
-| CODEX_REVIEW | VERIFY | Codex verdict: APPROVE |
-| VERIFY | PR_READY | All verification markers present |
-| PR_READY | IDLE | PR created |
-| PLANNING | CODEX_DIALOGUE | Codex needs Claude's input |
-| CODEX_DIALOGUE | PLANNING | Claude responds, coordinator relays to Codex |
-| Any | IMPLEMENT | Code edit detected (marker invalidation) |
+| From | To | Trigger | Who decides |
+|------|----|---------|-------------|
+| IDLE | IMPLEMENT | User sends task to Claude pane | User |
+| IDLE | PLANNING | User asks Codex for planning | User |
+| IMPLEMENT | SELF_REVIEW | Claude signals `self-review-pass` | Claude |
+| SELF_REVIEW | CRITICS | Claude signals `codex-request.json` (implicit self-review pass) | Claude |
+| CRITICS | CODEX_REVIEW | Both critic APPROVE markers exist | Coordinator (polls markers) |
+| CODEX_REVIEW | CLAUDE_TRIAGE | Codex writes findings file | Coordinator (detects file) |
+| CLAUDE_TRIAGE | VERIFY | Claude signals `--approve` | **Claude** |
+| CLAUDE_TRIAGE | IMPLEMENT | Claude signals `--re-review` (fixes needed) | **Claude** |
+| CLAUDE_TRIAGE | NEEDS_DISCUSSION | Claude signals `--needs-discussion` OR iteration cap hit | **Claude** or coordinator (cap) |
+| VERIFY | PR_READY | All verification markers present | Coordinator (polls markers) |
+| PR_READY | IDLE | PR created | Claude |
+| NEEDS_DISCUSSION | IDLE | User resolves | User |
+| PLANNING | CODEX_DIALOGUE | Codex needs Claude's input | Coordinator |
+| CODEX_DIALOGUE | PLANNING | Claude responds, coordinator relays to Codex | Coordinator |
+
+**Verdict authority is always Claude's.** The coordinator's only autonomous decisions are mechanical: detecting that files exist (markers, Codex output) and enforcing the iteration cap (max 3 → force NEEDS_DISCUSSION). Everything else waits for Claude's signal.
+
+**Iteration cap enforcement:**
+
+```bash
+MAX_CODEX_ITERATIONS=3
+
+enforce_iteration_cap() {
+  local iteration
+  iteration=$(jq -r '.codex_reviews // 0' "$STATE_DIR/state.json")
+
+  if (( iteration >= MAX_CODEX_ITERATIONS )); then
+    log "CAP" "Codex review iteration cap ($MAX_CODEX_ITERATIONS) reached — forcing NEEDS_DISCUSSION"
+    relay_to_claude "iteration-cap" \
+      "Codex review iteration cap reached ($iteration/$MAX_CODEX_ITERATIONS). Transitioning to NEEDS_DISCUSSION. User intervention required."
+    transition_state "NEEDS_DISCUSSION"
+    return 1  # blocked
+  fi
+  return 0  # allowed
+}
+```
 
 **Signal detection — how the coordinator knows what Claude/Codex are doing:**
 
@@ -326,27 +354,35 @@ The coordinator does NOT parse pane output to detect workflow phases. Instead, i
 Claude signals the coordinator by writing to `$STATE_DIR/signals/`:
 
 ```bash
-# Claude (or its hooks) writes these signal files:
-$STATE_DIR/signals/self-review-pass     # Self-review passed, ready for critics
-$STATE_DIR/signals/critics-complete     # Critics finished (coordinator also checks markers)
-$STATE_DIR/signals/codex-request.json   # Request for Codex review (written by request-codex.sh)
-$STATE_DIR/signals/ready-for-pr         # All verification passed
+# Claude (or its hooks/scripts) writes these signal files:
+$STATE_DIR/signals/self-review-pass                  # Self-review passed, ready for critics
+$STATE_DIR/signals/codex-request.json                # Request for Codex review (written by request-codex.sh --review)
+$STATE_DIR/signals/codex-verdict-approve.json        # Claude triaged findings → APPROVE (written by request-codex.sh --approve)
+$STATE_DIR/signals/codex-verdict-re-review.json      # Claude triaged findings → fixes needed (written by request-codex.sh --re-review)
+$STATE_DIR/signals/codex-verdict-needs-discussion.json  # Claude escalates (written by request-codex.sh --needs-discussion)
+$STATE_DIR/signals/ready-for-pr                      # All verification passed
+$STATE_DIR/signals/resume.json                       # User resumes from NEEDS_DISCUSSION
 ```
 
 The coordinator detects signals via filesystem watching:
 
 ```bash
 # macOS: use fswatch (brew install fswatch)
+# NOTE: fswatch is used for responsiveness. The core loop also polls
+# via check_for_signal(), so fswatch is optional (falls back to 1s polling).
 watch_signals() {
   fswatch -1 "$STATE_DIR/signals/" | while read -r event; do
     local filename
     filename=$(basename "$event")
     case "$filename" in
-      self-review-pass)   transition_state "CRITICS" ;;
-      codex-request.json) transition_state "CODEX_REVIEW" ;;
-      ready-for-pr)       transition_state "PR_READY" ;;
+      self-review-pass)                    transition_state "CRITICS" ;;
+      codex-request.json)                  handle_codex_request ;;
+      codex-verdict-approve.json)          ;; # handled in CLAUDE_TRIAGE case
+      codex-verdict-re-review.json)        ;; # handled in CLAUDE_TRIAGE case
+      codex-verdict-needs-discussion.json) ;; # handled in CLAUDE_TRIAGE case
+      ready-for-pr)                        transition_state "PR_READY" ;;
     esac
-    rm -f "$event"  # consume the signal
+    # NOTE: signals are consumed by the core loop's check_for_signal(), not here
   done
 }
 ```
@@ -372,48 +408,103 @@ while true; do
 
   case "$state" in
     IDLE)
-      # Watch for: codex-request.json (planning) or task start signal
-      check_for_signal "codex-request.json" && transition_state "CODEX_REVIEW"
+      # Watch for: codex-request.json (review or planning) or task start
+      check_for_signal "codex-request.json" && handle_codex_request
       check_for_signal "planning-request.json" && transition_state "PLANNING"
       ;;
+
     IMPLEMENT)
-      # Watch for: self-review-pass signal
-      check_for_signal "self-review-pass" && transition_state "SELF_REVIEW"
-      # Also watch for direct codex request (skips self-review tracking)
+      # Claude is working. Coordinator is PASSIVE — it just watches for signals.
+      # Claude drives the critic loop internally (re-runs code-critic + minimizer
+      # via Task tool, agent-trace.sh creates/recreates markers, marker-invalidate.sh
+      # nukes markers on code edits). The coordinator doesn't intervene.
+      #
+      # Claude signals when ready for codex review:
       check_for_signal "codex-request.json" && handle_codex_request
       ;;
+
     SELF_REVIEW)
-      # Self-review is tracked by signal, but coordinator also accepts
-      # direct codex request as implicit "self-review passed"
+      # Tracked for dashboard visibility. Claude signals when done:
       check_for_signal "codex-request.json" && handle_codex_request
       ;;
+
     CRITICS)
       # Poll for critic markers (created by agent-trace.sh inside Claude)
+      # Coordinator doesn't run critics — Claude does via Task tool
       if marker_exists "code-critic" && marker_exists "minimizer"; then
         transition_state "CODEX_REVIEW"
       fi
       ;;
+
     CODEX_REVIEW)
-      # Coordinator dispatches review, then waits for Codex output file
+      # Coordinator dispatches review to Codex pane, waits for findings file.
+      # Enforces iteration cap BEFORE dispatching.
       if [[ ! -f "$STATE_DIR/codex-review-active" ]]; then
+        if ! enforce_iteration_cap; then
+          continue  # cap hit — already transitioned to NEEDS_DISCUSSION
+        fi
         dispatch_codex_review
         touch "$STATE_DIR/codex-review-active"
       fi
-      check_codex_review_complete
+
+      # Check if Codex has written its findings file
+      check_codex_findings_complete
+      # On completion: delivers findings to Claude, transitions to CLAUDE_TRIAGE
       ;;
+
+    CLAUDE_TRIAGE)
+      # WAITING FOR CLAUDE. Coordinator does NOT decide the verdict.
+      # Claude reads Codex's full findings, triages them, fixes if needed,
+      # then signals one of:
+      #   --approve          → VERIFY (creates codex evidence markers)
+      #   --re-review        → IMPLEMENT (Claude will re-run critics + codex)
+      #   --needs-discussion → NEEDS_DISCUSSION (user intervention needed)
+      #
+      check_for_signal "codex-verdict-approve.json" && {
+        create_codex_evidence "$SESSION_ID" "APPROVE" \
+          "$(jq -r '.codex_reviews' "$STATE_DIR/state.json")"
+        rm -f "$STATE_DIR/codex-review-active"
+        transition_state "VERIFY"
+      }
+      check_for_signal "codex-verdict-re-review.json" && {
+        create_codex_evidence "$SESSION_ID" "REQUEST_CHANGES" \
+          "$(jq -r '.codex_reviews' "$STATE_DIR/state.json")"
+        rm -f "$STATE_DIR/codex-review-active"
+        transition_state "IMPLEMENT"
+      }
+      check_for_signal "codex-verdict-needs-discussion.json" && {
+        rm -f "$STATE_DIR/codex-review-active"
+        transition_state "NEEDS_DISCUSSION"
+      }
+      ;;
+
     VERIFY)
       # Poll for all verification markers
       if evidence_complete "$SESSION_ID"; then
         transition_state "PR_READY"
       fi
       ;;
+
     PR_READY)
       # pr-gate.sh still enforces markers — coordinator just tracks state
       check_for_signal "pr-created" && transition_state "IDLE"
       ;;
+
+    NEEDS_DISCUSSION)
+      # Workflow paused. User must intervene.
+      # User can: resolve and signal resume, or kill the session.
+      check_for_signal "resume.json" && {
+        local resume_to
+        resume_to=$(jq -r '.resume_to // "IMPLEMENT"' "$STATE_DIR/signals/resume.json" 2>/dev/null)
+        rm -f "$STATE_DIR/signals/resume.json"
+        transition_state "$resume_to"
+      }
+      ;;
+
     PLANNING)
       monitor_codex_pane_for_planning_output
       ;;
+
     CODEX_DIALOGUE)
       mediate_dialogue
       ;;
@@ -428,6 +519,8 @@ while true; do
   sleep 1
 done
 ```
+
+**Key design principle: the coordinator is a switchboard, not a judge.** During IMPLEMENT and CLAUDE_TRIAGE, the coordinator is passive — it waits for Claude's signals. Claude drives the critic loop, the finding triage, the fix-impact classification, and the verdict. The coordinator only acts autonomously on mechanical triggers: file existence (markers, Codex output) and the iteration cap.
 
 **State transition helper:**
 
@@ -461,12 +554,15 @@ marker_exists() {
 ```
 
 **Deliverables:**
-- [ ] `coordinator/state-machine.sh` — main loop with all state transitions
+- [ ] `coordinator/state-machine.sh` — main loop with all state transitions including CLAUDE_TRIAGE and NEEDS_DISCUSSION
 - [ ] State persistence in `$STATE_DIR/state.json`
 - [ ] State transition logging to `$STATE_DIR/transitions.log`
 - [ ] File-based signal detection via `$STATE_DIR/signals/`
 - [ ] Marker polling for critic/verification states
 - [ ] `fswatch`-based signal watching (macOS) with polling fallback
+- [ ] Iteration cap enforcement (max 3 → NEEDS_DISCUSSION)
+- [ ] CLAUDE_TRIAGE state: passive wait for Claude's verdict signal
+- [ ] NEEDS_DISCUSSION state: pause for user intervention with resume signal
 
 ### 1.3 Pane I/O (`pane-io.sh`)
 
@@ -609,31 +705,61 @@ pane_is_idle() {
 
 Manages the evidence/marker system. Works alongside the existing hooks that survive unchanged (`agent-trace.sh`, `skill-marker.sh`, `marker-invalidate.sh`).
 
-**What this replaces:** `codex-trace.sh` — the hook that creates codex evidence markers. In tmux, the coordinator creates these markers directly after capturing Codex output.
+**What this replaces:** `codex-trace.sh` — the hook that creates codex evidence markers. In the current system, `codex-trace.sh` creates markers when it detects `codex-verdict.sh approve` via hook regex. In tmux, the coordinator creates these markers when it receives Claude's verdict signal (`request-codex.sh --approve`).
 
 **What this doesn't replace:** All other marker creation stays with existing hooks. The coordinator only manages Codex-related evidence.
 
+**Critical: markers are created on Claude's verdict signal, not Codex's output.** This preserves the current system's guarantee that Claude — not Codex — is the authority for whether a review passed. The marker creation chain is:
+
+```
+Current:   Claude calls codex-verdict.sh approve → codex-trace.sh hook creates marker
+Tmux:      Claude calls request-codex.sh --approve → coordinator creates marker
+```
+
+In both cases, Claude is the entity that triggers marker creation by explicitly signaling approval. The coordinator is the mechanical equivalent of `codex-trace.sh` — it creates the marker in response to Claude's signal, not in response to Codex's output.
+
+**Dual-layer defense (preserved from current system):**
+
+The current `codex-trace.sh` has a dual-layer defense: it only creates the approval marker if (1) `codex-verdict.sh approve` is called AND (2) the `codex-ran` marker exists (proving a review actually ran). The tmux equivalent:
+
 ```bash
-# Create codex evidence after successful review
+# Create codex evidence — called by state machine in response to Claude's verdict signal
 create_codex_evidence() {
   local session_id="$1"
-  local verdict="$2"
+  local verdict="$2"       # APPROVE, REQUEST_CHANGES, or NEEDS_DISCUSSION
   local review_number="$3"
 
-  # Always create ran marker (proves review happened)
+  # Always create ran marker (proves a review actually happened)
+  # This is created when Codex writes findings, BEFORE Claude triages.
+  # If Claude tries to signal --approve without a review having run,
+  # the ran marker won't exist and pr-gate.sh can be extended to check it.
   touch "/tmp/claude-codex-ran-$session_id"
 
-  # Create approval marker only on APPROVE
+  # Create approval marker only on APPROVE (Claude's decision, not Codex's)
   if [[ "$verdict" == "APPROVE" ]]; then
+    # Verify that a findings file actually exists (defense against spoofed approval)
+    local latest_findings
+    latest_findings=$(ls -t "$STATE_DIR"/codex-findings-*.json 2>/dev/null | head -1)
+    if [[ -z "$latest_findings" ]]; then
+      log "ERROR" "APPROVE signal received but no Codex findings file exists — marker NOT created"
+      return 1
+    fi
     touch "/tmp/claude-codex-$session_id"
   fi
 
-  # Update state file
+  # Update state file with evidence metadata
   jq --arg v "$verdict" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg n "$review_number" \
     '.evidence.codex_review = {verdict: $v, timestamp: $t, iteration: ($n | tonumber)}
      | .codex_reviews = (.codex_reviews + 1)' \
     "$STATE_DIR/state.json" > "$STATE_DIR/state.json.tmp" \
     && mv "$STATE_DIR/state.json.tmp" "$STATE_DIR/state.json"
+}
+
+# Mark that Codex produced findings (called when findings file is detected,
+# BEFORE Claude triages). This is the "codex-ran" equivalent.
+mark_codex_review_ran() {
+  local session_id="$1"
+  touch "/tmp/claude-codex-ran-$session_id"
 }
 
 # Check if all evidence is present and non-stale
@@ -668,11 +794,15 @@ evidence_complete() {
 }
 ```
 
+**`marker-invalidate.sh` interaction:** When Claude fixes code during CLAUDE_TRIAGE (after reading Codex findings), `marker-invalidate.sh` fires on each Edit/Write and deletes all markers — including the codex-ran marker. This is correct: it forces a full re-review. Claude must then re-run critics (via Task tool, which recreates critic markers), then signal `--re-review` (which triggers a new codex dispatch). The coordinator doesn't need to know about any of this — it just waits in CLAUDE_TRIAGE for Claude's signal.
+
 **Deliverables:**
-- [ ] `coordinator/evidence.sh` — evidence creation, staleness check
-- [ ] Codex evidence markers created by coordinator (not hooks)
+- [ ] `coordinator/evidence.sh` — evidence creation (triggered by Claude's verdict signal, not Codex output)
+- [ ] `mark_codex_review_ran()` — called when Codex findings file is detected
+- [ ] `create_codex_evidence()` — called when Claude signals verdict; includes findings-file defense
 - [ ] Staleness detection based on `last_code_edit` timestamp
 - [ ] State file updated with evidence metadata
+- [ ] Dual-layer defense preserved: ran-marker + findings-file-exists check
 
 ### 1.5 Health Check (`health.sh`)
 
@@ -788,21 +918,45 @@ echo $! > "$STATE_DIR/coordinator.pid"
 
 ### 2.1 Review Dispatch (`codex-review.sh`)
 
-Replaces `call_codex.sh --review`. Instead of a blocking subprocess, the coordinator sends the review task to Codex's tmux pane and monitors the output.
+Replaces `call_codex.sh --review`. Instead of a blocking subprocess, the coordinator sends the review task to Codex's tmux pane, captures the findings, and delivers them to Claude for triage.
+
+**Critical design principle: Codex produces findings, Claude decides verdicts.**
+
+In the current system, Claude reads Codex output directly (because it's a subprocess), triages each finding, decides the verdict, and calls `codex-verdict.sh`. In tmux, the coordinator is a messenger — it delivers Codex's raw findings to Claude, then waits for Claude's verdict signal. The coordinator never interprets findings or decides outcomes.
 
 **The flow:**
 
 ```
-1. Claude reaches review step → signals coordinator (via request-codex.sh)
+1. Claude reaches review step → signals coordinator (via request-codex.sh --review)
 2. Coordinator verifies critic markers exist (replaces codex-gate.sh)
-3. Coordinator generates diff: git diff $(git merge-base HEAD main)..HEAD
-4. Coordinator sends diff + instructions to Codex pane
-5. Codex reviews (Claude is NOT blocked — can continue other work)
-6. Coordinator captures Codex output (file-based handoff)
-7. Coordinator extracts verdict, creates evidence markers
-8. Coordinator sends findings to Claude pane if REQUEST_CHANGES
-9. Claude fixes, cycle repeats
+3. Coordinator checks iteration cap (max 3 → NEEDS_DISCUSSION)
+4. Coordinator generates diff: git diff $(git merge-base HEAD main)..HEAD
+5. Coordinator sends diff + instructions to Codex pane (via prompt file)
+6. Codex reviews and writes findings to file (Claude is NOT blocked)
+7. Coordinator detects findings file, delivers it to Claude (via relay_to_claude)
+8.     → Coordinator transitions to CLAUDE_TRIAGE and WAITS
+9. Claude reads full findings, triages each one (blocking/non-blocking/out-of-scope)
+10. Claude maintains issue ledger (same as current system — ledger is in Claude's context)
+11. Claude decides:
+    a. All findings non-blocking/out-of-scope → signals --approve
+    b. Blocking findings exist → fixes them, chooses re-review tier, signals --re-review
+    c. Unresolvable → signals --needs-discussion
+12. Coordinator receives signal, creates evidence markers, transitions state
 ```
+
+**Comparison with current system — what's preserved:**
+
+| Behavior | Current (subprocess) | Tmux (coordinator) |
+|----------|---------------------|-------------------|
+| Who reads Codex findings | Claude (stdout) | Claude (reads file delivered by coordinator) |
+| Who triages findings | Claude | Claude |
+| Who decides verdict | Claude | Claude |
+| Who calls verdict script | Claude (`codex-verdict.sh`) | Claude (`request-codex.sh --approve/--re-review`) |
+| Who creates evidence markers | `codex-trace.sh` hook (on verdict script) | Coordinator's `evidence.sh` (on Claude's verdict signal) |
+| Issue ledger | Claude's context | Claude's context (unchanged — Claude sees full findings) |
+| Iteration cap | Claude (SKILL.md says max 3) | Coordinator enforces + Claude follows SKILL.md |
+| Tiered re-review | Claude decides | Claude decides (coordinator is passive during IMPLEMENT) |
+| NEEDS_DISCUSSION | Claude calls verdict script | Claude signals coordinator + coordinator enforces cap |
 
 **Review dispatch:**
 
@@ -829,9 +983,10 @@ dispatch_codex_review() {
   # Build review prompt — NEVER inline the diff in send-keys.
   # Large diffs exceed tmux send-keys character limits and corrupt with special chars.
   # Instead: write prompt to file, tell Codex to read it.
-  local output_file="$STATE_DIR/codex-review-$iteration.json"
+  local findings_file="$STATE_DIR/codex-findings-$iteration.json"
   local prompt_file="$STATE_DIR/codex-review-prompt-$iteration.md"
 
+  # NOTE: Codex produces FINDINGS, not a verdict. Claude decides the verdict.
   cat > "$prompt_file" << PROMPT
 # Code Review Request
 
@@ -841,86 +996,142 @@ dispatch_codex_review() {
 **Diff file:** $diff_file
 
 $(if [[ $iteration -gt 1 ]]; then
-    echo "## Previous Review Context"
-    echo "Previous findings: $(jq -r '.evidence.codex_review.summary // "none"' "$STATE_DIR/state.json")"
-    echo "Focus on: verifying previous issues addressed, flagging only new issues."
+    local prev_findings="$STATE_DIR/codex-findings-$((iteration - 1)).json"
+    if [[ -f "$prev_findings" ]]; then
+      echo "## Previous Review Context"
+      echo "Previous findings file: $prev_findings"
+      echo "Focus on: verifying previous blocking issues were addressed, flagging only genuinely new issues."
+      echo "Do NOT re-raise findings that were already addressed."
+    fi
   fi)
 
 ## Instructions
 
 1. Read the diff file at: $diff_file
-2. Review the changes for bugs, security issues, architecture concerns
-3. Write your complete review to: $output_file
+2. Review the changes for: correctness bugs, crash paths, security issues, wrong output, architectural concerns
+3. For each finding, classify severity:
+   - **blocking**: correctness bug, crash path, wrong output, security HIGH/CRITICAL
+   - **non-blocking**: style nit, "could be simpler", defensive edge case, consistency preference
+4. Write your complete findings to: $findings_file
 
-Use this exact JSON format for the output file:
+Use this exact JSON format for the findings file:
 \`\`\`json
 {
-  "verdict": "APPROVE | REQUEST_CHANGES | NEEDS_DISCUSSION",
   "findings": [
-    {"file": "path/to/file.ts", "line": 42, "severity": "blocking|non-blocking", "description": "..."}
+    {
+      "id": "F1",
+      "file": "path/to/file.ts",
+      "line": 42,
+      "severity": "blocking",
+      "category": "correctness|security|architecture|style|performance",
+      "description": "Clear description of the issue",
+      "suggestion": "How to fix it"
+    }
   ],
-  "summary": "One paragraph summary of the review"
+  "summary": "One paragraph summary of the review",
+  "stats": {
+    "blocking_count": 0,
+    "non_blocking_count": 0,
+    "files_reviewed": 0
+  }
 }
 \`\`\`
 
-4. After writing the output file, say: REVIEW_COMPLETE
+**IMPORTANT:** Do NOT include a "verdict" field. You produce findings — the verdict is decided elsewhere.
+
+5. After writing the file, say: REVIEW_COMPLETE
 PROMPT
 
   # Send a SHORT command to Codex pane — just tell it to read the prompt file
   tmux send-keys -t "$SESSION:work.1" \
     "Read the review request at $prompt_file and follow the instructions." C-m
 
-  # Wait for output file (non-blocking to Claude)
+  # Wait for findings file (non-blocking to Claude — Claude can do other work)
   local timeout=900
   local elapsed=0
-  while [[ ! -f "$output_file" ]] && (( elapsed < timeout )); do
+  while [[ ! -f "$findings_file" ]] && (( elapsed < timeout )); do
     sleep 5
     ((elapsed += 5))
   done
 
-  if [[ -f "$output_file" ]]; then
-    local verdict
-    verdict=$(jq -r '.verdict' "$output_file")
-
-    # Create evidence
-    create_codex_evidence "$session_id" "$verdict" "$iteration"
-
-    # If REQUEST_CHANGES, relay findings to Claude
-    if [[ "$verdict" == "REQUEST_CHANGES" ]]; then
-      local findings
-      findings=$(jq -r '.summary' "$output_file")
-      pane_send 0 "Codex review (iteration $iteration) returned REQUEST_CHANGES:
-
-$findings
-
-Fix blocking issues and signal when ready for re-review."
-      transition_state "IMPLEMENT"
-    else
-      transition_state "VERIFY"
+  if [[ -f "$findings_file" ]]; then
+    # Validate JSON
+    if ! jq -e . "$findings_file" >/dev/null 2>&1; then
+      log "ERROR" "Codex wrote invalid JSON to $findings_file"
+      relay_to_claude "codex-review-error" \
+        "Codex review produced invalid JSON. Raw file: $findings_file. Check Codex pane."
+      return 1
     fi
+
+    # Deliver FULL findings to Claude — Claude triages, coordinator doesn't
+    local blocking_count
+    blocking_count=$(jq -r '.stats.blocking_count // (.findings | map(select(.severity == "blocking")) | length)' "$findings_file")
+    local total_count
+    total_count=$(jq -r '.findings | length' "$findings_file")
+
+    relay_to_claude "codex-review" \
+      "Codex review (iteration $iteration) complete. $total_count findings ($blocking_count blocking).
+
+**Full findings file:** $findings_file
+Read this file to see all findings with file:line references and severity classifications.
+
+**Your job (same as always):**
+1. Read the full findings file
+2. Triage each finding: blocking / non-blocking / out-of-scope
+3. Update your issue ledger (reject re-raised closed findings, detect oscillation)
+4. If no blocking findings: \`request-codex.sh --approve\`
+5. If blocking findings need fixes: fix them, choose re-review tier, then \`request-codex.sh --re-review\`
+6. If unresolvable after $MAX_CODEX_ITERATIONS iterations: \`request-codex.sh --needs-discussion\`
+
+**Tiered re-review (same as current system):**
+- Targeted swap (typo, \`in\` → \`Object.hasOwn\`): test-runner only, then \`--approve\` if tests pass
+- Logic change within function: re-run critics (code-critic + minimizer) + test-runner, then \`--re-review\`
+- New export / changed signature / security path: full cascade (critics → codex → verify)"
+
+    # Transition to CLAUDE_TRIAGE — coordinator WAITS for Claude's verdict signal
+    transition_state "CLAUDE_TRIAGE"
+
   else
     log "ERROR" "Codex review timed out after ${timeout}s"
-    pane_send 0 "Codex review timed out. Check Codex pane for status."
+    relay_to_claude "codex-review-timeout" \
+      "Codex review timed out after ${timeout}s. Check Codex pane for status. You may:
+- Wait and check if Codex is still working
+- Signal \`request-codex.sh --needs-discussion\` to pause for user intervention
+- Signal \`request-codex.sh --re-review\` to retry"
+    transition_state "CLAUDE_TRIAGE"  # still let Claude decide what to do
   fi
+}
+
+# Check if Codex has written its findings file
+check_codex_findings_complete() {
+  local iteration
+  iteration=$(jq -r '.codex_reviews + 1' "$STATE_DIR/state.json")
+  local findings_file="$STATE_DIR/codex-findings-$iteration.json"
+
+  # dispatch_codex_review handles the wait loop and delivery internally
+  # This function is a no-op placeholder for the core loop structure
+  # (dispatch_codex_review blocks within CODEX_REVIEW until findings arrive
+  #  or timeout, then transitions to CLAUDE_TRIAGE)
 }
 ```
 
-**Key difference from current system:** Claude is NOT blocked. While Codex reviews, the coordinator can allow Claude to:
+**Key difference from current system:** Claude is NOT blocked during the review. While Codex reviews, Claude can:
 - Run tests in parallel
-- Start preparing the next task
 - Fix documentation
 - Any non-code-edit work (code edits would invalidate markers)
 
+But the verdict flow is **identical to current**: Claude reads full findings, triages each one, maintains the issue ledger, and decides the outcome. The only mechanical difference is that Claude reads findings from a file instead of from subprocess stdout, and signals the verdict via `request-codex.sh --approve` instead of `codex-verdict.sh approve`.
+
 **Coordinator-to-Claude message format:**
 
-When the coordinator needs to send information to Claude (e.g., Codex review findings), it does NOT inject raw text into Claude's pane via `tmux send-keys`. That would look like user input and confuse Claude's session.
+When the coordinator needs to send information to Claude (e.g., Codex review findings ready), it does NOT inject raw text into Claude's pane via `tmux send-keys`. That would look like user input and confuse Claude's session.
 
 Instead, the coordinator writes a message file and then sends a short notification:
 
 ```bash
-# Coordinator writes findings to a known file
+# Coordinator writes message to a known file, sends short notification
 relay_to_claude() {
-  local message_type="$1"  # "codex-review", "codex-planning", etc.
+  local message_type="$1"  # "codex-review", "codex-review-error", "iteration-cap", etc.
   local content="$2"
   local message_file="$STATE_DIR/messages/to-claude-$(date +%s%N).md"
 
@@ -953,23 +1164,28 @@ Claude reads the file with its Read tool and acts on the content. This approach:
 **CLAUDE.md must document this convention:** Add a section explaining that `[COORDINATOR]` prefixed messages are from the tmux coordinator and should be treated as system directives, not user messages. Claude should read the referenced file and act according to the message type.
 
 **Deliverables:**
-- [ ] `coordinator/codex-review.sh` — review dispatch and verdict capture
+- [ ] `coordinator/codex-review.sh` — review dispatch and findings delivery (no verdict interpretation)
 - [ ] Gate check (critic markers) built into coordinator
-- [ ] File-based verdict capture (primary) with pane capture fallback
-- [ ] Findings relay to Claude on REQUEST_CHANGES
+- [ ] Codex produces findings-only JSON (no verdict field)
+- [ ] Full findings file delivered to Claude via `relay_to_claude`
+- [ ] CLAUDE_TRIAGE state: coordinator waits for Claude's verdict signal
+- [ ] Triage instructions embedded in coordinator message (matches current SKILL.md rules)
 - [ ] Iteration tracking in state file
 
 ### 2.2 Claude-Side Request Script (`request-codex.sh`)
 
-Replaces `call_codex.sh` from Claude's perspective. Instead of invoking a subprocess, Claude runs this script which signals the coordinator to dispatch the review.
+Replaces both `call_codex.sh` and `codex-verdict.sh` from Claude's perspective. This single script handles:
+- **Requesting** a Codex review (replaces `call_codex.sh --review`)
+- **Requesting** a Codex task (replaces `call_codex.sh --prompt`)
+- **Signaling the verdict** after Claude triages findings (replaces `codex-verdict.sh`)
 
 ```bash
 #!/usr/bin/env bash
-# request-codex.sh — Signal coordinator to dispatch Codex review/task
-# This is what Claude invokes instead of call_codex.sh
+# request-codex.sh — Signal coordinator for Codex review/task/verdict
+# Replaces both call_codex.sh and codex-verdict.sh
 set -euo pipefail
 
-MODE="${1:?Usage: request-codex.sh --review|--prompt <text>}"
+MODE="${1:?Usage: request-codex.sh --review|--prompt|--approve|--re-review|--needs-discussion}"
 
 STATE_DIR=$(find /tmp -maxdepth 1 -name 'party-*' -type d | head -1)
 if [[ -z "$STATE_DIR" ]]; then
@@ -977,39 +1193,114 @@ if [[ -z "$STATE_DIR" ]]; then
   exit 1
 fi
 
+TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
 case "$MODE" in
+
+  # === DISPATCH REQUESTS (replaces call_codex.sh) ===
+
   --review)
     BASE="${2:-main}"
     TITLE="${3:-}"
-    # Write request to coordinator's inbox
-    cat > "$STATE_DIR/codex-request.json" << EOF
-{"type": "review", "base": "$BASE", "title": "$TITLE", "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+    cat > "$STATE_DIR/signals/codex-request.json" << EOF
+{"type": "review", "base": "$BASE", "title": "$TITLE", "timestamp": "$TIMESTAMP"}
 EOF
-    echo "CODEX_REVIEW_REQUESTED — coordinator will dispatch. Claude is free to continue non-edit work."
-    echo "Monitor progress in the dashboard pane."
+    echo "CODEX_REVIEW_REQUESTED — coordinator will dispatch."
+    echo "Claude is free to continue non-edit work while Codex reviews."
+    echo "Coordinator will deliver findings when Codex completes."
+    echo "CODEX_REVIEW_RAN"  # Sentinel for coordinator-trace.sh logging
     ;;
+
   --prompt)
     PROMPT="${2:?Missing prompt text}"
-    cat > "$STATE_DIR/codex-request.json" << EOF
-{"type": "prompt", "prompt": "$PROMPT", "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+    cat > "$STATE_DIR/signals/codex-request.json" << EOF
+{"type": "prompt", "prompt": "$PROMPT", "timestamp": "$TIMESTAMP"}
 EOF
     echo "CODEX_TASK_REQUESTED — coordinator will dispatch."
+    ;;
+
+  # === VERDICT SIGNALS (replaces codex-verdict.sh) ===
+  # Claude calls these AFTER reading and triaging Codex's findings.
+
+  --approve)
+    # Claude triaged all findings as non-blocking or out-of-scope.
+    # Coordinator will create evidence markers and transition to VERIFY.
+    cat > "$STATE_DIR/signals/codex-verdict-approve.json" << EOF
+{"verdict": "APPROVE", "timestamp": "$TIMESTAMP"}
+EOF
+    echo "CODEX APPROVED"  # Sentinel for coordinator-trace.sh logging
+    echo "Verdict signaled to coordinator. Evidence markers will be created."
+    ;;
+
+  --re-review)
+    # Claude found blocking issues, fixed them, and wants another review cycle.
+    # Claude has already chosen the re-review tier:
+    #   - If targeted swap: Claude already ran test-runner, signals --approve if pass
+    #   - If logic change: Claude re-ran critics, now signals --re-review for codex
+    #   - If full cascade: Claude re-ran critics, now signals --re-review for codex
+    # The coordinator doesn't need to know the tier — it just re-dispatches.
+    REASON="${2:-Blocking findings fixed}"
+    cat > "$STATE_DIR/signals/codex-verdict-re-review.json" << EOF
+{"verdict": "RE_REVIEW", "reason": "$REASON", "timestamp": "$TIMESTAMP"}
+EOF
+    echo "CODEX REQUEST_CHANGES"  # Sentinel for coordinator-trace.sh logging
+    echo "Re-review requested. Coordinator will dispatch next iteration when ready."
+    ;;
+
+  --needs-discussion)
+    # Claude can't resolve findings, or this is a design disagreement,
+    # or iteration cap is approaching. User intervention needed.
+    REASON="${2:-Multiple valid approaches or unresolvable findings}"
+    cat > "$STATE_DIR/signals/codex-verdict-needs-discussion.json" << EOF
+{"verdict": "NEEDS_DISCUSSION", "reason": "$REASON", "timestamp": "$TIMESTAMP"}
+EOF
+    echo "CODEX NEEDS_DISCUSSION"  # Sentinel for coordinator-trace.sh logging
+    echo "Workflow paused. User intervention required."
+    ;;
+
+  *)
+    echo "Error: Unknown mode '$MODE'" >&2
+    echo "Usage: request-codex.sh --review|--prompt|--approve|--re-review|--needs-discussion" >&2
+    exit 1
     ;;
 esac
 ```
 
-**Critical design decision:** This script returns immediately. Claude is unblocked. The coordinator handles the review asynchronously. Claude's hooks still work normally for everything else (sub-agents, marker invalidation, skill markers).
+**This script returns immediately in all modes.** For `--review`/`--prompt`, it dispatches work to Codex. For `--approve`/`--re-review`/`--needs-discussion`, it signals Claude's verdict to the coordinator.
+
+**Mapping to current system:**
+
+| Current | Tmux equivalent |
+|---------|----------------|
+| `call_codex.sh --review --base main --title "..."` | `request-codex.sh --review main "..."` |
+| `call_codex.sh --prompt "..."` | `request-codex.sh --prompt "..."` |
+| `codex-verdict.sh approve` | `request-codex.sh --approve` |
+| `codex-verdict.sh request_changes` | `request-codex.sh --re-review "reason"` |
+| `codex-verdict.sh needs_discussion` | `request-codex.sh --needs-discussion "reason"` |
+
+**Tiered re-review — Claude decides, not the coordinator:**
+
+The current system's tiered re-review (task-workflow/SKILL.md lines 101-107) works the same way:
+
+1. **Targeted swap** (typo fix): Claude runs test-runner only. If tests pass and no new issues, Claude calls `request-codex.sh --approve` directly — no codex re-review needed.
+2. **Logic change**: Claude re-runs critics (code-critic + minimizer via Task tool). If critics approve, Claude calls `request-codex.sh --re-review` — coordinator dispatches another codex review.
+3. **Full cascade**: Same as logic change but Claude also re-runs test-runner before signaling `--re-review`.
+
+The coordinator is passive during all of this. It sits in CLAUDE_TRIAGE waiting for a signal. Claude drives the entire fix-and-re-review decision tree internally.
 
 **Deliverables:**
-- [ ] `claude/skills/codex-cli/scripts/request-codex.sh` — non-blocking coordinator signal
-- [ ] Coordinator watches `$STATE_DIR/codex-request.json` for incoming requests
-- [ ] Claude receives immediate acknowledgment (not blocked)
+- [ ] `claude/skills/codex-cli/scripts/request-codex.sh` — unified dispatch + verdict script
+- [ ] `--review` and `--prompt` modes for dispatch (replaces `call_codex.sh`)
+- [ ] `--approve`, `--re-review`, `--needs-discussion` modes for verdict (replaces `codex-verdict.sh`)
+- [ ] All modes write to `$STATE_DIR/signals/` for coordinator detection
+- [ ] Sentinel strings preserved for `coordinator-trace.sh` logging compatibility
+- [ ] Coordinator watches signal directory for all signal types
 
 ### 2.3 New Hooks (`coordinator-gate.sh`, `coordinator-trace.sh`)
 
 These replace `codex-gate.sh` and `codex-trace.sh` but work with the coordinator instead of matching `call_codex.sh` regex.
 
-**`coordinator-gate.sh`** — PreToolUse on Bash, blocks `request-codex.sh --review` unless critic markers exist:
+**`coordinator-gate.sh`** — PreToolUse on Bash, gates `request-codex.sh` invocations:
 
 ```bash
 #!/usr/bin/env bash
@@ -1019,25 +1310,42 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
 
 [[ -z "$SESSION_ID" || -z "$COMMAND" ]] && { echo '{}'; exit 0; }
 
-# Only gate review requests (not --prompt for planning/debugging)
-echo "$COMMAND" | grep -qE '(^|[;&|] *)([^ ]*/)request-codex\.sh +--review' || { echo '{}'; exit 0; }
+# Only gate request-codex.sh invocations
+echo "$COMMAND" | grep -qE '(^|[;&|] *)([^ ]*/)request-codex\.sh' || { echo '{}'; exit 0; }
 
-# Check critic markers (same logic as original codex-gate.sh)
-MISSING=""
-[ ! -f "/tmp/claude-code-critic-$SESSION_ID" ] && MISSING="$MISSING code-critic"
-[ ! -f "/tmp/claude-minimizer-$SESSION_ID" ] && MISSING="$MISSING minimizer"
+# Gate 1: --review requires critic APPROVE markers (same as original codex-gate.sh)
+if echo "$COMMAND" | grep -qE 'request-codex\.sh +--review'; then
+  MISSING=""
+  [ ! -f "/tmp/claude-code-critic-$SESSION_ID" ] && MISSING="$MISSING code-critic"
+  [ ! -f "/tmp/claude-minimizer-$SESSION_ID" ] && MISSING="$MISSING minimizer"
 
-if [ -n "$MISSING" ]; then
-  cat << EOF
+  if [ -n "$MISSING" ]; then
+    cat << EOF
 {"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":"BLOCKED: Codex review gate — critic APPROVE markers missing:$MISSING"}}
 EOF
-  exit 0
+    exit 0
+  fi
 fi
 
+# Gate 2: --approve requires codex-ran marker (defense against approval without review)
+if echo "$COMMAND" | grep -qE 'request-codex\.sh +--approve'; then
+  if [ ! -f "/tmp/claude-codex-ran-$SESSION_ID" ]; then
+    cat << EOF
+{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":"BLOCKED: Cannot approve Codex review — no review has been run (codex-ran marker missing)."}}
+EOF
+    exit 0
+  fi
+fi
+
+# --prompt, --re-review, --needs-discussion are always allowed
 echo '{}'
 ```
 
-**`coordinator-trace.sh`** — PostToolUse on Bash, creates evidence when coordinator completes Codex review:
+This gate preserves both enforcement layers from the current system:
+1. Can't request codex review without critic approval (same as `codex-gate.sh`)
+2. Can't approve a review that never ran (same as `codex-trace.sh`'s dual-layer defense)
+
+**`coordinator-trace.sh`** — PostToolUse on Bash, logs all `request-codex.sh` invocations (dispatch + verdict):
 
 ```bash
 #!/usr/bin/env bash
@@ -1047,20 +1355,32 @@ session_id=$(echo "$hook_input" | jq -r '.session_id // "unknown"' 2>/dev/null)
 
 [[ -z "$session_id" || "$session_id" == "unknown" ]] && exit 0
 
-# Detect request-codex.sh completion
+# Detect request-codex.sh invocations (both dispatch and verdict modes)
 echo "$command" | grep -qE '(^|[;&|] *)([^ ]*/)request-codex\.sh' || exit 0
 
 response=$(echo "$hook_input" | jq -r '.tool_response // ""' 2>/dev/null)
+TRACE_LOG="$HOME/.claude/logs/coordinator-trace.log"
+mkdir -p "$(dirname "$TRACE_LOG")"
 
-# Coordinator handles evidence creation directly — this hook just logs
+timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+# Log each type of invocation
 if echo "$response" | grep -qF "CODEX_REVIEW_REQUESTED"; then
-  echo "Codex review dispatched to coordinator" >> "$HOME/.claude/logs/coordinator-trace.log"
+  echo "$timestamp [DISPATCH] session=$session_id review requested" >> "$TRACE_LOG"
+elif echo "$response" | grep -qF "CODEX_TASK_REQUESTED"; then
+  echo "$timestamp [DISPATCH] session=$session_id task requested" >> "$TRACE_LOG"
+elif echo "$response" | grep -qF "CODEX APPROVED"; then
+  echo "$timestamp [VERDICT] session=$session_id verdict=APPROVE" >> "$TRACE_LOG"
+elif echo "$response" | grep -qF "CODEX REQUEST_CHANGES"; then
+  echo "$timestamp [VERDICT] session=$session_id verdict=RE_REVIEW" >> "$TRACE_LOG"
+elif echo "$response" | grep -qF "CODEX NEEDS_DISCUSSION"; then
+  echo "$timestamp [VERDICT] session=$session_id verdict=NEEDS_DISCUSSION" >> "$TRACE_LOG"
 fi
 
 exit 0
 ```
 
-**Note:** In the tmux model, evidence creation happens in the coordinator (`evidence.sh`), not in hooks. The `coordinator-trace.sh` hook is primarily for logging. The actual markers (`/tmp/claude-codex-*`) are created by `evidence.sh` when the coordinator captures Codex's verdict. This is architecturally different from the current system where hooks create markers — but the end result is the same: `pr-gate.sh` checks the same markers in the same locations.
+**Note:** In the tmux model, evidence creation happens in the coordinator (`evidence.sh`), not in hooks. The `coordinator-trace.sh` hook is for **logging only** — it creates an audit trail of all `request-codex.sh` invocations (both dispatch requests and verdict signals). The actual markers (`/tmp/claude-codex-*`) are created by `evidence.sh` when the coordinator processes Claude's verdict signal in the CLAUDE_TRIAGE state. This preserves the current system's guarantee: markers are created in response to Claude's explicit verdict signal, not Codex's self-assessment.
 
 **Deliverables:**
 - [ ] `claude/hooks/coordinator-gate.sh` — gate for `request-codex.sh --review`
@@ -1148,29 +1468,54 @@ Codex: "Plan complete. Writing to PLAN.md"
 
 ### 4.1 Updated Workflow Skills
 
-**`task-workflow/SKILL.md` — Step 7 changes:**
+**`task-workflow/SKILL.md` — Steps 7 and 8 change:**
 
-Current:
+Current step 7:
 ```
 7. **codex** — Invoke `~/.claude/skills/codex-cli/scripts/call_codex.sh` for combined code + architecture review
 ```
 
-New:
+New step 7:
 ```
 7. **codex** — Request codex review via the coordinator:
    ```bash
    ~/.claude/skills/codex-cli/scripts/request-codex.sh --review main "{PR title}"
    ```
-   This dispatches the review to the coordinator. You are NOT blocked — continue with non-edit work while Codex reviews. The coordinator will relay findings when Codex completes.
-   If REQUEST_CHANGES: the coordinator sends findings to your pane. Fix blocking issues and signal ready for re-review.
-   If APPROVE: the coordinator creates evidence markers and advances to verification.
+   This dispatches the review to the coordinator. You are NOT blocked — continue with
+   non-edit work while Codex reviews. The coordinator will deliver the full findings file
+   when Codex completes.
 ```
 
-**`bugfix-workflow/SKILL.md` — Steps 3, 6, 7 change similarly.**
+Current step 8:
+```
+8. **Handle codex verdict** — Triage findings (see Finding Triage). Classify fix impact for tiered re-review. Signal verdict via `codex-verdict.sh`.
+```
+
+New step 8:
+```
+8. **Triage codex findings** — When the coordinator delivers Codex's findings file:
+   a. Read the FULL findings file (not just the summary)
+   b. Triage each finding: blocking / non-blocking / out-of-scope
+   c. Update issue ledger (reject re-raised closed findings, detect oscillation)
+   d. If no blocking findings:
+      ```bash
+      ~/.claude/skills/codex-cli/scripts/request-codex.sh --approve
+      ```
+   e. If blocking findings need fixes: fix them, choose re-review tier:
+      - Targeted swap (typo): run test-runner only → if pass, `request-codex.sh --approve`
+      - Logic change: re-run critics → if approve, `request-codex.sh --re-review`
+      - New export/signature: full cascade → `request-codex.sh --re-review`
+   f. If unresolvable (max 3 iterations):
+      ```bash
+      ~/.claude/skills/codex-cli/scripts/request-codex.sh --needs-discussion "reason"
+      ```
+```
+
+**`bugfix-workflow/SKILL.md` — Steps 3, 6, 7 change similarly.** Step 7 (handle verdict) gains the same triage-and-signal protocol as task-workflow step 8.
 
 **`codex-cli/SKILL.md` — Full rewrite:**
 
-Replace all `call_codex.sh` invocation patterns with `request-codex.sh` patterns. Update the explanation to describe coordinator-mediated flow instead of blocking subprocess.
+Replace all `call_codex.sh` invocation patterns with `request-codex.sh` patterns. Replace `codex-verdict.sh` with `request-codex.sh --approve/--re-review/--needs-discussion`. Update the Verdict Protocol section to describe Claude's triage responsibility and the three verdict signals. Update the Execution section to describe coordinator-mediated flow: dispatch → wait for findings → triage → signal verdict.
 
 ### 4.2 Updated Rules
 
@@ -1184,8 +1529,10 @@ Replace all `call_codex.sh` invocation patterns with `request-codex.sh` patterns
 - Checkpoint markers: note that codex markers are created by coordinator, not hooks
 
 **`CLAUDE.md`:**
-- Sub-agents table: replace `call_codex.sh` with `request-codex.sh`
+- Sub-agents table: replace `call_codex.sh` / `codex-verdict.sh` with `request-codex.sh` (all modes)
 - Note that Codex review is non-blocking
+- Add `[COORDINATOR]` message convention section: "Messages prefixed with `[COORDINATOR]` are from the tmux coordinator daemon. Read the referenced file with the Read tool and act on its instructions."
+- Add verdict authority note: "You are the verdict authority for Codex reviews. When the coordinator delivers Codex findings, YOU triage each finding, maintain the issue ledger, and signal the verdict via `request-codex.sh --approve/--re-review/--needs-discussion`. The coordinator and Codex do not decide verdicts."
 
 ### 4.3 Updated Settings
 
@@ -1432,25 +1779,35 @@ Week 5:   Side-by-side evaluation vs current system
 | Codex ignores file-write instruction | Medium | Retry with explicit instruction; fall back to pane capture |
 | ANSI artifacts corrupt pane capture | Medium | Primary strategy is file-based (avoids pane capture for data) |
 | Agent crashes during review | Medium | Health check respawns; state file preserves progress |
-| Race condition: code edit during Codex review | Medium | `marker-invalidate.sh` still fires on Claude's Edit/Write; coordinator detects stale evidence |
+| Race condition: code edit during Codex review | Medium | `marker-invalidate.sh` still fires on Claude's Edit/Write; coordinator detects stale evidence. Claude is in CLAUDE_TRIAGE during this — it knows markers will be invalidated |
 | iTerm2 `tmux -CC` behavior differences | Low | Test both `tmux -CC` and raw tmux; `--raw` flag as fallback |
-| Coordinator daemon crashes | Medium | PID file + wrapper script that restarts; state file survives |
-| Large diff exceeds tmux send-keys limit | Medium | Write diff to file, tell Codex to read the file instead |
+| Coordinator daemon crashes | Medium | PID file + wrapper script that restarts; state file survives; CLAUDE_TRIAGE state is recoverable (re-read pending signals) |
+| Large diff exceeds tmux send-keys limit | Medium | Write diff to file, tell Codex to read the file instead (already implemented in dispatch) |
 | Codex `--sandbox read-only` incompatible with file-write handoff | High | Test that `--sandbox read-only` allows writing to `/tmp/`; if not, use `workspace-write` with AGENTS.md constraints or write output via stdout capture |
+| Claude ignores triage responsibility and rubber-stamps --approve | Medium | `coordinator-gate.sh` gate 2 requires `codex-ran` marker; `create_codex_evidence` verifies findings file exists. But true defense is Claude's SKILL.md instructions — same as current system |
+| CLAUDE_TRIAGE stalls (Claude doesn't signal verdict) | Medium | Coordinator logs a warning after 30 min in CLAUDE_TRIAGE. Dashboard shows state duration. User can intervene manually |
+| Iteration cap too aggressive (3 may be insufficient) | Low | Cap is a constant (`MAX_CODEX_ITERATIONS`) — easy to adjust. NEEDS_DISCUSSION pauses for user, doesn't kill the session |
+| Claude signals --approve for non-blocking findings without reading full findings file | Low | Same risk as current system (Claude could call `codex-verdict.sh approve` without reading output). Mitigated by SKILL.md instructions and issue ledger convention |
+| Coordinator creates duplicate signals (race between fswatch and polling) | Low | Signals are consumed (rm -f) on first read. Core loop uses `check_for_signal()` which atomically checks and removes. fswatch is advisory only |
 
 ---
 
 ## Success Criteria
 
-1. **Full review cycle works:** Claude implements → critics → codex review → APPROVE → PR created
-2. **Multi-review cycle works:** 3+ REQUEST_CHANGES → eventual APPROVE with persistent context
-3. **Claude is not blocked:** During Codex review, Claude can receive and process coordinator messages
-4. **Planning dialogue works:** Codex asks Claude a question, coordinator mediates, Codex continues
-5. **All existing hooks still work:** agent-trace, marker-invalidate, skill-marker, pr-gate, worktree-guard, session-cleanup, skill-eval
-6. **Markers are compatible:** Same `/tmp/claude-*` paths, same semantics, pr-gate.sh works unchanged
-7. **iTerm2 UX:** `tmux -CC` gives native panes with scrollback and search
-8. **Tests pass:** All test suites green
-9. **Rollback works:** Single symlink change reverts to subprocess model
+1. **Full review cycle works:** Claude implements → critics → codex review → Claude triages → APPROVE → PR created
+2. **Multi-review cycle works:** 3 REQUEST_CHANGES iterations with Claude triaging each one, maintaining issue ledger across iterations, eventual APPROVE with persistent context
+3. **Claude is the verdict authority:** Codex produces findings only. Claude triages (blocking/non-blocking/out-of-scope), decides verdict, signals coordinator
+4. **Tiered re-review works:** Claude chooses re-review tier (test-runner only / critics + test-runner / full cascade) — coordinator is passive during IMPLEMENT
+5. **Issue ledger works:** Claude sees full findings each iteration, rejects re-raised closed findings, detects oscillation — same as current system
+6. **Iteration cap enforced:** After 3 codex iterations → NEEDS_DISCUSSION, workflow pauses for user
+7. **NEEDS_DISCUSSION works:** Workflow pauses, user can resolve and resume via signal
+8. **Claude is not blocked:** During Codex review, Claude can receive and process coordinator messages
+9. **Planning dialogue works:** Codex asks Claude a question, coordinator mediates, Codex continues
+10. **All existing hooks still work:** agent-trace, marker-invalidate, skill-marker, pr-gate, worktree-guard, session-cleanup, skill-eval
+11. **Markers are compatible:** Same `/tmp/claude-*` paths, same semantics, pr-gate.sh works unchanged
+12. **iTerm2 UX:** `tmux -CC` gives native panes with scrollback and search
+13. **Tests pass:** All test suites green
+14. **Rollback works:** Single symlink change reverts to subprocess model
 
 ---
 
@@ -1501,8 +1858,10 @@ Each file below is copied, then specific edits are applied. The required edits a
 
 ```
 ai-config/claude/CLAUDE.md → ai-config-tmux/claude/CLAUDE.md
-  Edits: Replace 3 occurrences of "call_codex.sh" with "request-codex.sh"
+  Edits: Replace all "call_codex.sh" with "request-codex.sh"
+         Replace all "codex-verdict.sh" with "request-codex.sh --approve/--re-review/--needs-discussion"
          Add [COORDINATOR] message convention section
+         Add verdict authority note ("You are the verdict authority for Codex reviews...")
          Update Sub-Agents table (see Phase 4.1)
 
 ai-config/claude/settings.json → ai-config-tmux/claude/settings.json
@@ -1512,20 +1871,24 @@ ai-config/claude/rules/execution-core.md → ai-config-tmux/claude/rules/executi
   Edits: Update Codex Review Gate section (see Phase 4.2)
          Update enforcement chain description
          Same decision matrix logic, different mechanism description
+         Add: "Claude remains verdict authority — coordinator waits for Claude's signal"
 
 ai-config/claude/rules/autonomous-flow.md → ai-config-tmux/claude/rules/autonomous-flow.md
-  Edits: Update violation patterns: call_codex.sh → request-codex.sh
-         Update checkpoint markers note: codex markers created by coordinator
+  Edits: Update violation patterns: call_codex.sh → request-codex.sh, codex-verdict.sh → request-codex.sh --approve
+         Update checkpoint markers note: codex markers created by coordinator on Claude's verdict signal
+         Add: NEEDS_DISCUSSION state description (workflow pauses for user intervention)
 
 ai-config/claude/skills/task-workflow/SKILL.md → ai-config-tmux/claude/skills/task-workflow/SKILL.md
-  Edits: Step 7: replace call_codex.sh invocation with request-codex.sh (see Phase 4.1)
-         Step 8: remove codex-verdict.sh reference (coordinator handles verdict)
-         Codex Step section: rewrite for coordinator-mediated flow
+  Edits: Step 7: replace call_codex.sh invocation with request-codex.sh --review (see Phase 4.1)
+         Step 8: rewrite as "Triage codex findings" — Claude reads full findings, triages,
+                 signals verdict via request-codex.sh --approve/--re-review/--needs-discussion
+         Codex Step section: rewrite for coordinator-mediated flow with explicit triage protocol
+         Tiered re-review: preserved exactly, but verdict signal is request-codex.sh not codex-verdict.sh
 
 ai-config/claude/skills/bugfix-workflow/SKILL.md → ai-config-tmux/claude/skills/bugfix-workflow/SKILL.md
-  Edits: Step 3: replace call_codex.sh with request-codex.sh for investigation
-         Step 6: replace call_codex.sh with request-codex.sh for review
-         Step 7: remove codex-verdict.sh reference
+  Edits: Step 3: replace call_codex.sh with request-codex.sh --prompt for investigation
+         Step 6: replace call_codex.sh with request-codex.sh --review for review
+         Step 7: rewrite as "Triage codex findings" — same protocol as task-workflow step 8
          Codex Review Step section: reference updated task-workflow
 
 ai-config/codex/AGENTS.md → ai-config-tmux/codex/AGENTS.md
@@ -1534,7 +1897,9 @@ ai-config/codex/AGENTS.md → ai-config-tmux/codex/AGENTS.md
           A coordinator process mediates communication between you and Claude.
           When asked to write output to a file, always comply — the coordinator
           reads your results from files, not from your terminal output.
-          You retain context across reviews within this session."
+          You retain context across reviews within this session.
+          IMPORTANT: You produce FINDINGS, not verdicts. Do not include a 'verdict'
+          field in your review output. The verdict is decided by Claude."
 
 ai-config/codex/config.toml → ai-config-tmux/codex/config.toml
   Edits: No changes needed (sandbox_mode is set at launch time by party.sh)
@@ -1545,8 +1910,8 @@ ai-config/codex/config.toml → ai-config-tmux/codex/config.toml
 ```
 ai-config/claude/hooks/codex-gate.sh      → REPLACED BY: ai-config-tmux/claude/hooks/coordinator-gate.sh (new file)
 ai-config/claude/hooks/codex-trace.sh     → REPLACED BY: ai-config-tmux/claude/hooks/coordinator-trace.sh (new file)
-ai-config/claude/skills/codex-cli/scripts/call_codex.sh    → REPLACED BY: request-codex.sh (new file)
-ai-config/claude/skills/codex-cli/scripts/codex-verdict.sh → DELETED (coordinator handles verdict)
+ai-config/claude/skills/codex-cli/scripts/call_codex.sh    → REPLACED BY: request-codex.sh (new file, handles dispatch + verdict)
+ai-config/claude/skills/codex-cli/scripts/codex-verdict.sh → MERGED INTO: request-codex.sh --approve/--re-review/--needs-discussion
 ai-config/codex/skills/claude-cli/scripts/call_claude.sh   → REPLACED BY: request-claude.sh (new file)
 ```
 
