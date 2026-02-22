@@ -375,7 +375,7 @@ The mirror image of `tmux-codex.sh`. Codex calls this to ask Claude questions du
 # Replaces call_claude.sh
 set -euo pipefail
 
-PROMPT_TEXT="${1:?Usage: tmux-claude.sh \"question for Claude\"}"
+MESSAGE="${1:?Usage: tmux-claude.sh \"message for Claude\"}"
 
 # Discover active party session
 STATE_DIR=$(find /tmp -maxdepth 1 -name 'party-*' -type d 2>/dev/null | head -1)
@@ -385,30 +385,13 @@ if [[ -z "$STATE_DIR" ]]; then
 fi
 SESSION_NAME=$(cat "$STATE_DIR/session-name")
 CLAUDE_PANE="$SESSION_NAME:work.0"
-TIMESTAMP="$(date +%s%N)"
 
-# Write question to file
-QUESTION_FILE="$STATE_DIR/messages/to-claude/question-$TIMESTAMP.md"
-RESPONSE_FILE="$STATE_DIR/messages/to-claude/response-$TIMESTAMP.md"
+# Just send the [CODEX] prefixed message to Claude's pane.
+# Codex's claude-cli skill defines what messages to send and when.
+# Claude's tmux-handler skill defines how to respond.
+tmux send-keys -t "$CLAUDE_PANE" "[CODEX] $MESSAGE" C-m
 
-cat > "$QUESTION_FILE" << EOF
-# Question from Codex
-
-$PROMPT_TEXT
-
-## Instructions
-
-Write your response to: $RESPONSE_FILE
-EOF
-
-# Send short notification to Claude's pane
-tmux send-keys -t "$CLAUDE_PANE" \
-  "[CODEX] Question waiting. Read: $QUESTION_FILE — Write response to: $RESPONSE_FILE" C-m
-
-echo "CLAUDE_REQUEST_DISPATCHED"
-echo "Question file: $QUESTION_FILE"
-echo "Claude will write response to: $RESPONSE_FILE"
-echo "Claude will notify Codex via tmux when response is ready."
+echo "CLAUDE_MESSAGE_SENT"
 ```
 
 **How Codex uses this — the planning dialogue flow:**
@@ -417,31 +400,25 @@ echo "Claude will notify Codex via tmux when response is ready."
 1. User sends planning task to Codex pane directly
 2. Codex works on the plan...
 3. Codex needs to know how the database connection pool works
-4. Codex calls: tmux-claude.sh "How does the database connection pool work in src/db/?"
-   → Script writes question file, sends tmux message to Claude pane
-   → Script returns immediately — Codex is NOT blocked
-5. Claude sees "[CODEX] Question waiting..." in its pane
-6. Claude reads the question file, investigates the codebase, writes answer to response file
-7. Claude notifies Codex via tmux-codex.sh --prompt "Response ready at: <response file>"
-   → Codex sees the notification in its pane
-8. Codex reads the response file, incorporates the answer, and continues planning
+4. Codex follows its claude-cli skill: creates a response file path, calls:
+   tmux-claude.sh "Question: How does the DB connection pool work in src/db/? Write response to: <response_file>"
+   → Script sends [CODEX] prefixed message to Claude's pane, returns immediately
+5. Claude's tmux-handler skill fires: sees "[CODEX] Question..."
+6. Claude investigates the codebase, writes answer to the response file
+7. Claude notifies Codex via tmux-codex.sh --prompt "Response ready at: <response_file>"
+8. Codex reads the response file, incorporates the answer, continues planning
 ```
 
-**Multi-turn dialogue:** Multiple exchanges work naturally. Each call creates a new question/response file pair with a unique timestamp. Both agents retain their full context across exchanges because they're persistent sessions — Codex remembers what it already planned, Claude remembers what it already investigated.
+**Multi-turn dialogue:** Multiple exchanges work naturally. Each call creates unique timestamped files. Both agents retain their full context across exchanges because they're persistent tmux sessions.
 
-**How Claude recognizes Codex messages:**
+**Key design: skills define protocol, scripts are just transport.**
 
-Claude's `CLAUDE.md` documents a convention: messages prefixed with `[CODEX]` are from Codex's tmux pane. Claude should:
-1. Read the referenced question file
-2. Investigate/answer the question
-3. Write the response to the specified response file
-4. Notify Codex that the response is ready (via `tmux-codex.sh --prompt "Response ready at: <file>"`)
-
-This is similar to how Claude handles user messages — it just comes from a different source. The `[CODEX]` prefix makes it distinguishable.
+- Codex's `claude-cli` skill tells Codex *when* and *how* to contact Claude (message formats, file conventions)
+- Claude's `tmux-handler` skill tells Claude *how* to handle incoming `[CODEX]` messages (triage, investigate, respond)
+- `tmux-claude.sh` just sends `[CODEX] $MESSAGE` to Claude's pane — no protocol knowledge in the script
 
 **Deliverables:**
-- [ ] `codex/skills/claude-cli/scripts/tmux-claude.sh` — question dispatch and review-complete notification
-- [ ] File-based handoff: question and response via files in `$STATE_DIR/messages/to-claude/`
+- [ ] `codex/skills/claude-cli/scripts/tmux-claude.sh` — thin transport: sends `[CODEX]` prefixed message to Claude's pane
 - [ ] Non-blocking (returns immediately, other agent notifies via tmux when done)
 
 ---
@@ -503,7 +480,68 @@ If you've reviewed this branch before in this session, focus on:
 - Do NOT re-raise findings that were already addressed
 ```
 
-### 4.2 Claude: `tmux-handler` Skill
+### 4.2 Codex: `claude-cli` Skill (rewritten)
+
+Defines when and how Codex contacts Claude via tmux. This replaces the old `claude-cli/SKILL.md` that used `call_claude.sh`.
+
+**`codex/skills/claude-cli/SKILL.md`:**
+
+```markdown
+# claude-cli — Communicate with Claude via tmux
+
+## When to contact Claude
+
+- **During review**: After writing findings to the file, notify Claude that review is complete
+- **During planning**: When you need codebase context that would require extensive exploration
+  (e.g., "how does the auth middleware chain work?", "what calls this function?")
+- **During tasks**: When you need Claude to investigate something in parallel
+
+## How to contact Claude
+
+Use the transport script:
+```bash
+~/.codex/skills/claude-cli/scripts/tmux-claude.sh "<message>"
+```
+
+This sends a `[CODEX]` prefixed message to Claude's tmux pane. The script returns immediately — you are NOT blocked.
+
+## Message conventions
+
+### Notify review complete
+After writing findings to the specified file:
+```bash
+~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
+```
+
+### Ask a question
+When you need information from Claude:
+```bash
+~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Question: <your question>. Write response to: <response_file>"
+```
+Create the response file path using: `$STATE_DIR/messages/to-codex/response-$(date +%s%N).md`
+
+### Report task completion
+After completing a delegated task:
+```bash
+~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Task complete. Response at: <response_file>"
+```
+
+## Handling Claude's responses
+
+When you see a message in your pane from Claude (e.g., "Response ready at: <path>"):
+1. Read the response file
+2. Incorporate the answer into your current work
+3. Continue — you have full context of what you were doing before asking
+
+## Important
+
+- Each exchange creates unique timestamped files — multi-turn dialogue works naturally
+- You retain your full context across exchanges (persistent tmux session)
+- Keep questions specific and actionable — Claude will investigate the codebase for you
+- Do NOT ask Claude to make code changes. You make changes, Claude reviews.
+```
+
+### 4.3 Claude: `tmux-handler` Skill
 
 Defines how Claude handles incoming messages from Codex's tmux pane.
 
@@ -546,6 +584,7 @@ Message: `[CODEX] Task complete. Response at: <path>`
 
 **Deliverables:**
 - [ ] `codex/skills/tmux-review/SKILL.md` — Codex's review protocol (severity, format, notification, re-review behavior)
+- [ ] `codex/skills/claude-cli/SKILL.md` — Codex's outbound protocol (when/how to contact Claude, message conventions)
 - [ ] `claude/skills/tmux-handler/SKILL.md` — Claude's handler for `[CODEX]` messages (triage, verdict, question answering)
 
 ---
