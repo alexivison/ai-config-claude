@@ -261,12 +261,7 @@ case "$MODE" in
     BASE="${2:-main}"
     TITLE="${3:-Code review}"
 
-    # Generate diff
-    MERGE_BASE=$(git merge-base HEAD "$BASE")
-    DIFF_FILE="$STATE_DIR/review-diff-$TIMESTAMP.patch"
-    git diff "$MERGE_BASE"..HEAD > "$DIFF_FILE"
-
-    # Build review prompt — write to file (never inline large content in send-keys)
+    # No need to generate a diff — Codex is in the same repo and can run git diff itself.
     FINDINGS_FILE="$STATE_DIR/codex-findings-$TIMESTAMP.json"
     PROMPT_FILE="$STATE_DIR/messages/to-codex/review-$TIMESTAMP.md"
 
@@ -275,11 +270,10 @@ case "$MODE" in
 
 **Title:** $TITLE
 **Base branch:** $BASE
-**Diff file:** $DIFF_FILE
 
 ## Instructions
 
-1. Read the diff file at: $DIFF_FILE
+1. Review the changes on the current branch against \`$BASE\` (run \`git diff\` yourself to see the diff)
 2. Review the changes for: correctness bugs, crash paths, security issues, wrong output, architectural concerns
 3. For each finding, classify severity:
    - **blocking**: correctness bug, crash path, wrong output, security HIGH/CRITICAL
@@ -419,7 +413,7 @@ esac
 
 **Deliverables:**
 - [ ] `claude/skills/codex-cli/scripts/tmux-codex.sh` — all modes
-- [ ] File-based handoff: diff and prompt written to files, Codex told to read them
+- [ ] File-based handoff: review prompt written to file, Codex reads it and runs its own git diff
 - [ ] Non-blocking `--review` and `--prompt` (return immediately, Codex notifies Claude when done)
 - [ ] Review prompt instructs Codex to call `tmux-claude.sh` to notify Claude on completion
 - [ ] `--approve`, `--re-review`, `--needs-discussion` for verdict (same sentinels as current system for hook compatibility)
@@ -826,7 +820,7 @@ Week 4:   Integration testing with real agents, side-by-side evaluation
 | Risk | Severity | Mitigation |
 |------|----------|------------|
 | Codex ignores file-write instruction | Medium | Prompt engineering in review template; fall back to `tmux capture-pane` |
-| Large diff exceeds tmux send-keys limit | Low | Already mitigated: diff written to file, Codex told to read the file |
+| Large diff exceeds tmux send-keys limit | Low | Not applicable: Codex runs its own git diff in the shared repo |
 | `[CODEX]` message confused with user input | Low | Distinctive prefix; documented in CLAUDE.md |
 | Agent crashes | Medium | User can see both panes; restart agent manually or re-run `party.sh` |
 | Race condition: code edit during Codex review | Medium | `marker-invalidate.sh` still fires on Edit/Write — same as today |
