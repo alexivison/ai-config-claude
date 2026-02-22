@@ -322,9 +322,9 @@ party_start() {
   # Split into panes
   tmux split-window -h -t "$SESSION:work"  # Pane 1: Codex (right)
 
-  # Label panes so it's clear which is which
-  tmux select-pane -t "$SESSION:work.0" -T "Claude"
-  tmux select-pane -t "$SESSION:work.1" -T "Codex"
+  # Label panes by their fantasy lore roles
+  tmux select-pane -t "$SESSION:work.0" -T "The Wizard"
+  tmux select-pane -t "$SESSION:work.1" -T "The Paladin"
 
   # Launch agents
   tmux send-keys -t "$SESSION:work.0" \
@@ -369,7 +369,7 @@ discover_session() {
 **Deliverables:**
 - [ ] `session/party.sh` — session launcher with iTerm2 detection
 - [ ] iTerm2-like keybindings applied at session startup (Option-Left/Right, Prefix+t/w, Option-1/2, Prefix+f)
-- [ ] Pane labels ("Claude" / "Codex") shown in border
+- [ ] Pane labels ("The Wizard" / "The Paladin") shown in border
 - [ ] iTerm2 control mode (`tmux -CC`) integration tested (native keybindings pass through)
 - [ ] `--raw` fallback for non-iTerm terminals
 - [ ] Clean teardown on SIGTERM/SIGINT
