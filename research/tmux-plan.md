@@ -276,10 +276,34 @@ configure_keybindings() {
   # (tmux default is Prefix + z, keeping both)
   tmux bind-key f resize-pane -Z
 
-  # ── Pane labels ───────────────────────────────────────────────────
-  # Show pane titles in the border so you know which is Claude vs Codex
+  # ── Pane theming ─────────────────────────────────────────────────
+  # Fantasy-themed pane borders:
+  #   The Wizard  → purple/violet (arcane magic)
+  #   The Paladin → gold/yellow (holy light)
   tmux set-option -g pane-border-status top
-  tmux set-option -g pane-border-format " #[bold]#{pane_title}#[default] "
+  # Pane title text is colored per-agent using tmux conditional formats:
+  #   #{?condition,true-branch,false-branch}
+  tmux set-option -g pane-border-format \
+    ' #{?#{==:#{pane_title},The Wizard},#[fg=colour141 bold],#[fg=colour220 bold]}#{pane_title}#[default] '
+
+  # Inactive border: dim, muted (the other agent fades into the background)
+  tmux set-option -g pane-border-style "fg=colour240"
+
+  # Active border color changes based on which pane is focused.
+  # tmux doesn't natively support per-pane border colors, so we use a
+  # focus hook to swap the active style when switching panes.
+  tmux set-option -g pane-active-border-style "fg=colour141"  # default: Wizard purple
+
+  # On pane focus, set active border color to match the focused agent's theme
+  tmux set-hook -g pane-focus-in "if-shell \
+    'test \"#{pane_title}\" = \"The Paladin\"' \
+    'set pane-active-border-style fg=colour220' \
+    'set pane-active-border-style fg=colour141'"
+
+  # Status bar: dark background, subtle fantasy accent
+  tmux set-option -g status-style "bg=colour235,fg=colour248"
+  tmux set-option -g status-left "#[fg=colour141,bold] party #[default] "
+  tmux set-option -g status-right ""
 }
 ```
 
