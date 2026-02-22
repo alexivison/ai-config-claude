@@ -229,8 +229,8 @@ This single script replaces both `call_codex.sh` and `codex-verdict.sh`. Claude 
 
 | Mode | Replaces | What it does |
 |------|----------|-------------|
-| `--review` | `call_codex.sh --review` | Generates diff, writes review prompt to file, sends Codex a short message via tmux to read it, polls for findings file |
-| `--prompt` | `call_codex.sh --prompt` | Writes prompt to file, sends Codex a short message via tmux to read it, polls for response file |
+| `--review` | `call_codex.sh --review` | Generates diff, writes review prompt to file, sends Codex a short message via tmux to read it. Codex notifies Claude when done via `tmux-claude.sh` |
+| `--prompt` | `call_codex.sh --prompt` | Writes prompt to file, sends Codex a short message via tmux to read it. Codex notifies Claude when done via `tmux-claude.sh` |
 | `--approve` | `codex-verdict.sh approve` | Creates evidence markers (codex-ran + codex-approved). Returns immediately |
 | `--re-review` | `codex-verdict.sh request_changes` | Creates codex-ran marker only. Returns immediately |
 | `--needs-discussion` | `codex-verdict.sh needs_discussion` | Logs to trace. Returns immediately |
@@ -310,6 +310,11 @@ Use this exact JSON format for the findings file:
 \`\`\`
 
 **IMPORTANT:** Do NOT include a "verdict" field. You produce findings — the verdict is decided by Claude.
+
+5. After writing the findings file, notify Claude by running:
+   \`\`\`bash
+   ~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Review complete. Findings at: $FINDINGS_FILE"
+   \`\`\`
 PROMPT
 
     # Send a SHORT command to Codex pane — just tell it to read the prompt file
@@ -320,8 +325,7 @@ PROMPT
     echo "Review prompt: $PROMPT_FILE"
     echo "Findings will be written to: $FINDINGS_FILE"
     echo ""
-    echo "Claude is NOT blocked. Continue non-edit work while Codex reviews."
-    echo "Poll for findings with: test -f $FINDINGS_FILE && cat $FINDINGS_FILE"
+    echo "Claude is NOT blocked. Codex will notify Claude via tmux when review is complete."
     echo "CODEX_REVIEW_RAN"
     ;;
 
@@ -338,6 +342,11 @@ $PROMPT_TEXT
 ## Instructions
 
 Write your complete response to: $RESPONSE_FILE
+
+After writing the response, notify Claude by running:
+\`\`\`bash
+~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Task complete. Response at: $RESPONSE_FILE"
+\`\`\`
 PROMPT
 
     tmux send-keys -t "$CODEX_PANE" \
@@ -345,7 +354,7 @@ PROMPT
 
     echo "CODEX_TASK_REQUESTED"
     echo "Response will be written to: $RESPONSE_FILE"
-    echo "Poll for response with: test -f $RESPONSE_FILE && cat $RESPONSE_FILE"
+    echo "Codex will notify Claude via tmux when task is complete."
     ;;
 
   --approve)
@@ -379,8 +388,9 @@ esac
    → Script generates diff, writes prompt file, sends tmux message to Codex
    → Script returns IMMEDIATELY — Claude is NOT blocked
 4. Claude continues non-edit work (documentation, test planning, etc.)
-5. Claude periodically checks: test -f /tmp/party-xxx/codex-findings-xxx.json
-6. When findings file exists, Claude reads it with its Read tool
+5. Codex completes the review, writes findings to file, then notifies Claude
+   via tmux-claude.sh → Claude sees "[CODEX] Review complete. Findings at: ..."
+6. Claude reads the findings file with its Read tool
 7. Claude triages each finding (blocking / non-blocking / out-of-scope)
 8. Claude maintains issue ledger (same as current system — in Claude's context)
 9. Claude decides:
@@ -388,6 +398,8 @@ esac
    b. Blocking issues → fixes them, re-runs critics, calls tmux-codex.sh --re-review
    c. Unresolvable → calls tmux-codex.sh --needs-discussion
 ```
+
+**No polling needed.** Codex pushes a notification to Claude's pane when done. Claude reacts to incoming messages — same pattern in both directions.
 
 **What Claude retains that a coordinator would lose:**
 - Why it made the changes (full implementation context)
@@ -408,7 +420,8 @@ esac
 **Deliverables:**
 - [ ] `claude/skills/codex-cli/scripts/tmux-codex.sh` — all modes
 - [ ] File-based handoff: diff and prompt written to files, Codex told to read them
-- [ ] Non-blocking `--review` and `--prompt` (return immediately, Claude polls)
+- [ ] Non-blocking `--review` and `--prompt` (return immediately, Codex notifies Claude when done)
+- [ ] Review prompt instructs Codex to call `tmux-claude.sh` to notify Claude on completion
 - [ ] `--approve`, `--re-review`, `--needs-discussion` for verdict (same sentinels as current system for hook compatibility)
 
 ---
@@ -461,8 +474,8 @@ tmux send-keys -t "$CLAUDE_PANE" \
 
 echo "CLAUDE_REQUEST_DISPATCHED"
 echo "Question file: $QUESTION_FILE"
-echo "Response will be at: $RESPONSE_FILE"
-echo "Poll for response with: test -f $RESPONSE_FILE && cat $RESPONSE_FILE"
+echo "Claude will write response to: $RESPONSE_FILE"
+echo "Claude will notify Codex via tmux when response is ready."
 ```
 
 **How Codex uses this — the planning dialogue flow:**
@@ -476,8 +489,9 @@ echo "Poll for response with: test -f $RESPONSE_FILE && cat $RESPONSE_FILE"
    → Script returns immediately — Codex is NOT blocked
 5. Claude sees "[CODEX] Question waiting..." in its pane
 6. Claude reads the question file, investigates the codebase, writes answer to response file
-7. Codex polls for response file, reads it when available
-8. Codex incorporates the answer and continues planning
+7. Claude notifies Codex via tmux-codex.sh --prompt "Response ready at: <response file>"
+   → Codex sees the notification in its pane
+8. Codex reads the response file, incorporates the answer, and continues planning
 ```
 
 **Multi-turn dialogue:** Multiple exchanges work naturally. Each call creates a new question/response file pair with a unique timestamp. Both agents retain their full context across exchanges because they're persistent sessions — Codex remembers what it already planned, Claude remembers what it already investigated.
@@ -488,13 +502,14 @@ Claude's `CLAUDE.md` documents a convention: messages prefixed with `[CODEX]` ar
 1. Read the referenced question file
 2. Investigate/answer the question
 3. Write the response to the specified response file
+4. Notify Codex that the response is ready (via `tmux-codex.sh --prompt "Response ready at: <file>"`)
 
 This is similar to how Claude handles user messages — it just comes from a different source. The `[CODEX]` prefix makes it distinguishable.
 
 **Deliverables:**
-- [ ] `codex/skills/claude-cli/scripts/tmux-claude.sh` — question dispatch
+- [ ] `codex/skills/claude-cli/scripts/tmux-claude.sh` — question dispatch and review-complete notification
 - [ ] File-based handoff: question and response via files in `$STATE_DIR/messages/to-claude/`
-- [ ] Non-blocking (returns immediately, Codex polls for response)
+- [ ] Non-blocking (returns immediately, other agent notifies via tmux when done)
 
 ---
 
@@ -573,7 +588,7 @@ New step 7:
    ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{PR title}"
    ```
    This sends the review to Codex's tmux pane. You are NOT blocked — continue with
-   non-edit work while Codex reviews. Poll for the findings file path printed by the script.
+   non-edit work while Codex reviews. Codex will notify you via tmux when findings are ready.
 ```
 
 Current step 8:
@@ -603,7 +618,7 @@ New step 8:
 
 **`bugfix-workflow/SKILL.md`** — Same pattern: replace `call_codex.sh` with `tmux-codex.sh`, replace `codex-verdict.sh` with `tmux-codex.sh --approve/--re-review/--needs-discussion`.
 
-**`codex-cli/SKILL.md`** — Full rewrite: describe the tmux-based invocation pattern, file-based handoff, polling, and all modes. Document that `--review` and `--prompt` are non-blocking.
+**`codex-cli/SKILL.md`** — Full rewrite: describe the tmux-based invocation pattern, file-based handoff, push notification (Codex notifies Claude), and all modes. Document that `--review` and `--prompt` are non-blocking.
 
 ### 5.2 Updated Rules
 
@@ -817,8 +832,8 @@ Week 4:   Integration testing with real agents, side-by-side evaluation
 | Race condition: code edit during Codex review | Medium | `marker-invalidate.sh` still fires on Edit/Write — same as today |
 | Codex `--sandbox read-only` can't write to `/tmp/` | High | Test this first; if blocked, use `workspace-write` or capture pane output |
 | Claude rubber-stamps --approve without reading findings | Medium | Same risk as today; mitigated by `codex-gate.sh` (gate 2: codex-ran required) and SKILL.md instructions |
-| Polling for findings file is wasteful | Low | 5-second poll is cheap; could use `fswatch` for instant detection |
-| Codex takes too long, Claude forgets to check | Low | Claude's skill docs include polling instructions; could add a timeout reminder |
+| Codex forgets to notify Claude after writing findings | Medium | Review prompt explicitly instructs Codex to call `tmux-claude.sh`; Codex's AGENTS.md reinforces this convention |
+| Codex takes too long, no notification arrives | Low | User can see both panes in iTerm2 and nudge either agent; could add a timeout convention in skill docs |
 
 ---
 
