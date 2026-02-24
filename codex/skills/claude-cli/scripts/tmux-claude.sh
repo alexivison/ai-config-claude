@@ -11,6 +11,8 @@ discover_session
 
 CLAUDE_PANE="$SESSION_NAME:work.0"
 
-tmux_send "$CLAUDE_PANE" "[CODEX] $MESSAGE"
-
-echo "CLAUDE_MESSAGE_SENT"
+if tmux_send "$CLAUDE_PANE" "[CODEX] $MESSAGE" "tmux-claude.sh"; then
+  echo "CLAUDE_MESSAGE_SENT"
+else
+  echo "CLAUDE_MESSAGE_QUEUED"
+fi

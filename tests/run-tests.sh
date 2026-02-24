@@ -29,6 +29,7 @@ run_suite "test-party.sh"
 run_suite "test-tmux-codex.sh"
 run_suite "test-tmux-claude.sh"
 run_suite "test-hooks.sh"
+run_suite "test-tmux-send-guard.sh"
 
 echo "==========================="
 echo "Results: $PASS passed, $FAIL failed"

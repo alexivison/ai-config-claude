@@ -27,13 +27,16 @@ case "$MODE" in
     # Resolve tmux-claude.sh path for the notification callback
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-cli/scripts" && pwd)/tmux-claude.sh"
 
-    tmux_send "$CODEX_PANE" \
-      "cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
-
-    echo "CODEX_REVIEW_REQUESTED"
+    MSG="cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
+    if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:review"; then
+      echo "CODEX_REVIEW_REQUESTED"
+      echo "Claude is NOT blocked. Codex will notify via tmux when complete."
+    else
+      echo "CODEX_REVIEW_QUEUED"
+      echo "Codex pane is busy. Message spooled to pending."
+    fi
     echo "Findings will be written to: $FINDINGS_FILE"
     echo "Working directory: $WORK_DIR"
-    echo "Claude is NOT blocked. Codex will notify via tmux when complete."
     ;;
 
   --prompt)
@@ -44,13 +47,16 @@ case "$MODE" in
 
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-cli/scripts" && pwd)/tmux-claude.sh"
 
-    tmux_send "$CODEX_PANE" \
-      "cd '$WORK_DIR' && $PROMPT_TEXT — Write response to: $RESPONSE_FILE — When done, run: $NOTIFY_SCRIPT \"Task complete. Response at: $RESPONSE_FILE\""
-
-    echo "CODEX_TASK_REQUESTED"
+    MSG="cd '$WORK_DIR' && $PROMPT_TEXT — Write response to: $RESPONSE_FILE — When done, run: $NOTIFY_SCRIPT \"Task complete. Response at: $RESPONSE_FILE\""
+    if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:prompt"; then
+      echo "CODEX_TASK_REQUESTED"
+      echo "Codex will notify via tmux when complete."
+    else
+      echo "CODEX_TASK_QUEUED"
+      echo "Codex pane is busy. Message spooled to pending."
+    fi
     echo "Response will be written to: $RESPONSE_FILE"
     echo "Working directory: $WORK_DIR"
-    echo "Codex will notify via tmux when complete."
     ;;
 
   --review-complete)

@@ -33,12 +33,91 @@ discover_session() {
   STATE_DIR="$state_dir"
 }
 
+# Returns 0 if the target pane is idle (safe to send), 1 if busy.
+# Busy = a human client has the pane focused, or pane is in copy mode.
+# Fails closed: tmux command failure → return 1 (uncertain = busy).
+tmux_pane_idle() {
+  local target="$1"
+  local pane_id session_name pane_in_mode client_panes
+
+  pane_id=$(tmux display-message -t "$target" -p '#{pane_id}' 2>/dev/null) || return 1
+  session_name=$(tmux display-message -t "$target" -p '#{session_name}' 2>/dev/null) || return 1
+
+  pane_in_mode=$(tmux display-message -t "$target" -p '#{pane_in_mode}' 2>/dev/null) || return 1
+  [[ "$pane_in_mode" -gt 0 ]] && return 1
+
+  client_panes=$(tmux list-clients -t "$session_name" -F '#{pane_id}' 2>/dev/null) || return 1
+  [[ -z "$client_panes" ]] && return 0
+
+  echo "$client_panes" | grep -qFx "$pane_id" && return 1
+  return 0
+}
+
+# Spools a message to disk when the target pane is busy.
+_tmux_send_spool() {
+  local target="$1"
+  local text="$2"
+  local caller="${3:-unknown}"
+
+  local pending_dir="${STATE_DIR:?STATE_DIR unset — call discover_session first}/pending"
+  mkdir -p "$pending_dir"
+
+  local ts iso_ts
+  ts="$(date +%s)_$$_${RANDOM}"
+  iso_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  local msg_file="$pending_dir/${ts}.msg"
+
+  {
+    echo "#target=$target caller=$caller created_at=$iso_ts"
+    printf '%s\n' "$text"
+  } > "$msg_file"
+
+  echo "TMUX_SEND_BUSY pending=$msg_file target=$target" >&2
+}
+
 # Sends text to a tmux pane running a TUI agent (Claude Code / Codex CLI).
 # Uses -l flag + delay + separate Enter to avoid paste-mode newline issue.
+# Guards against injecting text while a human has the pane focused.
+# Returns 75 (EX_TEMPFAIL) and spools to disk on timeout.
 tmux_send() {
   local target="$1"
   local text="$2"
-  tmux send-keys -t "$target" -l "$text"
-  sleep 0.1
-  tmux send-keys -t "$target" Enter
+  local caller="${3:-}"
+
+  # Force bypass for tests and explicit override
+  if [[ "${TMUX_SEND_FORCE:-}" == "1" ]]; then
+    tmux send-keys -t "$target" -l "$text"
+    sleep 0.1
+    tmux send-keys -t "$target" Enter
+    return 0
+  fi
+
+  # Try immediate send
+  if tmux_pane_idle "$target"; then
+    tmux send-keys -t "$target" -l "$text"
+    sleep 0.1
+    tmux send-keys -t "$target" Enter
+    return 0
+  fi
+
+  # Poll until idle or timeout
+  local timeout_s="${TMUX_SEND_TIMEOUT:-1.5}"
+  local timeout_ms
+  timeout_ms=$(awk -v s="$timeout_s" 'BEGIN { printf "%d", s * 1000 }')
+  local elapsed_ms=0
+
+  while (( elapsed_ms < timeout_ms )); do
+    sleep 0.1
+    elapsed_ms=$(( elapsed_ms + 100 ))
+    if tmux_pane_idle "$target"; then
+      tmux send-keys -t "$target" -l "$text"
+      sleep 0.1
+      tmux send-keys -t "$target" Enter
+      return 0
+    fi
+  done
+
+  # Timeout — spool to disk
+  _tmux_send_spool "$target" "$text" "${caller:-unknown}"
+  return 75
 }

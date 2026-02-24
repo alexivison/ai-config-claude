@@ -62,6 +62,10 @@ OUTPUT=$("$REPO_ROOT/session/party.sh" --stop "../../etc" 2>&1 || true)
 assert "party.sh --stop rejects non-party names" \
   'echo "$OUTPUT" | grep -q "invalid session name"'
 
+# Test: party.sh does not configure detach-kill hook
+assert "party.sh does not set client-detached kill hook" \
+  '! grep -q "set-hook .*client-detached" "$REPO_ROOT/session/party.sh"'
+
 # Test: --install-tpm installs from override repo path (offline/local)
 TMP_TPM_ROOT="$(mktemp -d)"
 TMP_TPM_REPO="$TMP_TPM_ROOT/tpm-repo"

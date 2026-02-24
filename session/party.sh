@@ -81,11 +81,7 @@ party_start() {
 
   configure_party_theme "$session"
 
-  # Kill session when client detaches (iTerm tab close, disconnect, etc.)
-  tmux set-hook -t "$session" client-detached \
-    "kill-session -t $session"
-
-  # Auto-cleanup state dir when session ends (kill-session, Prefix+Q, tab close, etc.)
+  # Auto-cleanup state dir when session ends (kill-session, Prefix+Q, etc.)
   tmux set-hook -t "$session" session-closed \
     "run-shell 'rm -rf /tmp/$session'"
 

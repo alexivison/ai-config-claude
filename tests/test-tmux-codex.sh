@@ -22,8 +22,10 @@ assert() {
 SESSION="party-test-codex-$$"
 STATE_DIR="/tmp/$SESSION"
 export PARTY_SESSION="$SESSION"
+PHANTOM_PID=""
 
 cleanup() {
+  [[ -n "$PHANTOM_PID" ]] && kill "$PHANTOM_PID" 2>/dev/null || true
   tmux kill-session -t "$SESSION" 2>/dev/null || true
   rm -rf "$STATE_DIR"
 }
@@ -37,6 +39,7 @@ tmux new-session -d -s "$SESSION" -n work
 tmux split-window -h -t "$SESSION:work"
 
 echo "--- test-tmux-codex.sh ---"
+export TMUX_SEND_FORCE=1
 
 # Test: --review sends message to Codex pane and returns immediately
 OUTPUT=$("$SCRIPT" --review main "Test PR" "/tmp" 2>&1)
@@ -88,6 +91,31 @@ assert "--needs-discussion outputs CODEX NEEDS_DISCUSSION sentinel" \
 # Test: unknown mode fails
 assert "unknown mode fails" \
   '! "$SCRIPT" --bogus 2>/dev/null'
+
+# --- Queued sentinel tests (pane busy + short timeout → QUEUED) ---
+export PARTY_SESSION="$SESSION"
+unset TMUX_SEND_FORCE
+export TMUX_SEND_TIMEOUT=0
+
+# Focus phantom client on Codex pane (work.1) to make it busy
+tmux select-pane -t "$SESSION:work.1"
+tmux -C attach -t "$SESSION" < <(sleep 999) &
+PHANTOM_PID=$!
+sleep 0.5
+
+OUTPUT=$("$SCRIPT" --review main "Queued PR" "/tmp" 2>&1) || true
+assert "--review emits CODEX_REVIEW_QUEUED when pane busy" \
+  'echo "$OUTPUT" | grep -q "CODEX_REVIEW_QUEUED"'
+
+OUTPUT=$("$SCRIPT" --prompt "Queued task" "/tmp" 2>&1) || true
+assert "--prompt emits CODEX_TASK_QUEUED when pane busy" \
+  'echo "$OUTPUT" | grep -q "CODEX_TASK_QUEUED"'
+
+# Cleanup phantom
+kill "$PHANTOM_PID" 2>/dev/null || true
+wait "$PHANTOM_PID" 2>/dev/null || true
+PHANTOM_PID=""
+unset TMUX_SEND_TIMEOUT
 
 # Test: verdict modes work without a session (they only emit sentinels)
 unset PARTY_SESSION

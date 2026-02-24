@@ -22,8 +22,10 @@ assert() {
 SESSION="party-test-claude-$$"
 STATE_DIR="/tmp/$SESSION"
 export PARTY_SESSION="$SESSION"
+PHANTOM_PID=""
 
 cleanup() {
+  [[ -n "$PHANTOM_PID" ]] && kill "$PHANTOM_PID" 2>/dev/null || true
   tmux kill-session -t "$SESSION" 2>/dev/null || true
   rm -rf "$STATE_DIR"
 }
@@ -37,6 +39,7 @@ tmux new-session -d -s "$SESSION" -n work
 tmux split-window -h -t "$SESSION:work"
 
 echo "--- test-tmux-claude.sh ---"
+export TMUX_SEND_FORCE=1
 
 # Test: sends [CODEX] prefixed message to Claude pane
 OUTPUT=$("$SCRIPT" "Review complete. Findings at: /tmp/test.json" 2>&1)
@@ -48,6 +51,27 @@ sleep 0.3
 PANE_CONTENT=$(tmux capture-pane -t "$SESSION:work.0" -p)
 assert "message sent to Claude pane with [CODEX] prefix" \
   'echo "$PANE_CONTENT" | grep -q "\[CODEX\]"'
+
+# --- Queued sentinel test (pane busy + short timeout → QUEUED) ---
+export PARTY_SESSION="$SESSION"
+unset TMUX_SEND_FORCE
+export TMUX_SEND_TIMEOUT=0
+
+# Focus phantom on Claude pane (work.0) to make it busy
+tmux select-pane -t "$SESSION:work.0"
+tmux -C attach -t "$SESSION" < <(sleep 999) &
+PHANTOM_PID=$!
+sleep 0.5
+
+OUTPUT=$("$SCRIPT" "Queued notification" 2>&1) || true
+assert "outputs CLAUDE_MESSAGE_QUEUED when pane busy" \
+  'echo "$OUTPUT" | grep -q "CLAUDE_MESSAGE_QUEUED"'
+
+# Cleanup phantom
+kill "$PHANTOM_PID" 2>/dev/null || true
+wait "$PHANTOM_PID" 2>/dev/null || true
+PHANTOM_PID=""
+unset TMUX_SEND_TIMEOUT
 
 # Test: no session fails gracefully
 unset PARTY_SESSION
