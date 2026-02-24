@@ -84,17 +84,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/worktree-guard.sh",
+            "command": "~/.claude/hooks/worktree-guard.sh 2>>/tmp/hook-debug-worktree-guard.log",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/codex-gate.sh",
+            "command": "~/.claude/hooks/codex-gate.sh 2>>/tmp/hook-debug-codex-gate.log",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/pr-gate.sh",
+            "command": "~/.claude/hooks/pr-gate.sh 2>>/tmp/hook-debug-pr-gate.log",
             "timeout": 30
           }
         ]
