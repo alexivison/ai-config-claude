@@ -1,46 +1,44 @@
 #!/usr/bin/env bash
 # party.sh — Launch a tmux session with Claude (Paladin) and Codex (Wizard)
-# Usage: party.sh [--raw|--stop [name]|--list]
+# Usage: party.sh [--raw|--stop [name]|--list|--install-tpm]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/party-lib.sh"
 
-configure_keybindings() {
-  local session="${1:?Usage: configure_keybindings SESSION_NAME}"
+party_install_tpm() {
+  local tpm_path="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.tmux/plugins/tpm}"
+  local tpm_repo="${TPM_REPO:-https://github.com/tmux-plugins/tpm}"
 
-  # Pane navigation (global — tmux doesn't support session-scoped bindings)
-  # Harmless in -CC mode (iTerm2 handles its own keybindings)
-  tmux bind-key -n M-Left  select-pane -L
-  tmux bind-key -n M-Right select-pane -R
-  tmux bind-key Left  select-pane -L
-  tmux bind-key Right select-pane -R
+  if ! command -v git >/dev/null 2>&1; then
+    echo "Error: git is required to install TPM." >&2
+    return 1
+  fi
 
-  # Window/tab management
-  tmux bind-key t new-window
-  tmux bind-key w kill-pane
-  tmux bind-key -n M-1 select-window -t 0
-  tmux bind-key -n M-2 select-window -t 1
-  tmux bind-key f resize-pane -Z
-  tmux bind-key Q kill-session           # Prefix + Q → kill entire session
+  if [[ -d "$tpm_path/.git" ]]; then
+    echo "TPM already installed at: $tpm_path"
+    return 0
+  fi
 
-  # Pane theming (raw tmux mode only — invisible in -CC / iTerm2 control mode)
+  if [[ -e "$tpm_path" ]]; then
+    echo "Error: path exists but is not a TPM git clone: $tpm_path" >&2
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$tpm_path")"
+  git clone "$tpm_repo" "$tpm_path" >/dev/null
+
+  echo "TPM installed at: $tpm_path"
+  echo "In tmux, press Prefix + I to install plugins."
+}
+
+configure_party_theme() {
+  local session="${1:?Usage: configure_party_theme SESSION_NAME}"
+
+  # Role labels based on pane index (immune to agent title overrides).
   tmux set-option -t "$session" pane-border-status top
   tmux set-option -t "$session" pane-border-format \
-    ' #{?#{==:#{pane_title},The Wizard},#[fg=colour141 bold],#[fg=colour220 bold]}#{pane_title}#[default] '
-  tmux set-option -t "$session" pane-border-style "fg=colour240"
-  tmux set-option -t "$session" pane-active-border-style "fg=colour220"
-
-  # Swap active border color on pane focus
-  tmux set-hook -t "$session" pane-focus-in "if-shell \
-    'test \"#{pane_title}\" = \"The Paladin\"' \
-    'set pane-active-border-style fg=colour220' \
-    'set pane-active-border-style fg=colour141'"
-
-  # Status bar
-  tmux set-option -t "$session" status-style "bg=colour235,fg=colour248"
-  tmux set-option -t "$session" status-left "#[fg=colour141,bold] party #[default] "
-  tmux set-option -t "$session" status-right ""
+    ' #{?#{==:#{pane_index},0},The Paladin,The Wizard} '
 }
 
 party_start() {
@@ -75,14 +73,21 @@ party_start() {
   tmux respawn-pane -k -t "$session:work.0" \
     "export PATH='$agent_path'; unset CLAUDECODE; exec '$claude_bin' --dangerously-skip-permissions"
   tmux split-window -h -t "$session:work" \
-    "export PATH='$agent_path'; exec '$codex_bin' --full-auto --sandbox read-only"
+    "export PATH='$agent_path'; exec '$codex_bin' --dangerously-bypass-approvals-and-sandbox"
 
-  # Label panes and prevent agents from overriding titles
+  # Label panes (title-lock options are global in .tmux.conf)
   tmux select-pane -t "$session:work.0" -T "The Paladin"
   tmux select-pane -t "$session:work.1" -T "The Wizard"
-  tmux set-option -t "$session" allow-rename off
 
-  configure_keybindings "$session"
+  configure_party_theme "$session"
+
+  # Kill session when client detaches (iTerm tab close, disconnect, etc.)
+  tmux set-hook -t "$session" client-detached \
+    "kill-session -t $session"
+
+  # Auto-cleanup state dir when session ends (kill-session, Prefix+Q, tab close, etc.)
+  tmux set-hook -t "$session" session-closed \
+    "run-shell 'rm -rf /tmp/$session'"
 
   # Focus Claude pane
   tmux select-pane -t "$session:work.0"
@@ -145,9 +150,10 @@ party_list() {
 }
 
 case "${1:-}" in
+  --install-tpm) party_install_tpm ;;
   --stop) party_stop "${2:-}" ;;
   --list) party_list ;;
   --raw)  PARTY_RAW=1 party_start ;;
   "")     party_start ;;
-  *)      echo "Usage: party.sh [--raw|--stop [name]|--list]" >&2; exit 1 ;;
+  *)      echo "Usage: party.sh [--raw|--stop [name]|--list|--install-tpm]" >&2; exit 1 ;;
 esac

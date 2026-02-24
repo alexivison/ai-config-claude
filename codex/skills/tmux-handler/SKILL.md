@@ -1,3 +1,8 @@
+---
+name: tmux-handler
+description: Handle incoming messages from Claude via tmux — review requests, task requests, plan reviews, and questions.
+---
+
 # tmux-handler — Handle incoming messages from Claude via tmux
 
 ## Trigger

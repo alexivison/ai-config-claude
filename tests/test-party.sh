@@ -20,6 +20,7 @@ assert() {
 cleanup() {
   tmux kill-session -t "party-test-$$" 2>/dev/null || true
   rm -rf "/tmp/party-test-$$"
+  rm -rf "${TMP_TPM_ROOT:-}"
 }
 trap cleanup EXIT
 
@@ -60,6 +61,23 @@ assert "party.sh --stop <name> kills specific session" \
 OUTPUT=$("$REPO_ROOT/session/party.sh" --stop "../../etc" 2>&1 || true)
 assert "party.sh --stop rejects non-party names" \
   'echo "$OUTPUT" | grep -q "invalid session name"'
+
+# Test: --install-tpm installs from override repo path (offline/local)
+TMP_TPM_ROOT="$(mktemp -d)"
+TMP_TPM_REPO="$TMP_TPM_ROOT/tpm-repo"
+TMP_TPM_DEST="$TMP_TPM_ROOT/plugins/tpm"
+mkdir -p "$TMP_TPM_REPO"
+git init -q "$TMP_TPM_REPO"
+OUTPUT=$(TMUX_PLUGIN_MANAGER_PATH="$TMP_TPM_DEST" TPM_REPO="$TMP_TPM_REPO" "$REPO_ROOT/session/party.sh" --install-tpm 2>&1)
+assert "--install-tpm clones TPM repository" \
+  '[[ -d "$TMP_TPM_DEST/.git" ]]'
+assert "--install-tpm reports success" \
+  'echo "$OUTPUT" | grep -q "TPM installed at:"'
+
+# Test: --install-tpm is idempotent when already installed
+OUTPUT=$(TMUX_PLUGIN_MANAGER_PATH="$TMP_TPM_DEST" TPM_REPO="$TMP_TPM_REPO" "$REPO_ROOT/session/party.sh" --install-tpm 2>&1)
+assert "--install-tpm handles already-installed TPM" \
+  'echo "$OUTPUT" | grep -q "already installed"'
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
