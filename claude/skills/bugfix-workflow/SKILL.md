@@ -14,7 +14,7 @@ Debug and fix bugs with investigation before implementation.
 
 1. **Create worktree first** — `git worktree add ../repo-branch-name -b branch-name`
 2. **Understand the bug** — Read relevant code, reproduce if possible
-3. **Complex bug?** → Invoke `~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt` with debugging task → `[wait for user]`
+3. **Complex bug?** → Invoke `~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "<task>" "$(pwd)"` with debugging task → `[wait for user]`
 
 `[wait]` = Show findings, use AskUserQuestion, wait for user input.
 
@@ -47,7 +47,7 @@ Execute continuously — **no stopping until PR is created**.
 5. **code-critic + minimizer** — Run in parallel with diff focus. Triage findings by severity (see [Review Governance](../task-workflow/SKILL.md#review-governance)). Fix only blocking issues. Proceed to codex when no blocking findings remain.
 6. **codex** — Request codex review via tmux (non-blocking):
    ```bash
-   ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{Bug fix summary}"
+   ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{Bug fix summary}" "$(pwd)"
    ```
    Continue with non-edit work while Codex reviews. Include bug context in scope boundaries.
 7. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, record evidence (`--review-complete`), triage by severity, signal verdict (`--approve`/`--re-review`/`--needs-discussion`).

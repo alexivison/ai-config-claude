@@ -25,7 +25,7 @@ Message: `[CODEX] Question: <question>. Write response to: <response_file>`
 1. Read the question
 2. Investigate the codebase to answer the question
 3. Write your response to the specified response file
-4. Notify Codex: `tmux-codex.sh --prompt "Response ready at: <response_file>"`
+4. Notify Codex: `tmux-codex.sh --prompt "Response ready at: <response_file>" "$(pwd)"`
 
 ### Task complete
 Message: `[CODEX] Task complete. Response at: <path>`

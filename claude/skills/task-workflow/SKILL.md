@@ -45,9 +45,9 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 6. **code-critic + minimizer** — Run in parallel with scope context and diff focus (see [Review Governance](#review-governance)). Triage findings by severity. Fix only blocking issues. Proceed to codex when no blocking findings remain. After fixing blocking critic findings, you MUST re-run both critics. The codex review gate requires critic APPROVE markers — if critics only returned REQUEST_CHANGES, those markers don't exist and codex invocation will be blocked.
 7. **codex** — Request codex review via tmux (non-blocking):
    ```bash
-   ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{PR title}"
+   ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
    ```
-   Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
+   `work_dir` is required — pass the worktree/repo path. Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
 8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, record evidence (`--review-complete`), triage by severity, signal verdict (`--approve`/`--re-review`/`--needs-discussion`).
 9. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 10. **Commit & PR** — Create commit and draft PR
@@ -128,13 +128,13 @@ After critics have no remaining blocking findings, request Codex review via tmux
 
 **Review invocation (non-blocking):**
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{PR title or change summary}"
+~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{PR title or change summary}" "$(pwd)"
 ```
 This sends the review request to Codex's tmux pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done.
 
 **Non-review invocation (architecture, debugging):**
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "TASK: {description}. SCOPE: {changed files}."
+~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "TASK: {description}. SCOPE: {changed files}." "$(pwd)"
 ```
 
 **When Codex notifies you (findings ready):**
