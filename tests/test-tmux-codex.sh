@@ -39,7 +39,7 @@ tmux split-window -h -t "$SESSION:work"
 echo "--- test-tmux-codex.sh ---"
 
 # Test: --review sends message to Codex pane and returns immediately
-OUTPUT=$("$SCRIPT" --review main "Test PR" 2>&1)
+OUTPUT=$("$SCRIPT" --review main "Test PR" "/tmp" 2>&1)
 assert "--review outputs CODEX_REVIEW_REQUESTED" \
   'echo "$OUTPUT" | grep -q "CODEX_REVIEW_REQUESTED"'
 assert "--review outputs findings file path" \
@@ -52,7 +52,7 @@ assert "--review sends message to Codex pane (pane 1)" \
   'echo "$PANE_CONTENT" | grep -q "Review the changes"'
 
 # Test: --prompt sends message
-OUTPUT=$("$SCRIPT" --prompt "Analyze the auth module" 2>&1)
+OUTPUT=$("$SCRIPT" --prompt "Analyze the auth module" "/tmp" 2>&1)
 assert "--prompt outputs CODEX_TASK_REQUESTED" \
   'echo "$OUTPUT" | grep -q "CODEX_TASK_REQUESTED"'
 assert "--prompt outputs response file path" \
@@ -97,7 +97,7 @@ assert "--approve works without active session" \
 
 # Test: transport modes fail without a session
 assert "--review fails without active session" \
-  '! "$SCRIPT" --review main "test" 2>/dev/null'
+  '! "$SCRIPT" --review main "test" "/tmp" 2>/dev/null'
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

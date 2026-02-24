@@ -70,6 +70,11 @@ Messages prefixed with `[CODEX]` are from Codex's tmux pane. Handle them per you
 
 You decide all verdicts. Codex produces findings, you triage them.
 
+**After dispatching a Codex review/task:**
+1. Continue with other useful work (run check-runner, test-runner, etc.)
+2. **Do NOT poll** for the findings file with `sleep && cat` loops. Codex WILL notify you via `[CODEX]` message when done.
+3. When the `[CODEX]` notification arrives, read the findings file it references.
+
 ## Verification Principle
 
 Evidence before claims. No assertions about the codebase without proof (file path, line number, command output).

@@ -22,7 +22,7 @@ case "$MODE" in
     _require_session
     BASE="${2:-main}"
     TITLE="${3:-Code review}"
-    WORK_DIR="${4:-$(pwd)}"
+    WORK_DIR="${4:?Missing work_dir — pass the worktree/repo path as 4th argument}"
     FINDINGS_FILE="$STATE_DIR/codex-findings-$(date +%s%N).json"
 
     # Resolve tmux-claude.sh path for the notification callback
@@ -40,7 +40,7 @@ case "$MODE" in
   --prompt)
     _require_session
     PROMPT_TEXT="${2:?Missing prompt text}"
-    WORK_DIR="${3:-$(pwd)}"
+    WORK_DIR="${3:?Missing work_dir — pass the worktree/repo path as 3rd argument}"
     RESPONSE_FILE="$STATE_DIR/codex-response-$(date +%s%N).md"
 
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-cli/scripts" && pwd)/tmux-claude.sh"

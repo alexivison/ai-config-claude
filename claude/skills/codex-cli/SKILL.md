@@ -24,17 +24,17 @@ Use the transport script:
 ### Request review (non-blocking)
 After implementing changes and passing sub-agent critics:
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review <base_branch> "<PR title>" [work_dir]
+~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review <base_branch> "<PR title>" <work_dir>
 ```
-The `work_dir` argument defaults to `$(pwd)`. **Always pass it explicitly when working in a worktree** — Codex's pane may be in a different directory.
+`work_dir` is **REQUIRED** — the absolute path to the worktree or repo where changes live. The script will error if omitted. Codex's pane is in a different directory; it needs this to `cd` into the correct location.
 
 This sends a message to Codex's pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done. Handle that message per your `tmux-handler` skill.
 
 ### Send a task (non-blocking)
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "<task description>" [work_dir]
+~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "<task description>" <work_dir>
 ```
-The `work_dir` argument defaults to `$(pwd)`. Pass it explicitly when working in a worktree. Returns immediately. Codex will notify you when done.
+`work_dir` is **REQUIRED**. Returns immediately. Codex will notify you when done.
 
 ### Record review completion evidence
 After Codex notifies you that findings are ready:
