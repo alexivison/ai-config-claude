@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # tmux-codex.sh — Claude's direct interface to Codex via tmux
-# Replaces call_codex.sh + codex-verdict.sh
 set -euo pipefail
 
 MODE="${1:?Usage: tmux-codex.sh --review|--prompt|--review-complete|--approve|--re-review|--needs-discussion}"
