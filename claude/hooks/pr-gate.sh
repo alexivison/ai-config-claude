@@ -4,7 +4,7 @@
 #   - /tmp/claude-pr-verified-{session_id} (from /pre-pr-verification)
 #   - /tmp/claude-code-critic-{session_id} (from code-critic APPROVE)
 #   - /tmp/claude-minimizer-{session_id} (from minimizer APPROVE)
-#   - /tmp/claude-codex-{session_id} (from codex CLI APPROVE via codex-verdict.sh)
+#   - /tmp/claude-codex-{session_id} (from codex CLI APPROVE via tmux-codex.sh)
 #   - /tmp/claude-tests-passed-{session_id} (from test-runner PASS)
 #   - /tmp/claude-checks-passed-{session_id} (from check-runner PASS)
 #   - /tmp/claude-security-scanned-{session_id} (from security-scanner via /pre-pr-verification)

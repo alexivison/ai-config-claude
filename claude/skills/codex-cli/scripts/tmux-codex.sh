@@ -29,7 +29,7 @@ case "$MODE" in
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-cli/scripts" && pwd)/tmux-claude.sh"
 
     tmux_send "$CODEX_PANE" \
-      "cd $WORK_DIR && Review the changes on this branch against $BASE. Title: $TITLE. Write findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
+      "cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
 
     echo "CODEX_REVIEW_REQUESTED"
     echo "Findings will be written to: $FINDINGS_FILE"
@@ -46,7 +46,7 @@ case "$MODE" in
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-cli/scripts" && pwd)/tmux-claude.sh"
 
     tmux_send "$CODEX_PANE" \
-      "cd $WORK_DIR && $PROMPT_TEXT — Write response to: $RESPONSE_FILE — When done, run: $NOTIFY_SCRIPT \"Task complete. Response at: $RESPONSE_FILE\""
+      "cd '$WORK_DIR' && $PROMPT_TEXT — Write response to: $RESPONSE_FILE — When done, run: $NOTIFY_SCRIPT \"Task complete. Response at: $RESPONSE_FILE\""
 
     echo "CODEX_TASK_REQUESTED"
     echo "Response will be written to: $RESPONSE_FILE"
