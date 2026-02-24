@@ -66,6 +66,8 @@ tests → implement → checkboxes → self-review → [code-critic + minimizer]
 
 You are running in a tmux pane alongside Codex. Communicate with Codex directly via `tmux-codex.sh`. Codex reviews are non-blocking — continue with non-edit work while Codex reviews.
 
+**When the user says "ask the Wizard", "have Codex check", "dispatch Codex", or any variant requesting Codex involvement — ALWAYS use `tmux-codex.sh`, NEVER use Task subagents.** Codex is a live process in the adjacent tmux pane, not a subagent to spawn.
+
 Messages prefixed with `[CODEX]` are from Codex's tmux pane. Handle them per your `tmux-handler` skill: read the referenced file, investigate, respond.
 
 You decide all verdicts. Codex produces findings, you triage them.

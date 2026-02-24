@@ -35,3 +35,6 @@ projects/
 # Machine-specific settings
 settings.local.json
 scripts/*.plist
+
+# Credentials
+.credentials.json
