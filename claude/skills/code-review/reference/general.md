@@ -35,7 +35,7 @@ Rules for reviewing code changes. Use `[must]`, `[q]`, `[nit]` labels.
 
 ### Complexity Delta Rule
 
-Any change that **degrades** maintainability is `[must]}`:
+Any change that **degrades** maintainability is `[must]`:
 - Readable function becomes hard to follow
 - Nesting increases significantly
 - New code smell introduced
@@ -73,6 +73,6 @@ Regressions block even if absolute values are acceptable.
 
 | Verdict | Condition |
 |---------|-----------|
-| **APPROVE** | No `[must]}`, no unanswered `[q]` |
+| **APPROVE** | No `[must]`, no unanswered `[q]` |
 | **REQUEST_CHANGES** | Has `[must]` or unanswered `[q]` |
 | **NEEDS_DISCUSSION** | Architectural concerns, unclear requirements |

@@ -46,7 +46,7 @@ assert "gate blocks --review without critic markers" \
 # Test: gate allows --review with both critic markers
 touch "/tmp/claude-code-critic-$SESSION_ID"
 touch "/tmp/claude-minimizer-$SESSION_ID"
-OUTPUT=$(echo '{"tool_input":{"command":"~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main \"test\""},"session_id":"'"$SESSION_ID"'"}' | bash "$GATE")
+OUTPUT=$(echo '{"tool_input":{"command":"~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main \"test\""},"session_id":"'"$SESSION_ID"'"}' | bash "$GATE")
 assert "gate allows --review with both critic markers" \
   '! echo "$OUTPUT" | grep -q "deny"'
 

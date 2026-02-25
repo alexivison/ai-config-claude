@@ -36,7 +36,7 @@
       "Bash(uniq:*)",
       "Bash(xargs:*)",
       "Bash(xxd:*)",
-      "Bash(~/.claude/skills/codex-cli/scripts/tmux-codex.sh:*)",
+      "Bash(~/.claude/skills/codex-transport/scripts/tmux-codex.sh:*)",
       "WebFetch(domain:*)",
       "WebSearch",
       "mcp__chrome-devtools__:*",
@@ -89,17 +89,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/worktree-guard.sh 2>>/tmp/hook-debug-worktree-guard.log",
+            "command": "~/.claude/hooks/worktree-guard.sh 2>>~/.claude/logs/hook-debug-worktree-guard.log",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/codex-gate.sh 2>>/tmp/hook-debug-codex-gate.log",
+            "command": "~/.claude/hooks/codex-gate.sh 2>>~/.claude/logs/hook-debug-codex-gate.log",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/pr-gate.sh 2>>/tmp/hook-debug-pr-gate.log",
+            "command": "~/.claude/hooks/pr-gate.sh 2>>~/.claude/logs/hook-debug-pr-gate.log",
             "timeout": 30
           }
         ]

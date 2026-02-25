@@ -1,9 +1,9 @@
 ---
-name: claude-cli
+name: claude-transport
 description: Communicate with Claude via tmux for codebase investigation, review notifications, and multi-turn dialogue.
 ---
 
-# claude-cli — Communicate with Claude via tmux
+# claude-transport — Communicate with Claude via tmux
 
 ## When to contact Claude
 
@@ -16,7 +16,7 @@ description: Communicate with Claude via tmux for codebase investigation, review
 
 Use the transport script:
 ```bash
-~/.codex/skills/claude-cli/scripts/tmux-claude.sh "<message>"
+~/.codex/skills/claude-transport/scripts/tmux-claude.sh "<message>"
 ```
 
 This sends a `[CODEX]` prefixed message to Claude's tmux pane. The script returns immediately — you are NOT blocked.
@@ -28,7 +28,7 @@ After every outbound `tmux-claude.sh` message, immediately post a short digest i
 Digest format:
 - what you sent (one sentence)
 - why you sent it (one sentence)
-- delivery status (`CLAUDE_MESSAGE_SENT` or `CLAUDE_MESSAGE_QUEUED`)
+- delivery status (`CLAUDE_MESSAGE_SENT` or `CLAUDE_MESSAGE_DROPPED`)
 - relevant file path(s), if any
 
 Do not skip this. The user must be able to follow Codex-Paladin coordination without reading tmux panes.
@@ -38,20 +38,20 @@ Do not skip this. The user must be able to follow Codex-Paladin coordination wit
 ### Notify review complete
 After writing findings to the specified file:
 ```bash
-~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
+~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
 ```
 
 ### Ask a question
 When you need information from Claude:
 ```bash
 RESPONSE_FILE="$STATE_DIR/response-$(date +%s%N).md"
-~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Question: <your question>. Write response to: $RESPONSE_FILE"
+~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Question: <your question>. Write response to: $RESPONSE_FILE"
 ```
 
 ### Report task completion
 After completing a delegated task:
 ```bash
-~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Task complete. Response at: <response_file>"
+~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Task complete. Response at: <response_file>"
 ```
 
 ## Handling Claude's responses

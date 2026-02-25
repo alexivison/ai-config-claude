@@ -22,7 +22,7 @@ else
   TODAY=$(date +%Y-%m-%d)
   UNTIL=$(date -v+1d +%Y-%m-%d 2>/dev/null || date -d "tomorrow" +%Y-%m-%d)
 fi
-SINCE=$(date -jf %Y-%m-%d -v-7d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 7 days" +%Y-%m-%d)
+SINCE=$(date -jf %Y-%m-%d -v-6d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 6 days" +%Y-%m-%d)
 WEEK=$(date -jf %Y-%m-%d "$TODAY" +%G-W%V 2>/dev/null || date -d "$TODAY" +%G-W%V)
 EXPORT_DIR="$REPORTS_DIR/$WEEK"
 
@@ -201,6 +201,8 @@ except Exception:
   # ── Phase 2: Cross-repo sections ────────────────────────────────
 
   # ── Code Reviews ──────────────────────────────────────────────
+  # NOTE: Metric shows "PRs created this week that I reviewed" (filters by createdAt).
+  # Not all reviews given this week — older PRs reviewed now may be excluded.
   echo ""
   echo "## Code Reviews"
   echo ""

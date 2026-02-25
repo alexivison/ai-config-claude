@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-# Skill auto-invocation hook (UPGRADED)
-# Detects skill triggers and injects MANDATORY or SHOULD suggestions
-# MANDATORY = blocking requirement per CLAUDE.md
-# SHOULD = recommended but not required
-#
-# NOTE: This is a reminder system. Hard enforcement is in pr-gate.sh.
+# Skill auto-invocation hook
+# Detects skill triggers and injects MANDATORY or SHOULD suggestions.
+# Authoritative policy: CLAUDE.md Skills section. This hook is a reminder system only.
+# Hard enforcement is in pr-gate.sh.
 
 INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null)
@@ -30,7 +28,7 @@ elif echo "$PROMPT_LOWER" | grep -qE '\bwrite (a |the )?tests?\b|\badd (a |the )
 
 # bugfix-workflow: Bug/error keywords (medium specificity)
 # Note: "fix" alone is too broad (catches "fix typo"). Require bug-related context.
-elif echo "$PROMPT_LOWER" | grep -qE '\bbug\b|\bbroken\b|\berror\b|\bnot work|\bdebug\b|\bcrash|\bfail(s|ed|ing|ure)?\b|\bfix(es|ed|ing)?\b.*(bug|error|issue|broken|crash|fail)|\b(bug|error|issue|broken|crash).*(fix|fixes|fixed|fixing)\b'; then
+elif echo "$PROMPT_LOWER" | grep -qE '\bbug\b|\bbroken\b|\bdebug\b|\bcrash|\bfix.*(bug|error|broken|crash)|\b(bug|error|broken|crash).*fix'; then
   SUGGESTION="MANDATORY: Invoke bugfix-workflow skill FIRST, before fetching tickets, reading code, or any investigation. The workflow itself handles investigation steps."
   PRIORITY="must"
 

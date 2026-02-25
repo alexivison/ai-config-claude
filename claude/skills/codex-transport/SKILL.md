@@ -1,10 +1,10 @@
 ---
-name: codex-cli
+name: codex-transport
 description: Invoke Codex CLI for deep reasoning, review, and analysis
 user-invocable: false
 ---
 
-# codex-cli — Communicate with Codex via tmux
+# codex-transport — Communicate with Codex via tmux
 
 ## When to contact Codex
 
@@ -16,7 +16,7 @@ user-invocable: false
 
 Use the transport script:
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh <mode> [args...]
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh <mode> [args...]
 ```
 
 ## Modes
@@ -24,7 +24,7 @@ Use the transport script:
 ### Request review (non-blocking)
 After implementing changes and passing sub-agent critics:
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review <base_branch> "<PR title>" <work_dir>
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review <base_branch> "<PR title>" <work_dir>
 ```
 `work_dir` is **REQUIRED** — the absolute path to the worktree or repo where changes live. The script will error if omitted. Codex's pane is in a different directory; it needs this to `cd` into the correct location.
 
@@ -32,27 +32,27 @@ This sends a message to Codex's pane. You are NOT blocked — continue with non-
 
 ### Send a task (non-blocking)
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "<task description>" <work_dir>
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --prompt "<task description>" <work_dir>
 ```
 `work_dir` is **REQUIRED**. Returns immediately. Codex will notify you when done.
 
 ### Record review completion evidence
 After Codex notifies you that findings are ready:
 ```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review-complete "<findings_file>"
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review-complete "<findings_file>"
 ```
 This preserves the existing evidence-chain invariant: `CODEX_REVIEW_RAN` means a completed review, not merely a queued request.
 
 ### Signal verdict (after triaging findings)
 ```bash
 # All findings non-blocking — approve
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --approve
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --approve
 
 # Blocking findings fixed, request re-review
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --re-review "what was fixed"
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --re-review "what was fixed"
 
 # Unresolvable after max iterations
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --needs-discussion "reason"
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --needs-discussion "reason"
 ```
 Verdict modes output sentinel strings that hooks detect to create evidence markers.
 

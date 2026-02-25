@@ -40,26 +40,27 @@ model=$(echo "$hook_input" | jq -r '.tool_input.model // "inherit"')
 full_response=$(echo "$hook_input" | jq -r '.tool_response // ""')
 response_text=$(echo "$full_response" | head -c 500)
 
-# Detect verdict/status from common patterns (ordered by specificity)
-# Uses full_response for accurate detection (verdict often at end)
+# Detect verdict/status from tail of response (agents output verdicts near the end).
+# Scanning only the last 500 chars reduces false positives from "APPROVE" in prose.
+verdict_region=$(echo "$full_response" | tail -c 500)
 verdict="unknown"
-if echo "$full_response" | grep -qi "REQUEST_CHANGES\|CHANGES REQUESTED"; then
+if echo "$verdict_region" | grep -qE '\*\*REQUEST_CHANGES\*\*|^REQUEST_CHANGES'; then
   verdict="REQUEST_CHANGES"
-elif echo "$full_response" | grep -qi "NEEDS_DISCUSSION"; then
+elif echo "$verdict_region" | grep -qE '\*\*NEEDS_DISCUSSION\*\*|^NEEDS_DISCUSSION'; then
   verdict="NEEDS_DISCUSSION"
-elif echo "$full_response" | grep -qi "APPROVE"; then
+elif echo "$verdict_region" | grep -qE '\*\*APPROVE\*\*|^APPROVE'; then
   verdict="APPROVED"
-elif echo "$full_response" | grep -qi "SKIP"; then
+elif echo "$verdict_region" | grep -qi "SKIP"; then
   verdict="SKIP"
-elif echo "$full_response" | grep -qi "CRITICAL\|HIGH"; then
+elif echo "$verdict_region" | grep -qiE '\bCRITICAL\b|\bHIGH\b'; then
   verdict="ISSUES_FOUND"
-elif echo "$full_response" | grep -qi "FAIL"; then
+elif echo "$verdict_region" | grep -qiE '\bFAIL\b'; then
   verdict="FAIL"
-elif echo "$full_response" | grep -qi "PASS"; then
+elif echo "$verdict_region" | grep -qiE '\bPASS\b'; then
   verdict="PASS"
-elif echo "$full_response" | grep -qi "CLEAN"; then
+elif echo "$verdict_region" | grep -qiE '\bCLEAN\b'; then
   verdict="CLEAN"
-elif echo "$full_response" | grep -qi "complete\|done\|finished"; then
+elif echo "$verdict_region" | grep -qi "complete\|done\|finished"; then
   verdict="COMPLETED"
 fi
 

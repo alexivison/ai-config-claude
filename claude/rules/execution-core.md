@@ -189,4 +189,38 @@ Evidence before claims. Never state success without fresh proof.
 
 ## PR Gate
 
-Before `gh pr create`: /pre-pr-verification invoked THIS session, all checks passed, codex APPROVE (via `tmux-codex.sh --approve`), verification summary in PR description. See `autonomous-flow.md` for marker details.
+Before `gh pr create`: /pre-pr-verification invoked THIS session, all checks passed, codex APPROVE (via `tmux-codex.sh --approve`), verification summary in PR description.
+
+**Code PRs** require all markers: pre-pr-verification, code-critic, minimizer, codex, test-runner, check-runner, security-scanner.
+
+### Checkpoint Markers
+
+Created by `agent-trace.sh` (sub-agents) and `codex-trace.sh` (codex verdict via Bash hook). The `/tmp/claude-codex-ran-{session_id}` marker is created by `codex-trace.sh` when `tmux-codex.sh --review-complete` emits `CODEX_REVIEW_RAN`. The `/tmp/claude-codex-{session_id}` marker is created when `tmux-codex.sh --approve` emits `CODEX APPROVED` (only if codex-ran exists).
+
+### Post-PR Changes
+
+1. Make changes in same branch
+2. Re-run `/pre-pr-verification` — MANDATORY
+3. Amend commit, force-push with `--force-with-lease`
+
+**Rule:** No post-PR changes without re-verification.
+
+## Violation Patterns
+
+| Pattern | Correct Action |
+|---------|---------------|
+| "Tests pass." [stop] | Continue to checkboxes/critics |
+| "Code-critic approved." [stop] | Continue to minimizer (or codex if both done) |
+| "All checks pass." [stop] | Continue to commit/PR |
+| "Ready to create PR." [stop] | Just create it |
+| "Should I continue?" | Just continue |
+| Chasing non-blocking critic nits for 2+ iterations | Triage by severity, note and move on (cap is 1 round) |
+| Implementing every codex finding without triage | Classify as blocking/non-blocking/out-of-scope first |
+| Re-running full cascade after one-line codex fix | Use tiered re-review (test-runner only for targeted swaps) |
+| Critic oscillating (reverse own prior feedback) | Main agent decides, proceed |
+| Skipping self-review before critics | Run self-review checklist — critics depend on it |
+| Calling tmux-codex.sh --approve without --review-complete | Evidence gate blocks — run codex review first |
+| Editing code after codex approval, then creating PR | Markers auto-invalidated — re-run review cascade |
+| Manually creating /tmp/claude-* marker files | Markers are hook-created evidence only — never touch directly |
+| Fixing critic findings then calling codex without re-running critics | `codex-gate.sh` blocks — re-run critics first |
+| Calling tmux-codex.sh --review then immediately --approve without waiting | Evidence gate blocks — wait for [CODEX] notification, then --review-complete first |

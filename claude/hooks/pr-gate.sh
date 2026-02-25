@@ -25,6 +25,20 @@ fi
 # Only check PR creation (not git push - allow pushing during development)
 # Note: Don't anchor with ^ since command may be chained (e.g., "cd ... && gh pr create")
 if echo "$COMMAND" | grep -qE 'gh pr create'; then
+  # Check if this is a docs/config-only PR (no implementation files changed)
+  CWD=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+  IMPL_FILES=""
+  if [ -n "$CWD" ]; then
+    IMPL_FILES=$(cd "$CWD" 2>/dev/null && git diff --name-only HEAD~1..HEAD 2>/dev/null \
+      | grep -vE '\.(md|json|toml|yaml|yml)$' || true)
+  fi
+
+  # Docs/config-only PRs skip the full marker chain
+  if [ -z "$IMPL_FILES" ]; then
+    echo '{}'
+    exit 0
+  fi
+
   # Code PR - require all verification markers
   VERIFY_MARKER="/tmp/claude-pr-verified-$SESSION_ID"
   SECURITY_MARKER="/tmp/claude-security-scanned-$SESSION_ID"

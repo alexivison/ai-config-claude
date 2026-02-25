@@ -41,7 +41,7 @@ Message asks you to review changes against a base branch.
 5. **Do NOT include a "verdict" field.** You produce findings — the verdict is Claude's decision.
 6. **Notify Claude** when done:
    ```bash
-   ~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
+   ~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
    ```
 
 ### Re-review request

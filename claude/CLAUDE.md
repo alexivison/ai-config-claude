@@ -44,7 +44,7 @@ tests → implement → checkboxes → self-review → [code-critic + minimizer]
 
 **Post-PR changes:** Re-run `/pre-pr-verification` before amending.
 
-**Enforcement:** PR gate blocks until markers exist. See `~/.claude/rules/autonomous-flow.md`.
+**Enforcement:** PR gate blocks until markers exist. See `~/.claude/rules/execution-core.md`.
 
 ## Sub-Agents
 
@@ -79,15 +79,7 @@ You decide all verdicts. Codex produces findings, you triage them.
 
 ## Verification Principle
 
-Evidence before claims. No assertions about the codebase without proof (file path, line number, command output).
-
-| Claim | Evidence Required |
-|-------|-------------------|
-| "Tests pass" | Test runner output |
-| "Pattern X is used" | `file:line` reference |
-| "No callers exist" | grep/search result |
-
-Any code edits after verification invalidate prior results — rerun verification. See `~/.claude/rules/execution-core.md` for full requirements.
+Evidence before claims. No assertions without proof. Code edits invalidate prior results. See `~/.claude/rules/execution-core.md` for full requirements.
 
 ## Skills
 

@@ -1,5 +1,9 @@
 # Codex CLI Configuration
-# Direct use: workspace-write (planning, research, docs)
+#
+# Two modes of operation:
+#   Direct use (codex standalone): Uses these defaults — workspace-write + on-request approval
+#   Party session (session/party.sh): CLI flags override to --dangerously-bypass-approvals-and-sandbox
+#
 # Sub-agent: Claude Code overrides with -s read-only at call time
 
 # Default model configuration
