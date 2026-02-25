@@ -38,7 +38,6 @@ model=$(echo "$hook_input" | jq -r '.tool_input.model // "inherit"')
 # Extract result summary from tool_response
 # Get full response for verdict detection (verdict may be at end)
 full_response=$(echo "$hook_input" | jq -r '.tool_response // ""')
-response_text=$(echo "$full_response" | head -c 500)
 
 # Detect verdict/status from tail of response (agents output verdicts near the end).
 # Scanning only the last 500 chars reduces false positives from "APPROVE" in prose.

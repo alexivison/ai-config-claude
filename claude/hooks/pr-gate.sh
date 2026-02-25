@@ -27,9 +27,10 @@ fi
 if echo "$COMMAND" | grep -qE 'gh pr create'; then
   # Check if this is a docs/config-only PR (no implementation files in full branch diff)
   CWD=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
-  IMPL_FILES=""
+  # Fail closed: assume code PR unless we can prove docs-only
+  IMPL_FILES="unknown"
   if [ -n "$CWD" ]; then
-    DEFAULT_BRANCH=$(cd "$CWD" 2>/dev/null && git rev-parse --verify refs/heads/main 2>/dev/null && echo main || echo master)
+    DEFAULT_BRANCH=$(cd "$CWD" 2>/dev/null && git rev-parse --verify refs/heads/main >/dev/null 2>&1 && echo main || echo master)
     MERGE_BASE=$(cd "$CWD" 2>/dev/null && git merge-base "$DEFAULT_BRANCH" HEAD 2>/dev/null || echo "")
     if [ -n "$MERGE_BASE" ]; then
       IMPL_FILES=$(cd "$CWD" 2>/dev/null && git diff --name-only "$MERGE_BASE"..HEAD 2>/dev/null \
@@ -37,7 +38,7 @@ if echo "$COMMAND" | grep -qE 'gh pr create'; then
     fi
   fi
 
-  # Docs/config-only PRs skip the full marker chain
+  # Docs/config-only PRs skip the full marker chain (empty = no impl files found)
   if [ -z "$IMPL_FILES" ]; then
     echo '{}'
     exit 0
