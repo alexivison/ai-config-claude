@@ -38,3 +38,6 @@ scripts/*.plist
 
 # Credentials
 .credentials.json
+
+# MCP auth cache
+mcp-needs-auth-cache.json

@@ -4,8 +4,5 @@ codex/models_cache.json
 codex/.personality_migration
 codex/cloud-requirements-cache.json
 
-# Claude Code generated files
-claude/mcp-needs-auth-cache.json
-
 # Other
 .DS_Store
