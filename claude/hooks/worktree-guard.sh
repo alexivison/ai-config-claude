@@ -20,9 +20,10 @@ fi
 
 # ── Guard: Block Bash file-writing on implementation files ──
 # Marker invalidation only fires on Edit|Write tools. Bash edits bypass it.
-if echo "$COMMAND" | grep -qE 'sed\s+-i|awk\s.*-i\s*inplace|>\s*[^/]|tee\s+[^-]'; then
-    # Allow writes to /tmp, logs, and .md files (non-implementation)
-    if ! echo "$COMMAND" | grep -qE '>\s*/tmp/|>\s*~/.claude/logs/|>\s*.*\.md\b|tee\s+/tmp/'; then
+# Detect: sed -i, awk inplace, redirects (> or >>), tee (with or without -a)
+if echo "$COMMAND" | grep -qE 'sed\s+-i|awk\s.*-i\s*inplace|[^2]>\s*[^&]|tee\s'; then
+    # Allow writes to safe destinations: /tmp, logs, .md, .log, .jsonl files
+    if ! echo "$COMMAND" | grep -qE '>\s*/tmp/|>\s*~/.claude/logs/|>\s*[^ ]*\.(md|log|jsonl)\b|tee\s+(-a\s+)?/tmp/|tee\s+(-a\s+)?~/.claude/logs/'; then
         cat << 'GUARD_EOF'
 {
   "hookSpecificOutput": {

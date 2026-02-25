@@ -4,6 +4,9 @@
 #
 # Triggered: SessionStart
 
+# Ensure logs dir exists (PreToolUse hooks redirect stderr here)
+mkdir -p "$HOME/.claude/logs" 2>/dev/null
+
 find /tmp -name "claude-pr-verified-*" -mtime +1 -delete 2>/dev/null
 find /tmp -name "claude-security-scanned-*" -mtime +1 -delete 2>/dev/null
 find /tmp -name "claude-code-critic-*" -mtime +1 -delete 2>/dev/null
