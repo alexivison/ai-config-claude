@@ -18,7 +18,7 @@ You are a code critic. Review changes using the preloaded code-review standards.
 
 ## Severity
 
-See `~/.claude/skills/code-review/reference/rubric.md` for shared severity levels and verdict model.
+Loaded via the `code-review` skill — see `reference/general.md` for severity labels and verdict model.
 
 ## Iteration Protocol
 
