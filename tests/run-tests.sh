@@ -26,6 +26,7 @@ echo "==========================="
 echo ""
 
 run_suite "test-hooks.sh"
+run_suite "test-party-state.sh"
 
 echo "==========================="
 echo "Results: $PASS passed, $FAIL failed"
