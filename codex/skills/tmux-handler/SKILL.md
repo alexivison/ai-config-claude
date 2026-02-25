@@ -7,7 +7,7 @@ description: Handle incoming messages from Claude via tmux — review requests, 
 
 ## Trigger
 
-You see a message in your tmux pane from Claude (sent via `tmux-codex.sh`).
+You see a message in your pane prefixed with `[CLAUDE]`. These are from Claude's tmux pane.
 
 ## Message types
 
