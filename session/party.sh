@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # party.sh — Launch a tmux session with Claude (Paladin) and Codex (Wizard)
-# Usage: party.sh [--raw|--stop [name]|--list|--install-tpm]
+# Usage: party.sh [--raw] [TITLE] | --stop [name] | --list | --install-tpm
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,13 +35,15 @@ party_install_tpm() {
 configure_party_theme() {
   local session="${1:?Usage: configure_party_theme SESSION_NAME}"
 
-  # Role labels based on pane index (immune to agent title overrides).
+  # Role labels based on pane index, with session ID suffix when available.
+  # IDs appear after agents register (Claude on SessionStart, Codex on first message).
   tmux set-option -t "$session" pane-border-status top
   tmux set-option -t "$session" pane-border-format \
-    ' #{?#{==:#{pane_index},0},The Paladin,The Wizard} '
+    ' #{?#{==:#{pane_index},0},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{=8:CLAUDE_SESSION_ID}),},The Wizard#{?#{CODEX_THREAD_ID}, (#{=8:CODEX_THREAD_ID}),}} '
 }
 
 party_start() {
+  local title="${1:-}"
   local session="party-$(date +%s)"
   local state_dir="/tmp/$session"
 
@@ -55,7 +57,11 @@ party_start() {
   fi
 
   # Create detached session — launch agents via login shell for PATH.
-  tmux new-session -d -s "$session" -n work
+  local window_name="work"
+  if [[ -n "$title" ]]; then
+    window_name="party ($title)"
+  fi
+  tmux new-session -d -s "$session" -n "$window_name"
 
   # Purge CLAUDECODE from tmux environment at every level.
   # The tmux server inherits this if it was started from a Claude Code session.
@@ -70,14 +76,14 @@ party_start() {
   local codex_bin="${CODEX_BIN:-$(command -v codex 2>/dev/null || echo "/opt/homebrew/bin/codex")}"
   local agent_path="$HOME/.local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
 
-  tmux respawn-pane -k -t "$session:work.0" \
+  tmux respawn-pane -k -t "$session:0.0" \
     "export PATH='$agent_path'; unset CLAUDECODE; exec '$claude_bin' --dangerously-skip-permissions"
-  tmux split-window -h -t "$session:work" \
+  tmux split-window -h -t "$session:0" \
     "export PATH='$agent_path'; exec '$codex_bin' --dangerously-bypass-approvals-and-sandbox"
 
   # Label panes (title-lock options are global in .tmux.conf)
-  tmux select-pane -t "$session:work.0" -T "The Paladin"
-  tmux select-pane -t "$session:work.1" -T "The Wizard"
+  tmux select-pane -t "$session:0.0" -T "The Paladin"
+  tmux select-pane -t "$session:0.1" -T "The Wizard"
 
   configure_party_theme "$session"
 
@@ -86,7 +92,7 @@ party_start() {
     "run-shell 'rm -rf /tmp/$session'"
 
   # Focus Claude pane
-  tmux select-pane -t "$session:work.0"
+  tmux select-pane -t "$session:0.0"
 
   echo "Party session '$session' started."
   echo "State dir: $state_dir"
@@ -149,7 +155,7 @@ case "${1:-}" in
   --install-tpm) party_install_tpm ;;
   --stop) party_stop "${2:-}" ;;
   --list) party_list ;;
-  --raw)  PARTY_RAW=1 party_start ;;
-  "")     party_start ;;
-  *)      echo "Usage: party.sh [--raw|--stop [name]|--list|--install-tpm]" >&2; exit 1 ;;
+  --raw)  PARTY_RAW=1 party_start "${2:-}" ;;
+  --*)    echo "Usage: party.sh [--raw] [TITLE] | --stop [name] | --list | --install-tpm" >&2; exit 1 ;;
+  *)      party_start "${1:-}" ;;
 esac

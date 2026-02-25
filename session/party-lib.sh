@@ -14,8 +14,22 @@ discover_session() {
   elif [[ -n "${TMUX:-}" ]]; then
     name=$(tmux display-message -p '#{session_name}' 2>/dev/null)
   else
-    echo "Error: Not inside a tmux session" >&2
-    return 1
+    # Not inside tmux — scan for a running party session
+    local matches
+    matches=$(tmux ls -F '#{session_name}' 2>/dev/null | grep '^party-' || true)
+    local count
+    count=$(echo "$matches" | grep -c . 2>/dev/null || echo 0)
+
+    if [[ "$count" -eq 1 ]]; then
+      name="$matches"
+    elif [[ "$count" -gt 1 ]]; then
+      echo "Error: Multiple party sessions found — set PARTY_SESSION to disambiguate:" >&2
+      echo "$matches" >&2
+      return 1
+    else
+      echo "Error: No party session found and not inside tmux" >&2
+      return 1
+    fi
   fi
 
   if [[ ! "$name" =~ ^party- ]]; then
@@ -34,22 +48,15 @@ discover_session() {
 }
 
 # Returns 0 if the target pane is idle (safe to send), 1 if busy.
-# Busy = a human client has the pane focused, or pane is in copy mode.
+# Busy = pane is in copy mode (user is reading scrollback).
 # Fails closed: tmux command failure → return 1 (uncertain = busy).
 tmux_pane_idle() {
   local target="$1"
-  local pane_id session_name pane_in_mode client_panes
-
-  pane_id=$(tmux display-message -t "$target" -p '#{pane_id}' 2>/dev/null) || return 1
-  session_name=$(tmux display-message -t "$target" -p '#{session_name}' 2>/dev/null) || return 1
+  local pane_in_mode
 
   pane_in_mode=$(tmux display-message -t "$target" -p '#{pane_in_mode}' 2>/dev/null) || return 1
   [[ "$pane_in_mode" -gt 0 ]] && return 1
 
-  client_panes=$(tmux list-clients -t "$session_name" -F '#{pane_id}' 2>/dev/null) || return 1
-  [[ -z "$client_panes" ]] && return 0
-
-  echo "$client_panes" | grep -qFx "$pane_id" && return 1
   return 0
 }
 

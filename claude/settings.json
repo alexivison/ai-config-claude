@@ -64,6 +64,11 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/session-cleanup.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/register-agent-id.sh",
+            "timeout": 5
           }
         ]
       }

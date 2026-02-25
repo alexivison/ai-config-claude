@@ -12,7 +12,7 @@ source "$SCRIPT_DIR/../../../../session/party-lib.sh"
 # only emit sentinel strings and work without a party session.
 _require_session() {
   discover_session
-  CODEX_PANE="$SESSION_NAME:work.1"
+  CODEX_PANE="$SESSION_NAME:0.1"
 }
 
 case "$MODE" in

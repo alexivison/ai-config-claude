@@ -21,6 +21,18 @@ Use the transport script:
 
 This sends a `[CODEX]` prefixed message to Claude's tmux pane. The script returns immediately — you are NOT blocked.
 
+## Visibility rule (required)
+
+After every outbound `tmux-claude.sh` message, immediately post a short digest in the local chat.
+
+Digest format:
+- what you sent (one sentence)
+- why you sent it (one sentence)
+- delivery status (`CLAUDE_MESSAGE_SENT` or `CLAUDE_MESSAGE_QUEUED`)
+- relevant file path(s), if any
+
+Do not skip this. The user must be able to follow Codex-Paladin coordination without reading tmux panes.
+
 ## Message conventions
 
 ### Notify review complete
@@ -55,3 +67,4 @@ When you see a message in your pane from Claude (e.g., "Response ready at: <path
 - You retain your full context across exchanges (persistent tmux session)
 - Keep questions specific and actionable — Claude will investigate the codebase for you
 - Do NOT ask Claude to make code changes. You make changes, Claude reviews.
+- Always post the required local digest after messaging Claude.
