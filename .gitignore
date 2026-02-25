@@ -1,8 +1,2 @@
-# Codex CLI generated files
-codex/tmp/
-codex/models_cache.json
-codex/.personality_migration
-codex/cloud-requirements-cache.json
-
 # Other
 .DS_Store
