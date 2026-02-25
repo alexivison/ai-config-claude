@@ -39,7 +39,7 @@ configure_party_theme() {
   # IDs appear after agents register (Claude on SessionStart, Codex on first message).
   tmux set-option -t "$session" pane-border-status top
   tmux set-option -t "$session" pane-border-format \
-    ' #{?#{==:#{pane_index},0},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{=8:CLAUDE_SESSION_ID}),},The Wizard#{?#{CODEX_THREAD_ID}, (#{=8:CODEX_THREAD_ID}),}} '
+    ' #{?#{==:#{pane_index},0},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{CLAUDE_SESSION_ID}),},The Wizard#{?#{CODEX_THREAD_ID}, (#{CODEX_THREAD_ID}),}} '
 }
 
 party_start() {
