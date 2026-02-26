@@ -22,11 +22,11 @@ Loaded via the `code-review` skill — see `reference/general.md` for severity l
 
 ## Iteration Protocol
 
-**Parameters:** `files`, `context`, `iteration` (1-5), `previous_feedback`
+**Parameters:** `files`, `context`, `iteration` (1-2), `previous_feedback`
 
-- **Iteration 1:** Report ALL issues at ALL severity levels (`[must]`, `[q]`, `[nit]`) in one pass. Do not withhold lower-severity findings when higher-severity issues exist.
-- **Iteration 2+:** Verify previous `[must]` and `[q]` fixes. Only flag issues introduced, exposed, or newly triggered in callers/integration paths by the fix — not pre-existing code already reviewed. No new `[nit]` on iteration 3.
-- **Max 5:** Then NEEDS_DISCUSSION
+- **Iteration 1:** Report ALL issues at ALL severity levels (`[must]`, `[q]`, `[nit]`) in one pass.
+- **Iteration 2:** Verify previous `[must]` fixes first. Then only flag NEW issues introduced by the fix. Keep `[q]` and `[nit]` concise (top 3 each).
+- **Max 2:** If blocking issues still remain after iteration 2, return NEEDS_DISCUSSION.
 
 ## Output Format
 
@@ -49,6 +49,11 @@ Loaded via the `code-review` skill — see `reference/general.md` for severity l
 ### Verdict
 **APPROVE** | **REQUEST_CHANGES** | **NEEDS_DISCUSSION**
 ```
+
+Verdict rules:
+- **APPROVE** when there are no `[must]` findings (even if `[q]`/`[nit]` exist).
+- **REQUEST_CHANGES** only when one or more `[must]` findings exist.
+- **NEEDS_DISCUSSION** when blocking findings persist at iteration 2.
 
 ## Acceptance Criteria Coverage
 

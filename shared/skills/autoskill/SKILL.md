@@ -75,7 +75,7 @@ M = mandatory, C = conditional, -- = N/A
 ### Violation Checks
 
 **Check 1: Step Ordering & Completeness** (HIGH confidence)
-Verify mandatory steps executed in order. Guard: legitimate pause points (NEEDS_DISCUSSION, 3-strikes, investigation findings, user-initiated, oscillation detected, iteration cap hit) are valid terminal states — don't flag downstream steps.
+Verify mandatory steps executed in order. Guard: legitimate pause points (NEEDS_DISCUSSION, 2-strike cap, investigation findings, user-initiated, oscillation detected, iteration cap hit) are valid terminal states — don't flag downstream steps.
 
 **Check 2: Illegitimate Pauses** (MED-HIGH confidence)
 Detect assistant-initiated stops between mandatory steps without valid reason. Signals: "Should I continue?", "Would you like me to...", stopping after partial completion.
