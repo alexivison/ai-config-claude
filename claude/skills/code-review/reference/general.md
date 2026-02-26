@@ -9,7 +9,7 @@ Rules for reviewing code changes. Use `[must]`, `[q]`, `[nit]` labels.
 | Label | Meaning | Blocks |
 |-------|---------|--------|
 | `[must]` | Bugs, security, maintainability violations | Yes |
-| `[q]` | Needs clarification or justification | Yes (until answered) |
+| `[q]` | Clarification or justification request | No |
 | `[nit]` | Style, minor suggestions | No |
 
 ---
@@ -73,6 +73,6 @@ Regressions block even if absolute values are acceptable.
 
 | Verdict | Condition |
 |---------|-----------|
-| **APPROVE** | No `[must]`, no unanswered `[q]` |
-| **REQUEST_CHANGES** | Has `[must]` or unanswered `[q]` |
+| **APPROVE** | No `[must]` findings |
+| **REQUEST_CHANGES** | Has one or more `[must]` findings |
 | **NEEDS_DISCUSSION** | Architectural concerns, unclear requirements |

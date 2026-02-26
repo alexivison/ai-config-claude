@@ -30,7 +30,13 @@ Classify every finding before acting:
 
 **Issue ledger:** Track findings across iterations. Closed findings cannot be re-raised without new evidence. Critic reversing own feedback = oscillation — use own judgment, proceed.
 
-**Caps:** Blocking: max 3 critic + 3 codex iterations → NEEDS_DISCUSSION. Non-blocking: max 1 round → accept or drop.
+**Lean loop default:**
+- Critics run in two-pass mode: initial pass, then one re-review pass after fixing blocking items.
+- Codex runs in two-pass mode: initial pass, then one re-review pass after fixing blocking items.
+- `[q]` and `[nit]` are non-blocking. Note them and proceed.
+- Critics should return `APPROVE` when only non-blocking findings remain, so codex-gate markers stay aligned with policy.
+
+**Caps:** Blocking: max 2 critic + 2 codex iterations → NEEDS_DISCUSSION. Non-blocking: max 1 round → accept or drop.
 
 **Tiered re-review:** One-symbol swap → test-runner only. Logic change → test-runner + critics. New export/signature/security path → full cascade.
 
@@ -44,12 +50,13 @@ Classify every finding before acting:
 | Implement | Done | Checkboxes | NO |
 | Self-review | PASS/FAIL | Critics / fix | NO |
 | code-critic or minimizer | APPROVE | Wait for other / codex | NO |
-| code-critic or minimizer | REQUEST_CHANGES (blocking) | Fix + re-run both | NO |
-| code-critic or minimizer | REQUEST_CHANGES (non-blocking) | Note, continue | NO |
+| code-critic or minimizer | REQUEST_CHANGES (blocking) | Fix in one batch + one re-run of both critics | NO |
+| code-critic or minimizer | REQUEST_CHANGES (non-blocking) | Record and ask critic to APPROVE-with-notes | NO |
 | code-critic or minimizer | NEEDS_DISCUSSION / oscillation / cap | Ask user | YES |
 | Both critics done, no blocking | — | Run codex | NO |
 | codex | APPROVE | /pre-pr-verification | NO |
-| codex | REQUEST_CHANGES (blocking) | Fix → tiered re-review → re-run codex | NO |
+| codex | REQUEST_CHANGES (blocking) | Fix in one batch + one codex re-review | NO |
+| codex | REQUEST_CHANGES (non-blocking) | Record and proceed to /pre-pr-verification | NO |
 | codex | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | Pass/Fail | PR / fix | NO |
 | security-scanner | HIGH/CRITICAL | Ask user | YES |
@@ -57,7 +64,7 @@ Classify every finding before acting:
 
 ## Valid Pause Conditions
 
-Investigation findings, NEEDS_DISCUSSION, 3 strikes, oscillation, iteration cap, explicit blockers.
+Investigation findings, NEEDS_DISCUSSION, 2-strike cap reached, oscillation, explicit blockers.
 
 ## Sub-Agent Behavior
 
@@ -86,3 +93,4 @@ Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex
 | Edit after approval, then PR | Markers invalidated — re-run |
 | Create markers manually | Forbidden — hooks create evidence |
 | Call codex without re-running critics | Gate blocks — re-run critics |
+| Third critic/codex round on same diff | Stop and escalate with NEEDS_DISCUSSION |

@@ -42,13 +42,20 @@ After passing the gate, execute continuously — **no stopping until PR is creat
    - Diff matches intent? (`git diff`)
    - No obvious bugs?
    Fix any failures before proceeding. Do not invoke critics on code you know is incomplete.
-6. **code-critic + minimizer** — Run in parallel with scope context and diff focus (see [Review Governance](#review-governance)). Triage findings by severity. Fix only blocking issues. Proceed to codex when no blocking findings remain. After fixing blocking critic findings, you MUST re-run both critics. The codex review gate requires critic APPROVE markers — if critics only returned REQUEST_CHANGES, those markers don't exist and codex invocation will be blocked.
+6. **code-critic + minimizer** — Run in parallel with scope context and diff focus (see [Review Governance](#review-governance)).
+   - Round 1: collect findings, fix only `[must]` in one batch.
+   - Round 2: re-run both critics once.
+   - Stop critic loop at 2 rounds. If blocking findings still remain, escalate `NEEDS_DISCUSSION`.
+   - `[q]`/`[nit]` are non-blocking and should not trigger another critic round.
 7. **codex** — Request codex review via tmux (non-blocking):
    ```bash
    ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
    ```
    `work_dir` is required — pass the worktree/repo path. Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
-8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, record evidence (`--review-complete`), triage by severity, signal verdict (`--approve`/`--re-review`/`--needs-discussion`).
+8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, record evidence (`--review-complete`), triage by severity.
+   - Round 1: fix blocking findings in one batch, then one codex re-review.
+   - Round 2: if blocking findings remain, escalate `--needs-discussion`.
+   - Non-blocking findings: record and proceed.
 9. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
 10. **Commit & PR** — Create commit and draft PR
 
@@ -63,7 +70,7 @@ See [execution-core.md](~/.claude/rules/execution-core.md#review-governance) for
 - **Every** sub-agent prompt MUST include scope boundaries from the TASK file
 - Triage findings as **blocking** (fix + re-run), **non-blocking** (note only), or **out-of-scope** (reject)
 - Only blocking findings continue the review loop
-- Max 3 critic/codex iterations for blocking, then NEEDS_DISCUSSION
+- Max 2 critic iterations and max 2 codex iterations for blocking, then NEEDS_DISCUSSION
 
 ## Plan Conformance (Checkbox Enforcement)
 
@@ -85,7 +92,7 @@ Key points for task workflow:
 - Invoke after critics have no remaining blocking findings
 - Non-blocking — continue with non-edit work while Codex reviews
 - **Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — use `--re-review` instead of `--approve`.
-- Max 3 iterations for blocking findings, then NEEDS_DISCUSSION
+- Max 2 iterations for blocking findings, then NEEDS_DISCUSSION
 - Non-blocking codex findings do not trigger re-review
 
 ## Core Reference
