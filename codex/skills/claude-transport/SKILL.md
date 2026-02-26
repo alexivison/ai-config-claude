@@ -48,6 +48,12 @@ RESPONSE_FILE="$STATE_DIR/response-$(date +%s%N).md"
 ~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Question: <your question>. Write response to: $RESPONSE_FILE"
 ```
 
+### Notify plan review complete
+After writing plan-review findings to the specified `.toon` file:
+```bash
+~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Plan review complete. Findings at: <findings_file>"
+```
+
 ### Report task completion
 After completing a delegated task:
 ```bash

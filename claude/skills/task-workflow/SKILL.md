@@ -86,7 +86,7 @@ Forgetting PLAN.md is the most common violation. Verify both files are updated b
 
 ## Codex Step
 
-See the `codex-transport` skill for full invocation details (`--review`, `--prompt`, `--review-complete`, `--approve`, `--re-review`, `--needs-discussion`).
+See the `codex-transport` skill for full invocation details (`--review`, `--plan-review`, `--prompt`, `--review-complete`, `--approve`, `--re-review`, `--needs-discussion`).
 
 Key points for task workflow:
 - Invoke after critics have no remaining blocking findings

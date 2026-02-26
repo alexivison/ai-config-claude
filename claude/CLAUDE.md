@@ -56,7 +56,7 @@ tests → implement → checkboxes → self-review → [code-critic + minimizer]
 | Complex bug investigation | codex (via tmux-codex.sh --prompt, debugging task) |
 | After implementing | code-critic + minimizer (MANDATORY, parallel) |
 | After code-critic + minimizer | codex (via tmux-codex.sh --review, MANDATORY) |
-| After creating plan | codex (via tmux-codex.sh --prompt, MANDATORY) |
+| After creating plan | codex (via tmux-codex.sh --plan-review, MANDATORY) |
 
 **MANDATORY agents apply to ALL implementation changes** — including ad-hoc requests outside formal workflows. If you write or modify implementation code, run code-critic + minimizer → codex → /pre-pr-verification before creating a PR.
 
