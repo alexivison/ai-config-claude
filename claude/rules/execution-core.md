@@ -183,8 +183,9 @@ Evidence before claims. Never state success without fresh proof.
 | "Lint clean" | check-runner, zero errors |
 | "Bug fixed" | Reproduce symptom, show it passes |
 | "Ready for PR" | /pre-pr-verification, all checks pass |
+| "External repo has/lacks X" | `git fetch origin main` + fresh search result in updated tree |
 
-**Red flags:** Tentative language ("should work"), planning commit without checks, relying on previous runs.
+**Red flags:** Tentative language ("should work"), planning commit without checks, relying on previous runs, investigating external repos without fetching latest first.
 
 ## PR Gate
 

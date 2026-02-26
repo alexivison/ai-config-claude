@@ -132,6 +132,8 @@ After critics have no remaining blocking findings, request Codex review via tmux
 ```
 This sends the review request to Codex's tmux pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done.
 
+**Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — Codex reviewed pre-fix code. In that case, use `--re-review` instead of `--approve` when findings arrive, even if the finding appears "pre-fixed." The goal is Codex reviews the final code, not an intermediate snapshot.
+
 **Non-review invocation (architecture, debugging):**
 ```bash
 ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "TASK: {description}. SCOPE: {changed files}." "$(pwd)"
