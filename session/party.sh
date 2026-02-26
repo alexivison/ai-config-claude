@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # party.sh — Launch or resume a tmux session with Claude (Paladin) and Codex (Wizard)
-# Usage: party.sh [--raw] [TITLE] | --continue <party-id> | --stop [name] | --list | --install-tpm
+# Usage: party.sh [--raw] [--resume-claude ID] [--resume-codex ID] [TITLE]
+#        party.sh --continue <party-id> | --stop [name] | --list | --install-tpm
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,7 +10,7 @@ source "$SCRIPT_DIR/party-lib.sh"
 party_usage() {
   cat <<'EOF'
 Usage:
-  party.sh [--raw] [TITLE]
+  party.sh [--raw] [--resume-claude ID] [--resume-codex ID] [TITLE]
   party.sh --continue <party-id>
   party.sh continue <party-id>
   party.sh --stop [name]
@@ -142,6 +143,8 @@ party_create_session() {
 
 party_start() {
   local title="${1:-}"
+  local resume_claude="${2:-}"
+  local resume_codex="${3:-}"
   local session="party-$(date +%s)"
   local state_dir
   local session_cwd="$PWD"
@@ -162,7 +165,7 @@ party_start() {
   party_state_set_field "$session" "last_started_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
 
   party_create_session "$session" "$window_name" "$session_cwd"
-  party_launch_agents "$session" "$session_cwd" "$claude_bin" "$codex_bin" "$agent_path"
+  party_launch_agents "$session" "$session_cwd" "$claude_bin" "$codex_bin" "$agent_path" "$resume_claude" "$resume_codex"
 
   echo "Party session '$session' started."
   echo "State dir: $state_dir"
@@ -283,13 +286,25 @@ party_list() {
   done <<< "$sessions"
 }
 
-case "${1:-}" in
-  --install-tpm) party_install_tpm ;;
-  --stop) party_stop "${2:-}" ;;
-  --list) party_list ;;
-  --continue|continue) party_continue "${2:-}" ;;
-  --raw) PARTY_RAW=1 party_start "${2:-}" ;;
-  --help|-h) party_usage ;;
-  --*) party_usage >&2; exit 1 ;;
-  *) party_start "${1:-}" ;;
-esac
+# Parse arguments
+_party_raw=""
+_party_resume_claude=""
+_party_resume_codex=""
+_party_title=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --install-tpm) party_install_tpm; exit ;;
+    --stop)  party_stop "${2:-}"; exit ;;
+    --list)  party_list; exit ;;
+    --continue|continue) party_continue "${2:-}"; exit ;;
+    --help|-h) party_usage; exit ;;
+    --raw)   _party_raw=1; shift ;;
+    --resume-claude) _party_resume_claude="${2:?--resume-claude requires a session ID}"; shift 2 ;;
+    --resume-codex)  _party_resume_codex="${2:?--resume-codex requires a session ID}"; shift 2 ;;
+    --*)     party_usage >&2; exit 1 ;;
+    *)       _party_title="$1"; shift ;;
+  esac
+done
+
+PARTY_RAW="${_party_raw}" party_start "$_party_title" "$_party_resume_claude" "$_party_resume_codex"
