@@ -2,7 +2,7 @@
 # tmux-codex.sh — Claude's direct interface to Codex via tmux
 set -euo pipefail
 
-MODE="${1:?Usage: tmux-codex.sh --review|--prompt|--review-complete|--approve|--re-review|--needs-discussion}"
+MODE="${1:?Usage: tmux-codex.sh --review|--plan-review|--prompt|--review-complete|--approve|--re-review|--needs-discussion}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../../../session/party-lib.sh"
@@ -22,17 +22,37 @@ case "$MODE" in
     BASE="${2:-main}"
     TITLE="${3:-Code review}"
     WORK_DIR="${4:?Missing work_dir — pass the worktree/repo path as 4th argument}"
-    FINDINGS_FILE="$STATE_DIR/codex-findings-$(date +%s%N).json"
+    FINDINGS_FILE="$STATE_DIR/codex-findings-$(date +%s%N).toon"
 
     # Resolve tmux-claude.sh path for the notification callback
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"
 
-    MSG="[CLAUDE] cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
+    MSG="[CLAUDE] cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write TOON findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
     if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:review"; then
       echo "CODEX_REVIEW_REQUESTED"
       echo "Claude is NOT blocked. Codex will notify via tmux when complete."
     else
       echo "CODEX_REVIEW_DROPPED"
+      echo "Codex pane is busy. Message dropped (best-effort delivery)."
+    fi
+    echo "Findings will be written to: $FINDINGS_FILE"
+    echo "Working directory: $WORK_DIR"
+    ;;
+
+  --plan-review)
+    _require_session
+    PLAN_PATH="${2:?Missing plan path}"
+    WORK_DIR="${3:?Missing work_dir — pass the worktree/repo path as 3rd argument}"
+    FINDINGS_FILE="$STATE_DIR/codex-plan-findings-$(date +%s%N).toon"
+
+    NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"
+
+    MSG="[CLAUDE] cd '$WORK_DIR' && Review '$PLAN_PATH' for architecture soundness and execution feasibility. Write TOON findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Plan review complete. Findings at: $FINDINGS_FILE\""
+    if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:plan-review"; then
+      echo "CODEX_PLAN_REVIEW_REQUESTED"
+      echo "Claude is NOT blocked. Codex will notify via tmux when complete."
+    else
+      echo "CODEX_PLAN_REVIEW_DROPPED"
       echo "Codex pane is busy. Message dropped (best-effort delivery)."
     fi
     echo "Findings will be written to: $FINDINGS_FILE"
@@ -84,7 +104,7 @@ case "$MODE" in
 
   *)
     echo "Error: Unknown mode '$MODE'" >&2
-    echo "Usage: tmux-codex.sh --review|--prompt|--review-complete|--approve|--re-review|--needs-discussion" >&2
+    echo "Usage: tmux-codex.sh --review|--plan-review|--prompt|--review-complete|--approve|--re-review|--needs-discussion" >&2
     exit 1
     ;;
 esac

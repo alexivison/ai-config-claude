@@ -21,14 +21,21 @@ Use the transport script:
 
 ## Modes
 
-### Request review (non-blocking)
+### Request code review (non-blocking)
 After implementing changes and passing sub-agent critics:
 ```bash
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review <base_branch> "<PR title>" <work_dir>
 ```
 `work_dir` is **REQUIRED** — the absolute path to the worktree or repo where changes live. The script will error if omitted. Codex's pane is in a different directory; it needs this to `cd` into the correct location.
 
-This sends a message to Codex's pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done. Handle that message per your `tmux-handler` skill.
+This sends a message to Codex's pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done. Findings are TOON format (`.toon` file). Handle that message per your `tmux-handler` skill.
+
+### Request plan review (non-blocking)
+After creating a plan:
+```bash
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --plan-review "<plan_path>" <work_dir>
+```
+`work_dir` is **REQUIRED**. Plan review is advisory — it is intentionally ungated by critic markers and does NOT create or reuse the `codex-ran` approval marker. Codex will notify via `[CODEX] Plan review complete. Findings at: <path>` when done. Findings are TOON format (`.toon` file).
 
 ### Send a task (non-blocking)
 ```bash
@@ -41,7 +48,7 @@ After Codex notifies you that findings are ready:
 ```bash
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review-complete "<findings_file>"
 ```
-This preserves the existing evidence-chain invariant: `CODEX_REVIEW_RAN` means a completed review, not merely a queued request.
+This preserves the existing evidence-chain invariant: `CODEX_REVIEW_RAN` means a completed review, not merely a queued request. The file existence check is extension-agnostic.
 
 ### Signal verdict (after triaging findings)
 ```bash
@@ -58,9 +65,10 @@ Verdict modes output sentinel strings that hooks detect to create evidence marke
 
 ## Important
 
-- `--review` and `--prompt` are NON-BLOCKING. Continue working while Codex processes.
+- `--review`, `--plan-review`, and `--prompt` are NON-BLOCKING. Continue working while Codex processes.
 - `--review-complete` emits `CODEX_REVIEW_RAN` only after findings exist.
 - Verdict modes (`--approve`, `--re-review`, `--needs-discussion`) are instant — they output sentinels for hook detection.
 - You decide the verdict. Codex produces findings, you triage them.
 - Before calling `--review`, ensure sub-agent critics have passed (codex-gate.sh enforces this).
 - Before calling `--approve`, ensure codex-ran marker exists (codex-gate.sh enforces this).
+- `--plan-review` is ungated — no critic markers or codex-ran markers required or affected.
