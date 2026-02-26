@@ -38,7 +38,7 @@ tests → implement → checkboxes → self-review → [code-critic + minimizer]
 
 **Checkboxes:** Task-workflow = TASK*.md + PLAN.md. Bugfix-workflow = no checkboxes (no PLAN.md).
 
-**Only pause for:** Investigation findings, NEEDS_DISCUSSION, 3 strikes, oscillation detected, iteration cap hit, explicit blockers.
+**Only pause for:** Investigation findings, NEEDS_DISCUSSION, 2-strike cap reached, oscillation detected, iteration cap hit, explicit blockers.
 
 **Review governance:** Triage all critic/codex findings by severity before acting. Only blocking findings continue the loop. See `~/.claude/rules/execution-core.md`.
 

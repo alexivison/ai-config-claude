@@ -51,7 +51,7 @@ Classify every finding before acting:
 | Self-review | PASS/FAIL | Critics / fix | NO |
 | code-critic or minimizer | APPROVE | Wait for other / codex | NO |
 | code-critic or minimizer | REQUEST_CHANGES (blocking) | Fix in one batch + one re-run of both critics | NO |
-| code-critic or minimizer | REQUEST_CHANGES (non-blocking) | Record and ask critic to APPROVE-with-notes | NO |
+| code-critic or minimizer | REQUEST_CHANGES (non-blocking) | Record and treat as effective APPROVE (LLM misclassified) | NO |
 | code-critic or minimizer | NEEDS_DISCUSSION / oscillation / cap | Ask user | YES |
 | Both critics done, no blocking | — | Run codex | NO |
 | codex | APPROVE | /pre-pr-verification | NO |
