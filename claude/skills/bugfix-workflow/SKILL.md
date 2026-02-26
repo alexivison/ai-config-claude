@@ -8,10 +8,6 @@ user-invocable: true
 
 Debug and fix bugs. Follows the same execution flow as task-workflow with these deltas.
 
-## Step 0: Load Core Rules
-
-Read `~/.claude/reference/execution-core.md` before proceeding.
-
 ## Deltas from Task Workflow
 
 - **No PLAN.md checkboxes** — bugfixes aren't planned work
@@ -63,4 +59,4 @@ Trace data/control flow, identify root cause with file:line, specify fix (don't 
 
 ## Core Reference
 
-See [execution-core.md](~/.claude/reference/execution-core.md) for review governance, decision matrix, and verification requirements.
+See [execution-core.md](~/.claude/rules/execution-core.md) for review governance, decision matrix, and verification requirements.

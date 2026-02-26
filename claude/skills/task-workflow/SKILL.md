@@ -8,10 +8,6 @@ user-invocable: true
 
 Execute tasks from TASK*.md files with the full autonomous workflow.
 
-## Step 0: Load Core Rules
-
-Read `~/.claude/reference/execution-core.md` before proceeding. It contains the review governance, decision matrix, verification requirements, and violation patterns that govern this workflow.
-
 ## Pre-Implementation Gate
 
 **STOP. Before writing ANY code:**
@@ -39,7 +35,7 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 2. **Implement** — Write the code to make tests pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
 4. **Checkboxes** — Update both TASK*.md AND PLAN.md: `- [ ]` → `- [x]` (MANDATORY — both files)
-5. **Self-Review** — Before invoking critics, verify your own work (see [execution-core.md](~/.claude/reference/execution-core.md#self-review)):
+5. **Self-Review** — Before invoking critics, verify your own work (see [execution-core.md](~/.claude/rules/execution-core.md#self-review)):
    - Acceptance criteria met? (each criterion → evidence)
    - Tests cover acceptance criteria?
    - No debug artifacts?
@@ -62,7 +58,7 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 
 ## Review Governance
 
-See [execution-core.md](~/.claude/reference/execution-core.md#review-governance) for full rules. Key points:
+See [execution-core.md](~/.claude/rules/execution-core.md#review-governance) for full rules. Key points:
 
 - **Every** sub-agent prompt MUST include scope boundaries from the TASK file
 - Triage findings as **blocking** (fix + re-run), **non-blocking** (note only), or **out-of-scope** (reject)
@@ -94,4 +90,4 @@ Key points for task workflow:
 
 ## Core Reference
 
-See [execution-core.md](~/.claude/reference/execution-core.md) for decision matrix, review governance, verification requirements, and PR gate.
+See [execution-core.md](~/.claude/rules/execution-core.md) for decision matrix, review governance, verification requirements, and PR gate.
