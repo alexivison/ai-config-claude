@@ -40,11 +40,11 @@ tests → implement → checkboxes → self-review → [code-critic + minimizer]
 
 **Only pause for:** Investigation findings, NEEDS_DISCUSSION, 3 strikes, oscillation detected, iteration cap hit, explicit blockers.
 
-**Review governance:** Triage all critic/codex findings by severity before acting. Only blocking findings continue the loop. See `~/.claude/rules/execution-core.md`.
+**Review governance:** Triage all critic/codex findings by severity before acting. Only blocking findings continue the loop. See `~/.claude/reference/execution-core.md`.
 
 **Post-PR changes:** Re-run `/pre-pr-verification` before amending.
 
-**Enforcement:** PR gate blocks until markers exist. See `~/.claude/rules/execution-core.md`.
+**Enforcement:** PR gate blocks until markers exist. See `~/.claude/reference/execution-core.md`.
 
 ## Sub-Agents
 
@@ -79,7 +79,7 @@ You decide all verdicts. Codex produces findings, you triage them.
 
 ## Verification Principle
 
-Evidence before claims. No assertions without proof. Code edits invalidate prior results. See `~/.claude/rules/execution-core.md` for full requirements.
+Evidence before claims. No assertions without proof. Code edits invalidate prior results. See `~/.claude/reference/execution-core.md` for full requirements.
 
 ## Skills
 
