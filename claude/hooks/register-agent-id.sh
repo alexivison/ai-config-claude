@@ -29,5 +29,6 @@ fi
 
 printf '%s\n' "$session_id" > "$id_file"
 tmux set-environment -t "$SESSION_NAME" CLAUDE_SESSION_ID "$session_id" 2>/dev/null || true
+party_state_set_field "$SESSION_NAME" "claude_session_id" "$session_id" >/dev/null 2>&1 || true
 
 echo '{}'

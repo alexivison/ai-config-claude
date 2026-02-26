@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
-# party.sh — Launch a tmux session with Claude (Paladin) and Codex (Wizard)
-# Usage: party.sh [--raw] [TITLE] | --stop [name] | --list | --install-tpm
+# party.sh — Launch or resume a tmux session with Claude (Paladin) and Codex (Wizard)
+# Usage: party.sh [--raw] [--resume-claude ID] [--resume-codex ID] [TITLE]
+#        party.sh --continue <party-id> | --stop [name] | --list | --install-tpm
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/party-lib.sh"
+
+party_usage() {
+  cat <<'EOF'
+Usage:
+  party.sh [--raw] [--resume-claude ID] [--resume-codex ID] [TITLE]
+  party.sh --continue <party-id>
+  party.sh continue <party-id>
+  party.sh --stop [name]
+  party.sh --list
+  party.sh --install-tpm
+EOF
+}
 
 party_install_tpm() {
   local tpm_path="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.tmux/plugins/tpm}"
@@ -32,6 +45,30 @@ party_install_tpm() {
   echo "In tmux, press Prefix + I to install plugins."
 }
 
+party_use_cc() {
+  if [[ "${TERM_PROGRAM:-}" == "iTerm.app" && "${PARTY_RAW:-}" != "1" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+party_attach() {
+  local session="${1:?Usage: party_attach SESSION_NAME}"
+  if party_use_cc; then
+    exec tmux -CC attach -t "$session"
+  fi
+  exec tmux attach -t "$session"
+}
+
+party_window_name() {
+  local title="${1:-}"
+  if [[ -n "$title" ]]; then
+    printf 'party (%s)\n' "$title"
+  else
+    printf 'work\n'
+  fi
+}
+
 configure_party_theme() {
   local session="${1:?Usage: configure_party_theme SESSION_NAME}"
 
@@ -42,67 +79,165 @@ configure_party_theme() {
     ' #{?#{==:#{pane_index},0},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{CLAUDE_SESSION_ID}),},The Wizard#{?#{CODEX_THREAD_ID}, (#{CODEX_THREAD_ID}),}} '
 }
 
-party_start() {
-  local title="${1:-}"
-  local session="party-$(date +%s)"
-  local state_dir="/tmp/$session"
+party_set_cleanup_hook() {
+  local session="${1:?Usage: party_set_cleanup_hook SESSION_NAME}"
+  tmux set-hook -t "$session" session-closed \
+    "run-shell 'rm -rf /tmp/$session'"
+}
 
-  mkdir -p "$state_dir"
-  echo "$session" > "$state_dir/session-name"
+party_launch_agents() {
+  local session="${1:?Usage: party_launch_agents SESSION CWD CLAUDE_BIN CODEX_BIN AGENT_PATH [CLAUDE_RESUME_ID] [CODEX_RESUME_ID]}"
+  local session_cwd="${2:?Missing session_cwd}"
+  local claude_bin="${3:?Missing claude_bin}"
+  local codex_bin="${4:?Missing codex_bin}"
+  local agent_path="${5:?Missing agent_path}"
+  local claude_resume_id="${6:-}"
+  local codex_resume_id="${7:-}"
+  local state_dir
 
-  # Detect iTerm2 for control mode
-  local use_cc=false
-  if [[ "${TERM_PROGRAM:-}" == "iTerm.app" && "${PARTY_RAW:-}" != "1" ]]; then
-    use_cc=true
-  fi
+  state_dir="$(ensure_party_state_dir "$session")"
 
-  # Create detached session — launch agents via login shell for PATH.
-  local window_name="work"
-  if [[ -n "$title" ]]; then
-    window_name="party ($title)"
-  fi
-  tmux new-session -d -s "$session" -n "$window_name"
-
-  # Purge CLAUDECODE from tmux environment at every level.
-  # The tmux server inherits this if it was started from a Claude Code session.
-  # Global unset needed because session-level unset alone doesn't affect pane
-  # processes — they inherit from the server's global environment.
   tmux set-environment -g -u CLAUDECODE 2>/dev/null || true
   tmux set-environment -t "$session" -u CLAUDECODE 2>/dev/null || true
 
-  # Launch agents with full paths and explicit PATH.
-  # Tmux panes use non-interactive shells which don't source .zshrc.
-  local claude_bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo "$HOME/.local/bin/claude")}"
-  local codex_bin="${CODEX_BIN:-$(command -v codex 2>/dev/null || echo "/opt/homebrew/bin/codex")}"
-  local agent_path="$HOME/.local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
+  local q_agent_path q_claude_bin q_codex_bin
+  local q_claude_resume_id q_codex_resume_id
+  printf -v q_agent_path '%q' "$agent_path"
+  printf -v q_claude_bin '%q' "$claude_bin"
+  printf -v q_codex_bin '%q' "$codex_bin"
 
-  tmux respawn-pane -k -t "$session:0.0" \
-    "export PATH='$agent_path'; unset CLAUDECODE; exec '$claude_bin' --dangerously-skip-permissions"
-  tmux split-window -h -t "$session:0" \
-    "export PATH='$agent_path'; exec '$codex_bin' --dangerously-bypass-approvals-and-sandbox"
+  local claude_cmd codex_cmd
+  claude_cmd="export PATH=$q_agent_path; unset CLAUDECODE; exec $q_claude_bin --dangerously-skip-permissions"
+  if [[ -n "$claude_resume_id" ]]; then
+    printf -v q_claude_resume_id '%q' "$claude_resume_id"
+    claude_cmd="$claude_cmd --resume $q_claude_resume_id"
+    printf '%s\n' "$claude_resume_id" > "$state_dir/claude-session-id"
+    tmux set-environment -t "$session" CLAUDE_SESSION_ID "$claude_resume_id" 2>/dev/null || true
+  fi
 
-  # Label panes (title-lock options are global in .tmux.conf)
+  codex_cmd="export PATH=$q_agent_path; exec $q_codex_bin --dangerously-bypass-approvals-and-sandbox"
+  if [[ -n "$codex_resume_id" ]]; then
+    printf -v q_codex_resume_id '%q' "$codex_resume_id"
+    codex_cmd="$codex_cmd resume $q_codex_resume_id"
+    printf '%s\n' "$codex_resume_id" > "$state_dir/codex-thread-id"
+    tmux set-environment -t "$session" CODEX_THREAD_ID "$codex_resume_id" 2>/dev/null || true
+  fi
+
+  tmux respawn-pane -k -t "$session:0.0" -c "$session_cwd" "$claude_cmd"
+  tmux split-window -h -t "$session:0" -c "$session_cwd" "$codex_cmd"
+
   tmux select-pane -t "$session:0.0" -T "The Paladin"
   tmux select-pane -t "$session:0.1" -T "The Wizard"
-
   configure_party_theme "$session"
-
-  # Auto-cleanup state dir when session ends (kill-session, Prefix+Q, etc.)
-  tmux set-hook -t "$session" session-closed \
-    "run-shell 'rm -rf /tmp/$session'"
-
-  # Focus Claude pane
+  party_set_cleanup_hook "$session"
   tmux select-pane -t "$session:0.0"
+}
+
+party_create_session() {
+  local session="${1:?Usage: party_create_session SESSION WINDOW_NAME CWD}"
+  local window_name="${2:?Missing window_name}"
+  local session_cwd="${3:?Missing session_cwd}"
+
+  tmux new-session -d -s "$session" -n "$window_name" -c "$session_cwd"
+}
+
+party_start() {
+  local title="${1:-}"
+  local resume_claude="${2:-}"
+  local resume_codex="${3:-}"
+  local session="party-$(date +%s)"
+  local state_dir
+  local session_cwd="$PWD"
+  local window_name
+  local claude_bin codex_bin agent_path
+
+  while tmux has-session -t "$session" 2>/dev/null; do
+    session="party-$(date +%s)-$RANDOM"
+  done
+
+  window_name="$(party_window_name "$title")"
+  claude_bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo "$HOME/.local/bin/claude")}"
+  codex_bin="${CODEX_BIN:-$(command -v codex 2>/dev/null || echo "/opt/homebrew/bin/codex")}"
+  agent_path="$HOME/.local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
+
+  state_dir="$(ensure_party_state_dir "$session")"
+  party_state_upsert_manifest "$session" "$title" "$session_cwd" "$window_name" "$claude_bin" "$codex_bin" "$agent_path" || true
+  party_state_set_field "$session" "last_started_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+
+  party_create_session "$session" "$window_name" "$session_cwd"
+  party_launch_agents "$session" "$session_cwd" "$claude_bin" "$codex_bin" "$agent_path" "$resume_claude" "$resume_codex"
 
   echo "Party session '$session' started."
   echo "State dir: $state_dir"
+  echo "Manifest: $(party_state_file "$session")"
+  party_attach "$session"
+}
 
-  # Attach
-  if [[ "$use_cc" == true ]]; then
-    exec tmux -CC attach -t "$session"
-  else
-    exec tmux attach -t "$session"
+party_continue() {
+  local session="${1:-}"
+  if [[ -z "$session" ]]; then
+    echo "Error: --continue requires a party session name (e.g. party-1234567890)." >&2
+    return 1
   fi
+  if [[ ! "$session" =~ ^party- ]]; then
+    echo "Error: invalid session name '$session' (must start with party-)." >&2
+    return 1
+  fi
+
+  if tmux has-session -t "$session" 2>/dev/null; then
+    ensure_party_state_dir "$session" >/dev/null
+    echo "Party session '$session' is already running. Re-attaching."
+    party_attach "$session"
+  fi
+
+  local manifest
+  manifest="$(party_state_file "$session")"
+  if [[ ! -f "$manifest" ]]; then
+    echo "Error: No persisted party manifest for '$session' at $manifest" >&2
+    echo "Start a new session with ./session/party.sh first." >&2
+    return 1
+  fi
+
+  local session_cwd window_name
+  local claude_bin codex_bin agent_path
+  local title claude_resume_id codex_resume_id
+
+  session_cwd="$(party_state_get_field "$session" "cwd" || true)"
+  window_name="$(party_state_get_field "$session" "window_name" || true)"
+  title="$(party_state_get_field "$session" "title" || true)"
+  claude_bin="$(party_state_get_field "$session" "claude_bin" || true)"
+  codex_bin="$(party_state_get_field "$session" "codex_bin" || true)"
+  agent_path="$(party_state_get_field "$session" "agent_path" || true)"
+  claude_resume_id="$(party_state_get_field "$session" "claude_session_id" || true)"
+  codex_resume_id="$(party_state_get_field "$session" "codex_thread_id" || true)"
+
+  [[ -n "$session_cwd" ]] || session_cwd="$PWD"
+  if [[ ! -d "$session_cwd" ]]; then
+    echo "Note: saved cwd '$session_cwd' no longer exists; using '$PWD'."
+    session_cwd="$PWD"
+  fi
+  [[ -n "$window_name" ]] || window_name="$(party_window_name "$title")"
+  [[ -n "$claude_bin" ]] || claude_bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo "$HOME/.local/bin/claude")}"
+  [[ -n "$codex_bin" ]] || codex_bin="${CODEX_BIN:-$(command -v codex 2>/dev/null || echo "/opt/homebrew/bin/codex")}"
+  [[ -n "$agent_path" ]] || agent_path="$HOME/.local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
+
+  ensure_party_state_dir "$session" >/dev/null
+  party_create_session "$session" "$window_name" "$session_cwd"
+  party_launch_agents "$session" "$session_cwd" "$claude_bin" "$codex_bin" "$agent_path" "$claude_resume_id" "$codex_resume_id"
+
+  party_state_upsert_manifest "$session" "$title" "$session_cwd" "$window_name" "$claude_bin" "$codex_bin" "$agent_path" || true
+  party_state_set_field "$session" "last_resumed_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+
+  echo "Party session '$session' resumed."
+  echo "State dir: $(party_runtime_dir "$session")"
+  echo "Manifest: $manifest"
+  if [[ -z "$claude_resume_id" ]]; then
+    echo "Note: Claude session id missing in manifest; launched fresh Claude session."
+  fi
+  if [[ -z "$codex_resume_id" ]]; then
+    echo "Note: Codex session id missing in manifest; launched fresh Codex session."
+  fi
+  party_attach "$session"
 }
 
 party_stop() {
@@ -151,11 +286,25 @@ party_list() {
   done <<< "$sessions"
 }
 
-case "${1:-}" in
-  --install-tpm) party_install_tpm ;;
-  --stop) party_stop "${2:-}" ;;
-  --list) party_list ;;
-  --raw)  PARTY_RAW=1 party_start "${2:-}" ;;
-  --*)    echo "Usage: party.sh [--raw] [TITLE] | --stop [name] | --list | --install-tpm" >&2; exit 1 ;;
-  *)      party_start "${1:-}" ;;
-esac
+# Parse arguments
+_party_raw=""
+_party_resume_claude=""
+_party_resume_codex=""
+_party_title=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --install-tpm) party_install_tpm; exit ;;
+    --stop)  party_stop "${2:-}"; exit ;;
+    --list)  party_list; exit ;;
+    --continue|continue) party_continue "${2:-}"; exit ;;
+    --help|-h) party_usage; exit ;;
+    --raw)   _party_raw=1; shift ;;
+    --resume-claude) _party_resume_claude="${2:?--resume-claude requires a session ID}"; shift 2 ;;
+    --resume-codex)  _party_resume_codex="${2:?--resume-codex requires a session ID}"; shift 2 ;;
+    --*)     party_usage >&2; exit 1 ;;
+    *)       _party_title="$1"; shift ;;
+  esac
+done
+
+PARTY_RAW="${_party_raw}" party_start "$_party_title" "$_party_resume_claude" "$_party_resume_codex"

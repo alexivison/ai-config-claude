@@ -82,9 +82,12 @@ The left pane runs Claude (the Paladin), the right pane runs Codex (the Wizard).
 |------|-------------|
 | *(none)* | Start a new party session (iTerm2 control mode auto-detected) |
 | `--raw` | Start without iTerm2 control mode |
+| `--continue <party-id>` | Recreate a party session and resume Claude/Codex using persisted session IDs |
 | `--list` | List active party sessions |
 | `--stop [name]` | Stop one or all party sessions |
 | `--install-tpm` | Install tmux Plugin Manager |
+
+Party metadata is persisted under `~/.party-state/<party-id>.json`. Runtime handoff files in `/tmp/<party-id>/` are rebuilt on demand.
 
 ## Documentation
 

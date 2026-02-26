@@ -2,6 +2,168 @@
 # party-lib.sh — Shared helpers for party session discovery
 # Sourced by party.sh, tmux-codex.sh, and tmux-claude.sh
 
+party_state_root() {
+  printf '%s\n' "${PARTY_STATE_ROOT:-$HOME/.party-state}"
+}
+
+party_state_file() {
+  local session="${1:?Usage: party_state_file SESSION_NAME}"
+  printf '%s/%s.json\n' "$(party_state_root)" "$session"
+}
+
+party_runtime_dir() {
+  local session="${1:?Usage: party_runtime_dir SESSION_NAME}"
+  printf '/tmp/%s\n' "$session"
+}
+
+ensure_party_state_dir() {
+  local session="${1:?Usage: ensure_party_state_dir SESSION_NAME}"
+  local state_dir
+  state_dir="$(party_runtime_dir "$session")"
+
+  mkdir -p "$state_dir"
+  printf '%s\n' "$session" > "$state_dir/session-name"
+  printf '%s\n' "$state_dir"
+}
+
+# Persist launch metadata for a party session. JSON persistence is best-effort:
+# if jq is unavailable, runtime behavior still works, but resume metadata is skipped.
+party_state_upsert_manifest() {
+  local session="${1:?Usage: party_state_upsert_manifest SESSION TITLE CWD WINDOW CLAUDE_BIN CODEX_BIN AGENT_PATH}"
+  local title="${2:-}"
+  local cwd="${3:?Missing cwd}"
+  local window_name="${4:?Missing window_name}"
+  local claude_bin="${5:?Missing claude_bin}"
+  local codex_bin="${6:?Missing codex_bin}"
+  local agent_path="${7:?Missing agent_path}"
+
+  command -v jq >/dev/null 2>&1 || return 0
+
+  local root file tmp now
+  root="$(party_state_root)"
+  file="$(party_state_file "$session")"
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  mkdir -p "$root"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/party-state.XXXXXX")"
+
+  if [[ -f "$file" ]]; then
+    jq --arg session "$session" \
+      --arg title "$title" \
+      --arg cwd "$cwd" \
+      --arg window "$window_name" \
+      --arg claude "$claude_bin" \
+      --arg codex "$codex_bin" \
+      --arg path "$agent_path" \
+      --arg now "$now" \
+      '
+      .party_id = (.party_id // $session)
+      | .created_at = (.created_at // $now)
+      | .updated_at = $now
+      | .title = $title
+      | .cwd = $cwd
+      | .window_name = $window
+      | .claude_bin = $claude
+      | .codex_bin = $codex
+      | .agent_path = $path
+      ' "$file" > "$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  else
+    jq -n \
+      --arg session "$session" \
+      --arg title "$title" \
+      --arg cwd "$cwd" \
+      --arg window "$window_name" \
+      --arg claude "$claude_bin" \
+      --arg codex "$codex_bin" \
+      --arg path "$agent_path" \
+      --arg now "$now" \
+      '
+      {
+        party_id: $session,
+        created_at: $now,
+        updated_at: $now,
+        title: $title,
+        cwd: $cwd,
+        window_name: $window,
+        claude_bin: $claude,
+        codex_bin: $codex,
+        agent_path: $path
+      }
+      ' > "$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  fi
+
+  mv "$tmp" "$file"
+}
+
+party_state_set_field() {
+  local session="${1:?Usage: party_state_set_field SESSION KEY VALUE}"
+  local key="${2:?Missing key}"
+  local value="${3:-}"
+
+  command -v jq >/dev/null 2>&1 || return 0
+
+  local root file tmp now
+  root="$(party_state_root)"
+  file="$(party_state_file "$session")"
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  mkdir -p "$root"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/party-state.XXXXXX")"
+
+  if [[ -f "$file" ]]; then
+    jq --arg session "$session" \
+      --arg key "$key" \
+      --arg value "$value" \
+      --arg now "$now" \
+      '
+      .party_id = (.party_id // $session)
+      | .created_at = (.created_at // $now)
+      | .updated_at = $now
+      | .[$key] = $value
+      ' "$file" > "$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  else
+    jq -n \
+      --arg session "$session" \
+      --arg key "$key" \
+      --arg value "$value" \
+      --arg now "$now" \
+      '
+      {
+        party_id: $session,
+        created_at: $now,
+        updated_at: $now
+      }
+      | .[$key] = $value
+      ' > "$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  fi
+
+  mv "$tmp" "$file"
+}
+
+party_state_get_field() {
+  local session="${1:?Usage: party_state_get_field SESSION KEY}"
+  local key="${2:?Missing key}"
+  local file
+
+  file="$(party_state_file "$session")"
+  [[ -f "$file" ]] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  jq -r --arg key "$key" '.[$key] // empty' "$file" 2>/dev/null
+}
+
 # Discovers the party session this script is running inside.
 # Uses $TMUX env var to self-discover — no global pointer file needed.
 # Sets SESSION_NAME and STATE_DIR. Returns 1 if not inside a party session.
@@ -37,11 +199,8 @@ discover_session() {
     return 1
   fi
 
-  local state_dir="/tmp/$name"
-  if [[ ! -d "$state_dir" || ! -f "$state_dir/session-name" ]]; then
-    echo "Error: State directory missing for session '$name'" >&2
-    return 1
-  fi
+  local state_dir
+  state_dir="$(ensure_party_state_dir "$name")"
 
   SESSION_NAME="$name"
   STATE_DIR="$state_dir"

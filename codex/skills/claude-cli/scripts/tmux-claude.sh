@@ -13,6 +13,7 @@ discover_session
 if [[ -n "${CODEX_THREAD_ID:-}" && ! -s "$STATE_DIR/codex-thread-id" ]]; then
   printf '%s\n' "$CODEX_THREAD_ID" > "$STATE_DIR/codex-thread-id"
   tmux set-environment -t "$SESSION_NAME" CODEX_THREAD_ID "$CODEX_THREAD_ID" 2>/dev/null || true
+  party_state_set_field "$SESSION_NAME" "codex_thread_id" "$CODEX_THREAD_ID" >/dev/null 2>&1 || true
 fi
 
 CLAUDE_PANE="$SESSION_NAME:0.0"
