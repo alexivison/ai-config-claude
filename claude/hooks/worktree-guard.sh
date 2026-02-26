@@ -20,11 +20,10 @@ fi
 
 # ── Guard: Block Bash file-writing on implementation files ──
 # Marker invalidation only fires on Edit|Write tools. Bash edits bypass it.
-# Detect: sed -i, awk inplace, redirects (> or >>), tee (with or without -a)
-if echo "$COMMAND" | grep -qE 'sed\s+-i|awk\s.*-i\s*inplace|[^2]>\s*[^&]|tee\s'; then
-    # Allow writes to safe destinations: /tmp, logs, .md, .log, .jsonl files
-    if ! echo "$COMMAND" | grep -qE '>\s*/tmp/|>\s*~/.claude/logs/|>\s*[^ ]*\.(md|log|jsonl)\b|tee\s+(-a\s+)?/tmp/|tee\s+(-a\s+)?~/.claude/logs/'; then
-        cat << 'GUARD_EOF'
+# Only block explicit in-place mutation commands (sed -i, awk inplace).
+# Redirect operators (>, >>) are too common in read-only shell (>/dev/null, etc.) to block broadly.
+if echo "$COMMAND" | grep -qE 'sed\s+-i|awk\s.*-i\s*inplace'; then
+    cat << 'GUARD_EOF'
 {
   "hookSpecificOutput": {
     "permissionDecision": "deny",
@@ -32,8 +31,7 @@ if echo "$COMMAND" | grep -qE 'sed\s+-i|awk\s.*-i\s*inplace|[^2]>\s*[^&]|tee\s';
   }
 }
 GUARD_EOF
-        exit 0
-    fi
+    exit 0
 fi
 
 # ── Guard: Block branch switching in main worktree ──

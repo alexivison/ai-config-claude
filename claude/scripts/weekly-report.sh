@@ -18,11 +18,14 @@ GIT_AUTHOR=$(git config user.name 2>/dev/null || echo "")
 if [ "$WEEKS_AGO" -gt 0 ]; then
   TODAY=$(date -v-${WEEKS_AGO}w +%Y-%m-%d 2>/dev/null || date -d "${WEEKS_AGO} weeks ago" +%Y-%m-%d)
   UNTIL="$TODAY"
+  # Historical: UNTIL is exclusive (TODAY), so -7d gives 7 days [SINCE, UNTIL)
+  SINCE=$(date -jf %Y-%m-%d -v-7d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 7 days" +%Y-%m-%d)
 else
   TODAY=$(date +%Y-%m-%d)
   UNTIL=$(date -v+1d +%Y-%m-%d 2>/dev/null || date -d "tomorrow" +%Y-%m-%d)
+  # Current: UNTIL is tomorrow (exclusive), so -6d gives 7 days [SINCE, UNTIL)
+  SINCE=$(date -jf %Y-%m-%d -v-6d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 6 days" +%Y-%m-%d)
 fi
-SINCE=$(date -jf %Y-%m-%d -v-6d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 6 days" +%Y-%m-%d)
 WEEK=$(date -jf %Y-%m-%d "$TODAY" +%G-W%V 2>/dev/null || date -d "$TODAY" +%G-W%V)
 EXPORT_DIR="$REPORTS_DIR/$WEEK"
 
