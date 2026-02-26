@@ -25,15 +25,15 @@ case "$MODE" in
     FINDINGS_FILE="$STATE_DIR/codex-findings-$(date +%s%N).json"
 
     # Resolve tmux-claude.sh path for the notification callback
-    NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-cli/scripts" && pwd)/tmux-claude.sh"
+    NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"
 
-    MSG="cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
+    MSG="[CLAUDE] cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
     if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:review"; then
       echo "CODEX_REVIEW_REQUESTED"
       echo "Claude is NOT blocked. Codex will notify via tmux when complete."
     else
-      echo "CODEX_REVIEW_QUEUED"
-      echo "Codex pane is busy. Message spooled to pending."
+      echo "CODEX_REVIEW_DROPPED"
+      echo "Codex pane is busy. Message dropped (best-effort delivery)."
     fi
     echo "Findings will be written to: $FINDINGS_FILE"
     echo "Working directory: $WORK_DIR"
@@ -45,15 +45,15 @@ case "$MODE" in
     WORK_DIR="${3:?Missing work_dir — pass the worktree/repo path as 3rd argument}"
     RESPONSE_FILE="$STATE_DIR/codex-response-$(date +%s%N).md"
 
-    NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-cli/scripts" && pwd)/tmux-claude.sh"
+    NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"
 
-    MSG="cd '$WORK_DIR' && $PROMPT_TEXT — Write response to: $RESPONSE_FILE — When done, run: $NOTIFY_SCRIPT \"Task complete. Response at: $RESPONSE_FILE\""
+    MSG="[CLAUDE] cd '$WORK_DIR' && $PROMPT_TEXT — Write response to: $RESPONSE_FILE — When done, run: $NOTIFY_SCRIPT \"Task complete. Response at: $RESPONSE_FILE\""
     if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:prompt"; then
       echo "CODEX_TASK_REQUESTED"
       echo "Codex will notify via tmux when complete."
     else
-      echo "CODEX_TASK_QUEUED"
-      echo "Codex pane is busy. Message spooled to pending."
+      echo "CODEX_TASK_DROPPED"
+      echo "Codex pane is busy. Message dropped (best-effort delivery)."
     fi
     echo "Response will be written to: $RESPONSE_FILE"
     echo "Working directory: $WORK_DIR"

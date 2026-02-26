@@ -3,7 +3,6 @@ name: minimizer
 description: "Review diff for unnecessary complexity and bloat. Returns APPROVE, REQUEST_CHANGES, or NEEDS_DISCUSSION. Identifies issues only — never writes code."
 model: sonnet
 tools: Bash, Read, Grep, Glob
-disallowedTools: Write, Edit
 color: red
 ---
 

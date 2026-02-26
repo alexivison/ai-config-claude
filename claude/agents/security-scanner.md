@@ -3,7 +3,6 @@ name: security-scanner
 description: "Scan code for security vulnerabilities, secrets, and dependency issues. Use before commits/PRs or when auditing security posture."
 model: sonnet
 tools: Bash, Glob, Grep, Read
-disallowedTools: Write, Edit
 color: orange
 ---
 

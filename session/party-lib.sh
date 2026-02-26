@@ -219,32 +219,10 @@ tmux_pane_idle() {
   return 0
 }
 
-# Spools a message to disk when the target pane is busy.
-_tmux_send_spool() {
-  local target="$1"
-  local text="$2"
-  local caller="${3:-unknown}"
-
-  local pending_dir="${STATE_DIR:?STATE_DIR unset — call discover_session first}/pending"
-  mkdir -p "$pending_dir"
-
-  local ts iso_ts
-  ts="$(date +%s)_$$_${RANDOM}"
-  iso_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  local msg_file="$pending_dir/${ts}.msg"
-
-  {
-    echo "#target=$target caller=$caller created_at=$iso_ts"
-    printf '%s\n' "$text"
-  } > "$msg_file"
-
-  echo "TMUX_SEND_BUSY pending=$msg_file target=$target" >&2
-}
-
 # Sends text to a tmux pane running a TUI agent (Claude Code / Codex CLI).
 # Uses -l flag + delay + separate Enter to avoid paste-mode newline issue.
 # Guards against injecting text while a human has the pane focused.
-# Returns 75 (EX_TEMPFAIL) and spools to disk on timeout.
+# Returns 75 (EX_TEMPFAIL) on timeout — message is dropped (best-effort delivery).
 tmux_send() {
   local target="$1"
   local text="$2"
@@ -283,7 +261,6 @@ tmux_send() {
     fi
   done
 
-  # Timeout — spool to disk
-  _tmux_send_spool "$target" "$text" "${caller:-unknown}"
+  # Timeout — message dropped (best-effort delivery)
   return 75
 }

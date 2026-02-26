@@ -25,6 +25,25 @@ fi
 # Only check PR creation (not git push - allow pushing during development)
 # Note: Don't anchor with ^ since command may be chained (e.g., "cd ... && gh pr create")
 if echo "$COMMAND" | grep -qE 'gh pr create'; then
+  # Check if this is a docs/config-only PR (no implementation files in full branch diff)
+  CWD=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+  # Fail closed: assume code PR unless we can prove docs-only
+  IMPL_FILES="unknown"
+  if [ -n "$CWD" ]; then
+    DEFAULT_BRANCH=$(cd "$CWD" 2>/dev/null && git rev-parse --verify refs/heads/main >/dev/null 2>&1 && echo main || echo master)
+    MERGE_BASE=$(cd "$CWD" 2>/dev/null && git merge-base "$DEFAULT_BRANCH" HEAD 2>/dev/null || echo "")
+    if [ -n "$MERGE_BASE" ]; then
+      IMPL_FILES=$(cd "$CWD" 2>/dev/null && git diff --name-only "$MERGE_BASE"..HEAD 2>/dev/null \
+        | grep -vE '\.(md|json|toml|yaml|yml)$' || true)
+    fi
+  fi
+
+  # Docs/config-only PRs skip the full marker chain (empty = no impl files found)
+  if [ -z "$IMPL_FILES" ]; then
+    echo '{}'
+    exit 0
+  fi
+
   # Code PR - require all verification markers
   VERIFY_MARKER="/tmp/claude-pr-verified-$SESSION_ID"
   SECURITY_MARKER="/tmp/claude-security-scanned-$SESSION_ID"

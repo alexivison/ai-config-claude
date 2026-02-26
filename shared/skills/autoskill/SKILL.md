@@ -88,7 +88,7 @@ Code edits after verification invalidate it. Check for claims without fresh evid
 | Violation Class | Target |
 |-----------------|--------|
 | Behavior drift | Workflow skill SKILL.md |
-| Rule ambiguity | autonomous-flow.md or execution-core.md |
+| Rule ambiguity | execution-core.md |
 | Enforcement gap | Hook file |
 
 ---
@@ -107,7 +107,7 @@ Code edits after verification invalidate it. Check for claims without fresh evid
 3+ related signals not fitting existing skills → new skill.
 
 1. **RED** — Document the gap (problem observed, desired behavior)
-2. **GREEN** — Create minimal `~/.claude/skills/<name>/SKILL.md`
+2. **GREEN** — Create minimal skill at `~/.<agent>/skills/<name>/SKILL.md` (path depends on invoking agent: `.claude` or `.codex`)
 3. **REFACTOR** — Close loopholes, resist scope creep
 
 ---

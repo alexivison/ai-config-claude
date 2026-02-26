@@ -45,7 +45,7 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 6. **code-critic + minimizer** — Run in parallel with scope context and diff focus (see [Review Governance](#review-governance)). Triage findings by severity. Fix only blocking issues. Proceed to codex when no blocking findings remain. After fixing blocking critic findings, you MUST re-run both critics. The codex review gate requires critic APPROVE markers — if critics only returned REQUEST_CHANGES, those markers don't exist and codex invocation will be blocked.
 7. **codex** — Request codex review via tmux (non-blocking):
    ```bash
-   ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
+   ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
    ```
    `work_dir` is required — pass the worktree/repo path. Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
 8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, record evidence (`--review-complete`), triage by severity, signal verdict (`--approve`/`--re-review`/`--needs-discussion`).
@@ -58,57 +58,12 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 
 ## Review Governance
 
-The review loop is the most expensive part of the workflow. These rules prevent waste.
+See [execution-core.md](~/.claude/rules/execution-core.md#review-governance) for full rules. Key points:
 
-### Scope Context in Sub-Agent Prompts
-
-**Every** code-critic, minimizer, and codex prompt MUST include:
-
-```
-SCOPE BOUNDARIES:
-- IN SCOPE: {copied from TASK file's "In scope" section}
-- OUT OF SCOPE: {copied from TASK file's "Out of scope" section}
-Findings on out-of-scope or pre-existing (untouched) code are automatically rejected.
-Review the DIFF, not the entire codebase. Read context files for understanding only.
-```
-
-### Diff-Scoped Reviews
-
-Instruct critics to run `git diff` and review only changed code. Pre-existing code not touched by the diff is non-blocking unless the change creates a new security-relevant interaction with it.
-
-### Finding Triage
-
-After receiving any critic or codex verdict, the main agent classifies each finding BEFORE acting:
-
-| Severity | Examples | Action |
-|----------|---------|--------|
-| **Blocking** | Correctness bug, crash path, wrong output, security HIGH/CRITICAL | Fix → re-run per tiered re-review |
-| **Non-blocking** | Style nit, "could be simpler", defensive edge case, consistency | Note and optionally fix — do NOT re-run loop |
-| **Out-of-scope** | Pre-existing code, requirements not in TASK file, hallucinated requirements | Reject — note as backlog if useful |
-
-**Only blocking findings continue the review loop.**
-
-### Issue Ledger
-
-Track all findings mentally across iterations:
-- A closed/fixed finding cannot be re-raised without new evidence (new code added since closure).
-- If a critic re-raises a closed finding, reject it and proceed.
-- If a critic reverses its own prior feedback (e.g., "remove X" → "add X back"), that is **oscillation** — the main agent uses its own judgment and proceeds. Do not chase the cycle.
-
-### Iteration Caps
-
-| Finding Tier | Max Critic Rounds | Max Codex Rounds | Then |
-|-------------|------------------|------------------|------|
-| Blocking | 3 | 3 | NEEDS_DISCUSSION |
-| Non-blocking | 1 | 1 | Accept or drop |
-
-### Tiered Re-Review After Codex Fixes
-
-| Fix Impact | Example | Re-Review Required |
-|-----------|---------|-------------------|
-| Targeted swap | `in` → `Object.hasOwn`, typo | test-runner only |
-| Logic change within function | Restructured control flow | test-runner + critics (diff-scoped) |
-| New export, changed signature, security path | Added public API | Full cascade |
+- **Every** sub-agent prompt MUST include scope boundaries from the TASK file
+- Triage findings as **blocking** (fix + re-run), **non-blocking** (note only), or **out-of-scope** (reject)
+- Only blocking findings continue the review loop
+- Max 3 critic/codex iterations for blocking, then NEEDS_DISCUSSION
 
 ## Plan Conformance (Checkbox Enforcement)
 
@@ -124,46 +79,15 @@ Forgetting PLAN.md is the most common violation. Verify both files are updated b
 
 ## Codex Step
 
-After critics have no remaining blocking findings, request Codex review via tmux:
+See the `codex-transport` skill for full invocation details (`--review`, `--prompt`, `--review-complete`, `--approve`, `--re-review`, `--needs-discussion`).
 
-**Review invocation (non-blocking):**
-```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review main "{PR title or change summary}" "$(pwd)"
-```
-This sends the review request to Codex's tmux pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done.
-
-**Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — Codex reviewed pre-fix code. In that case, use `--re-review` instead of `--approve` when findings arrive, even if the finding appears "pre-fixed." The goal is Codex reviews the final code, not an intermediate snapshot.
-
-**Non-review invocation (architecture, debugging):**
-```bash
-~/.claude/skills/codex-cli/scripts/tmux-codex.sh --prompt "TASK: {description}. SCOPE: {changed files}." "$(pwd)"
-```
-
-**When Codex notifies you (findings ready):**
-1. Read the FULL findings file with your Read tool
-2. Record review evidence:
-   ```bash
-   ~/.claude/skills/codex-cli/scripts/tmux-codex.sh --review-complete "<findings_file>"
-   ```
-3. Triage each finding: blocking / non-blocking / out-of-scope
-4. Update issue ledger (reject re-raised closed findings, detect oscillation)
-5. Signal verdict:
-   - All non-blocking: `tmux-codex.sh --approve`
-   - Blocking findings fixed, re-review needed: `tmux-codex.sh --re-review "what was fixed"`
-   - Unresolvable: `tmux-codex.sh --needs-discussion "reason"`
-
-The `codex-trace.sh` hook creates evidence markers automatically from sentinel output.
-
-**Iteration protocol:**
+Key points for task workflow:
+- Invoke after critics have no remaining blocking findings
+- Non-blocking — continue with non-edit work while Codex reviews
+- **Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — use `--re-review` instead of `--approve`.
 - Max 3 iterations for blocking findings, then NEEDS_DISCUSSION
-- Non-blocking codex findings do not trigger re-review — note and proceed
-- Do NOT re-run codex after convention/style fixes — only after logic or structural changes
+- Non-blocking codex findings do not trigger re-review
 
 ## Core Reference
 
-See [execution-core.md](~/.claude/rules/execution-core.md) for:
-- Review governance (severity tiers, iteration caps, tiered re-review)
-- Decision matrix (when to continue vs pause)
-- Sub-agent behavior rules
-- Verification requirements
-- PR gate requirements
+See [execution-core.md](~/.claude/rules/execution-core.md) for decision matrix, review governance, verification requirements, and PR gate.

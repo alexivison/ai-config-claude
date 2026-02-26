@@ -7,7 +7,7 @@ description: Handle incoming messages from Claude via tmux — review requests, 
 
 ## Trigger
 
-You see a message in your tmux pane from Claude (sent via `tmux-codex.sh`).
+You see a message in your pane prefixed with `[CLAUDE]`. These are from Claude's tmux pane.
 
 ## Message types
 
@@ -41,7 +41,7 @@ Message asks you to review changes against a base branch.
 5. **Do NOT include a "verdict" field.** You produce findings — the verdict is Claude's decision.
 6. **Notify Claude** when done:
    ```bash
-   ~/.codex/skills/claude-cli/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
+   ~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
    ```
 
 ### Re-review request

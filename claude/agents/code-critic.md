@@ -18,11 +18,7 @@ You are a code critic. Review changes using the preloaded code-review standards.
 
 ## Severity
 
-| Label | Meaning | Blocks? |
-|-------|---------|---------|
-| `[must]` | Bugs, security, maintainability | YES |
-| `[q]` | Needs clarification | YES |
-| `[nit]` | Minor improvements | NO |
+Loaded via the `code-review` skill — see `reference/general.md` for severity labels and verdict model.
 
 ## Iteration Protocol
 

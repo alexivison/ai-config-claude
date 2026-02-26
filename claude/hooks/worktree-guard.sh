@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# Claude Code worktree guard hook
-# Blocks branch switching/creation in main worktree, suggests git worktree instead
+# Claude Code Bash guard hook
+# 1. Blocks branch switching/creation in main worktree
+# 2. Blocks Bash-based file editing (sed -i, awk > file, etc.) — use Edit/Write tools
 #
 # Triggered: PreToolUse on Bash tool
 # Outputs JSON on all paths (required by hook runner when sharing a hook group)
@@ -17,6 +18,24 @@ if [ -z "$COMMAND" ]; then
     exit 0
 fi
 
+# ── Guard: Block Bash file-writing on implementation files ──
+# Marker invalidation only fires on Edit|Write tools. Bash edits bypass it.
+# Only block explicit in-place mutation commands (sed -i, awk inplace).
+# Redirect operators (>, >>) are too common in read-only shell (>/dev/null, etc.) to block broadly.
+if echo "$COMMAND" | grep -qE 'sed\s+-i|awk\s.*-i\s*inplace'; then
+    cat << 'GUARD_EOF'
+{
+  "hookSpecificOutput": {
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "BLOCKED: Use Edit/Write tools instead of Bash for file modifications. Marker invalidation depends on Edit/Write tool hooks."
+  }
+}
+GUARD_EOF
+    exit 0
+fi
+
+# ── Guard: Block branch switching in main worktree ──
+
 # Check for branch switching/creation commands
 if ! echo "$COMMAND" | grep -qE 'git\s+(checkout|switch)'; then
     echo '{}'
@@ -24,9 +43,7 @@ if ! echo "$COMMAND" | grep -qE 'git\s+(checkout|switch)'; then
 fi
 
 # Allow file checkouts (git checkout -- file, git checkout HEAD -- file, etc.)
-if echo "$COMMAND" | grep -qE 'git\s+checkout\s+--' || \
-   echo "$COMMAND" | grep -qE 'git\s+checkout\s+HEAD\s' || \
-   echo "$COMMAND" | grep -qE 'git\s+checkout\s+[^-].*\.'; then
+if echo "$COMMAND" | grep -qE 'git\s+checkout\s+(--\s|HEAD\s)'; then
     echo '{}'
     exit 0
 fi

@@ -21,5 +21,5 @@ CLAUDE_PANE="$SESSION_NAME:0.0"
 if tmux_send "$CLAUDE_PANE" "[CODEX] $MESSAGE" "tmux-claude.sh"; then
   echo "CLAUDE_MESSAGE_SENT"
 else
-  echo "CLAUDE_MESSAGE_QUEUED"
+  echo "CLAUDE_MESSAGE_DROPPED"
 fi

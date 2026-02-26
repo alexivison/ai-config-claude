@@ -1,6 +1,6 @@
-# Execution Core Reference
+# Execution Core
 
-Shared execution sequence for all workflow skills. Bugfix-workflow omits the checkboxes step (no PLAN.md for bugfixes).
+Shared rules for all workflow skills. Bugfix-workflow omits checkboxes (no PLAN.md).
 
 ## Core Sequence
 
@@ -10,183 +10,79 @@ Shared execution sequence for all workflow skills. Bugfix-workflow omits the che
 
 ## Self-Review
 
-Before invoking external reviewers, the main agent performs a self-review to catch obvious issues cheaply. This prevents wasting sub-agent resources on code that clearly needs more work.
+Before critics, verify: (1) acceptance criteria met, (2) tests cover criteria, (3) no debug artifacts, (4) `git diff` matches intent, (5) no obvious bugs. Fix failures before proceeding.
 
-### Checklist
+## Marker System
 
-1. **Acceptance criteria met?** — Re-read TASK file acceptance criteria. Does the implementation satisfy each one?
-2. **Tests cover acceptance criteria?** — Each acceptance criterion has at least one test exercising it.
-3. **No debug artifacts?** — No `console.log`, `TODO: remove`, commented-out code, or hardcoded test values.
-4. **Diff matches intent?** — Run `git diff` and verify every changed line is intentional and in-scope.
-5. **No obvious bugs?** — Null checks, off-by-one, missing error handling at system boundaries.
+`marker-invalidate.sh` deletes all review markers on Edit|Write of implementation files (skips `.md`, `/tmp/`, `.log`, `.jsonl`). Editing code after approval invalidates it — re-run the cascade. Markers are hook-created evidence; never create manually.
 
-### Output Format
-
-```
-## Self-Review
-- [x] Acceptance criteria met (list each: criterion → evidence)
-- [x] Tests cover acceptance criteria
-- [x] No debug artifacts
-- [x] Diff matches intent
-- [x] No obvious bugs
-PASS — proceeding to critics
-```
-
-If any check fails, fix before proceeding. Do not invoke critics on code you know is incomplete.
-
-## Marker Invalidation
-
-The `marker-invalidate.sh` hook automatically deletes review markers when implementation files are edited. This prevents stale approvals from surviving code changes.
-
-### How It Works
-
-- **Trigger:** PostToolUse on Edit|Write
-- **Skips:** `.md`, `/tmp/`, `.log`, `.jsonl` files (non-implementation)
-- **Deletes:** code-critic, minimizer, codex, codex-ran, tests-passed, checks-passed, pr-verified, security-scanned markers
-- **Effect:** After any implementation edit, all review steps must be re-run
-
-### Implications
-
-- Editing code after codex approval invalidates the approval — you must re-run the review cascade
-- Fixing a critic finding and re-running critics is the normal flow (markers deleted, then re-created)
-- Checkpoint markers are evidence of review — they cannot be manually created or faked
-- Invalidation depends on code edits going through Edit/Write tools. Agents must not use Bash for file editing (sed, awk, echo >) — this is enforced by CLAUDE.md rules and Claude Code's built-in tool guidance.
-- Checkpoint markers are created by hooks and must not be manually created by agents. Manual marker creation via `touch` is permitted only in isolated human-run test harnesses.
-
-### Codex Review Gate
-
-The `codex-gate.sh` hook blocks `tmux-codex.sh --review` invocations unless both critic APPROVE markers exist (`code-critic` and `minimizer`). It also blocks `tmux-codex.sh --approve` unless the `codex-ran` marker exists. This creates a hard gate: you cannot invoke codex review without first earning critic approval, and cannot approve without evidence of a completed review.
-
-**Enforcement chain:**
-1. Critics return REQUEST_CHANGES — no APPROVE markers created
-2. Agent fixes code — tries to call `tmux-codex.sh --review`
-3. `codex-gate.sh` BLOCKS: missing markers listed in deny message
-4. Agent re-runs critics — critics APPROVE — markers created
-5. Agent retries `tmux-codex.sh --review` — gate allows
-6. If codex finds issues and agent edits code — `marker-invalidate.sh` deletes critic markers — gate blocks codex again — full cascade re-runs
-
-If critics returned REQUEST_CHANGES, you MUST re-run them after fixing. The codex gate will block you otherwise — there is no way to skip this.
+`codex-gate.sh` blocks `--review` without critic APPROVE markers, blocks `--approve` without codex-ran marker. If critics returned REQUEST_CHANGES, you MUST re-run them after fixing — the gate enforces this.
 
 ## Review Governance
 
-The review loop is the most expensive part of the workflow. These rules prevent waste from oscillation, scope creep, and unbounded iteration.
+Classify every finding before acting:
 
-### Finding Severity Classification
+| Severity | Definition | Action |
+|----------|-----------|--------|
+| **Blocking** | Correctness bug, crash, security HIGH/CRITICAL | Fix + re-run |
+| **Non-blocking** | Style, "could be simpler", defensive edge cases | Note only, do NOT re-run |
+| **Out-of-scope** | Pre-existing untouched code, requirements not in TASK | Reject |
 
-The main agent classifies every critic/codex finding before acting:
+**Issue ledger:** Track findings across iterations. Closed findings cannot be re-raised without new evidence. Critic reversing own feedback = oscillation — use own judgment, proceed.
 
-| Severity | Definition | Loop Behavior |
-|----------|-----------|---------------|
-| **Blocking** | Correctness bug, crash path, security HIGH/CRITICAL | Fix and re-run |
-| **Non-blocking** | Style, consistency, "could be simpler", defensive edge cases | Note in issue ledger, do NOT re-run loop |
-| **Out-of-scope** | Pre-existing code not touched by diff, requirements not in TASK file | Reject — log as backlog item if genuinely useful |
+**Caps:** Blocking: max 3 critic + 3 codex iterations → NEEDS_DISCUSSION. Non-blocking: max 1 round → accept or drop.
 
-**Only blocking findings continue the review loop.** Non-blocking findings are noted and may be fixed in the same pass, but do not trigger a re-run of critics or codex.
+**Tiered re-review:** One-symbol swap → test-runner only. Logic change → test-runner + critics. New export/signature/security path → full cascade.
 
-### Issue Ledger
-
-The main agent maintains a mental ledger of all findings across iterations. Each finding has: source (critic/minimizer/codex), file:line, claim, status (open/fixed/rejected), resolution.
-
-**Rules:**
-- A closed finding cannot be re-raised without new evidence (new code that wasn't there before).
-- If a critic re-raises a closed finding, the main agent rejects it and proceeds.
-- If a critic reverses its own prior feedback (e.g., "remove X" then "add X back"), that is **oscillation** — auto-escalate to the main agent's judgment. Do not chase the cycle.
-
-### Iteration Caps (per severity tier)
-
-| Finding Tier | Max Critic Iterations | Max Codex Iterations | Then |
-|-------------|----------------------|----------------------|------|
-| Blocking (correctness/security) | 3 | 3 | NEEDS_DISCUSSION |
-| Non-blocking (style/nit) | 1 | 1 | Accept or drop |
-
-### Tiered Re-Review After Codex Fixes
-
-Not every codex fix requires the full cascade. The main agent classifies the semantic impact:
-
-| Fix Type | Example | Re-Review Required |
-|----------|---------|-------------------|
-| Targeted one-symbol swap | `in` → `Object.hasOwn`, typo fix | test-runner only |
-| Logic change within function | Restructured control flow, added guard | test-runner + critics (diff-scoped) |
-| New export, changed signature, security path | Added public API, modified auth | Full cascade (critics + codex) |
-
-### Scope Enforcement
-
-Every sub-agent prompt MUST include scope boundaries from the TASK file:
-
-```
-SCOPE BOUNDARIES:
-- IN SCOPE: {from TASK file}
-- OUT OF SCOPE: {from TASK file}
-- NON-GOALS: {from SPEC.md if available}
-Findings on out-of-scope code are automatically rejected.
-```
-
-Pre-existing code not touched by the diff is non-blocking unless the change creates a new interaction with it.
-
-### Diff-Scoped Reviews
-
-Critics review the **diff**, not the entire codebase. Context files may be read for understanding, but findings must be on code that was added or modified in this task. Exceptions: security issues where existing code is newly reachable through the diff.
+**Scope enforcement:** Every sub-agent prompt MUST include TASK file scope boundaries. Critics review the diff, not the codebase. Pre-existing code is non-blocking unless newly reachable.
 
 ## Decision Matrix
 
-| Step | Outcome | Next Action | Pause? |
-|------|---------|-------------|--------|
-| /write-tests | Tests written (RED) | Implement code | NO |
-| Implement | Code written | Update checkboxes | NO |
-| Checkboxes | Updated (TASK + PLAN) | Run self-review | NO |
-| Self-review | PASS | Run code-critic + minimizer (parallel) | NO |
-| Self-review | FAIL | Fix issues, re-run self-review | NO |
-| code-critic | APPROVE | Wait for minimizer | NO |
-| code-critic | REQUEST_CHANGES (blocking) | Fix and re-run both critics (codex gate enforces this — codex review is blocked until critics APPROVE) | NO |
-| code-critic | REQUEST_CHANGES (non-blocking only) | Note findings, wait for minimizer | NO |
-| code-critic | NEEDS_DISCUSSION / oscillation / cap hit | Ask user | YES |
-| minimizer | APPROVE | Wait for code-critic | NO |
-| minimizer | REQUEST_CHANGES (blocking) | Fix and re-run both critics | NO |
-| minimizer | REQUEST_CHANGES (non-blocking only) | Note findings, wait for code-critic | NO |
-| minimizer | NEEDS_DISCUSSION / oscillation / cap hit | Ask user | YES |
-| code-critic + minimizer | No blocking findings remain (both APPROVE, or all remaining findings are non-blocking) | Run codex | NO |
-| codex | APPROVE (no changes) | Run /pre-pr-verification | NO |
-| codex | APPROVE (with changes) | Classify fix impact → tiered re-review | NO |
+| Step | Outcome | Next | Pause? |
+|------|---------|------|--------|
+| /write-tests | Written (RED) | Implement | NO |
+| Implement | Done | Checkboxes | NO |
+| Self-review | PASS/FAIL | Critics / fix | NO |
+| code-critic or minimizer | APPROVE | Wait for other / codex | NO |
+| code-critic or minimizer | REQUEST_CHANGES (blocking) | Fix + re-run both | NO |
+| code-critic or minimizer | REQUEST_CHANGES (non-blocking) | Note, continue | NO |
+| code-critic or minimizer | NEEDS_DISCUSSION / oscillation / cap | Ask user | YES |
+| Both critics done, no blocking | — | Run codex | NO |
+| codex | APPROVE | /pre-pr-verification | NO |
 | codex | REQUEST_CHANGES (blocking) | Fix → tiered re-review → re-run codex | NO |
-| codex | REQUEST_CHANGES (non-blocking only) | Note findings, proceed to /pre-pr-verification | NO |
 | codex | NEEDS_DISCUSSION | Ask user | YES |
-| /pre-pr-verification | All pass | Create commit and PR | NO |
-| /pre-pr-verification | Failures | Fix and re-run | NO |
+| /pre-pr-verification | Pass/Fail | PR / fix | NO |
 | security-scanner | HIGH/CRITICAL | Ask user | YES |
-| Edit/Write (impl file) | Markers invalidated (hook) | Re-run invalidated steps before PR | NO |
-| tmux-codex.sh --approve | No codex-ran marker | Approval blocked — run tmux-codex.sh --review-complete first | NO |
+| Edit/Write (impl) | Markers invalidated | Re-run cascade | NO |
 
 ## Valid Pause Conditions
 
-1. **Investigation findings** — codex (debugging) always requires user review
-2. **NEEDS_DISCUSSION** — From code-critic, minimizer, or codex
-3. **3 strikes** — 3 failed fix attempts on same issue
-4. **Oscillation detected** — Critic reverses its own prior feedback
-5. **Iteration cap hit** — Per severity tier (see above)
-6. **Explicit blockers** — Missing dependencies, unclear requirements
+Investigation findings, NEEDS_DISCUSSION, 3 strikes, oscillation, iteration cap, explicit blockers.
 
 ## Sub-Agent Behavior
 
-| Class | When to Pause | Show to User |
-|-------|---------------|--------------|
-| Investigation (codex debug) | Always | Full findings |
-| Verification (test-runner, check-runner, security-scanner) | Never | Summary only |
-| Iterative (code-critic, minimizer, codex) | NEEDS_DISCUSSION, oscillation, or cap hit | Verdict each iteration |
+Investigation (codex debug): always pause, show full findings. Verification (test/check/security): never pause, summary only. Iterative (critics, codex): pause on NEEDS_DISCUSSION/oscillation/cap.
 
 ## Verification Principle
 
-Evidence before claims. Never state success without fresh proof.
-
-| Claim | Evidence |
-|-------|----------|
-| "Tests pass" | test-runner, zero failures |
-| "Lint clean" | check-runner, zero errors |
-| "Bug fixed" | Reproduce symptom, show it passes |
-| "Ready for PR" | /pre-pr-verification, all checks pass |
-| "External repo has/lacks X" | `git fetch origin main` + fresh search result in updated tree |
-
-**Red flags:** Tentative language ("should work"), planning commit without checks, relying on previous runs, investigating external repos without fetching latest first.
+Evidence before claims. No assertions without proof (test output, file:line, grep result). Code edits invalidate prior evidence — rerun. Red flags: "should work", commit without checks, stale evidence.
 
 ## PR Gate
 
-Before `gh pr create`: /pre-pr-verification invoked THIS session, all checks passed, codex APPROVE (via `tmux-codex.sh --approve`), verification summary in PR description. See `autonomous-flow.md` for marker details.
+Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex, test-runner, check-runner, security-scanner. Markers created by `agent-trace.sh` and `codex-trace.sh`.
+
+**Post-PR:** Changes in same branch → re-run /pre-pr-verification → amend + force-push with `--force-with-lease`.
+
+## Violation Patterns
+
+| Pattern | Action |
+|---------|--------|
+| Stop after partial completion | Continue — don't ask "should I continue?" |
+| Chase non-blocking nits 2+ rounds | Triage, note, move on |
+| Implement every finding without triage | Classify blocking/non-blocking/out-of-scope first |
+| Full cascade after one-line fix | Tiered re-review |
+| Skip self-review | Run it — critics depend on it |
+| Approve without --review-complete | Gate blocks — run review first |
+| Edit after approval, then PR | Markers invalidated — re-run |
+| Create markers manually | Forbidden — hooks create evidence |
+| Call codex without re-running critics | Gate blocks — re-run critics |

@@ -18,11 +18,14 @@ GIT_AUTHOR=$(git config user.name 2>/dev/null || echo "")
 if [ "$WEEKS_AGO" -gt 0 ]; then
   TODAY=$(date -v-${WEEKS_AGO}w +%Y-%m-%d 2>/dev/null || date -d "${WEEKS_AGO} weeks ago" +%Y-%m-%d)
   UNTIL="$TODAY"
+  # Historical: UNTIL is exclusive (TODAY), so -7d gives 7 days [SINCE, UNTIL)
+  SINCE=$(date -jf %Y-%m-%d -v-7d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 7 days" +%Y-%m-%d)
 else
   TODAY=$(date +%Y-%m-%d)
   UNTIL=$(date -v+1d +%Y-%m-%d 2>/dev/null || date -d "tomorrow" +%Y-%m-%d)
+  # Current: UNTIL is tomorrow (exclusive), so -6d gives 7 days [SINCE, UNTIL)
+  SINCE=$(date -jf %Y-%m-%d -v-6d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 6 days" +%Y-%m-%d)
 fi
-SINCE=$(date -jf %Y-%m-%d -v-7d "$TODAY" +%Y-%m-%d 2>/dev/null || date -d "$TODAY - 7 days" +%Y-%m-%d)
 WEEK=$(date -jf %Y-%m-%d "$TODAY" +%G-W%V 2>/dev/null || date -d "$TODAY" +%G-W%V)
 EXPORT_DIR="$REPORTS_DIR/$WEEK"
 
@@ -201,6 +204,8 @@ except Exception:
   # ── Phase 2: Cross-repo sections ────────────────────────────────
 
   # ── Code Reviews ──────────────────────────────────────────────
+  # NOTE: Metric shows "PRs created this week that I reviewed" (filters by createdAt).
+  # Not all reviews given this week — older PRs reviewed now may be excluded.
   echo ""
   echo "## Code Reviews"
   echo ""
@@ -398,41 +403,59 @@ except Exception:
   echo "## Stats"
   echo ""
 
-  # Weekly-scoped session count from history.jsonl
-  weekly_sessions=0
+  # Weekly-scoped session counts from history files
+  since_epoch=$(date -jf %Y-%m-%d "$SINCE" +%s 2>/dev/null || date -d "$SINCE" +%s)
+  until_epoch=$(date -jf %Y-%m-%d "$UNTIL" +%s 2>/dev/null || date -d "$UNTIL" +%s)
+  since_ms=$((since_epoch * 1000))
+  until_ms=$((until_epoch * 1000))
+
+  claude_sessions=0
   if [ -f "$CLAUDE_DIR/history.jsonl" ]; then
-    since_epoch=$(date -jf %Y-%m-%d "$SINCE" +%s 2>/dev/null || date -d "$SINCE" +%s)
-    until_epoch=$(date -jf %Y-%m-%d "$UNTIL" +%s 2>/dev/null || date -d "$UNTIL" +%s)
-    # Convert to milliseconds
-    since_ms=$((since_epoch * 1000))
-    until_ms=$((until_epoch * 1000))
-    weekly_sessions=$(python3 -c "
+    claude_sessions=$(python3 -c "
 import json, sys
 try:
     sessions = set()
     with open('$CLAUDE_DIR/history.jsonl') as f:
         for line in f:
             line = line.strip()
-            if not line:
-                continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
-                continue
+            if not line: continue
+            try: entry = json.loads(line)
+            except json.JSONDecodeError: continue
             ts = entry.get('timestamp', 0)
             if ${since_ms} <= ts < ${until_ms}:
                 sid = entry.get('sessionId', '')
-                if sid:
-                    sessions.add(sid)
+                if sid: sessions.add(sid)
     print(len(sessions))
-except Exception:
-    print('?')
-" 2>/dev/null) || weekly_sessions="?"
+except Exception: print('?')
+" 2>/dev/null) || claude_sessions="?"
+  fi
+
+  codex_sessions=0
+  CODEX_DIR="$HOME/.codex"
+  if [ -f "$CODEX_DIR/history.jsonl" ]; then
+    codex_sessions=$(python3 -c "
+import json, sys
+try:
+    sessions = set()
+    with open('$CODEX_DIR/history.jsonl') as f:
+        for line in f:
+            line = line.strip()
+            if not line: continue
+            try: entry = json.loads(line)
+            except json.JSONDecodeError: continue
+            ts = entry.get('ts', 0)
+            if ${since_epoch} <= ts < ${until_epoch}:
+                sid = entry.get('session_id', '')
+                if sid: sessions.add(sid)
+    print(len(sessions))
+except Exception: print('?')
+" 2>/dev/null) || codex_sessions="?"
   fi
 
   echo "| Metric | Count |"
   echo "|--------|-------|"
-  echo "| Sessions | $weekly_sessions |"
+  echo "| Claude sessions | $claude_sessions |"
+  echo "| Codex sessions | $codex_sessions |"
   echo "| Commits | $total_my_commits |"
   echo "| PRs created | $total_prs |"
   echo "| PRs reviewed | $review_count |"
