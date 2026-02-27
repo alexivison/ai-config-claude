@@ -74,7 +74,7 @@ Investigation (codex debug): always pause, show full findings. Verification (tes
 
 Evidence before claims. No assertions without proof (test output, file:line, grep result). Code edits invalidate prior evidence — rerun. Red flags: "should work", commit without checks, stale evidence.
 
-**Always use sub-agents for verification.** Use `test-runner` for tests and `check-runner` for lint/typecheck. Never run partial checks via Bash directly — the sub-agents discover and run the full suite (e.g., `pnpm lint` runs `lint:script`, `lint:css`, `lint:csv`, `lint:spell`). Run `check-runner` before every push.
+**Always use sub-agents for verification.** Use `test-runner` for tests and `check-runner` for lint/typecheck. Never run partial checks via Bash directly — sub-agents discover and run the full suite. Run `check-runner` before every push.
 
 ## PR Gate
 
