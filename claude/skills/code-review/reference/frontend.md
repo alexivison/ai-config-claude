@@ -32,6 +32,12 @@ Rules for reviewing frontend code (React, TypeScript, CSS).
 
 ## React Rules
 
+### i18n `[must]`
+
+| Rule | Detection |
+|------|-----------|
+| No hardcoded user-facing text | String literals in JSX that aren't technical identifiers (aria IDs, test IDs, CSS classes) |
+
 ### useState `[must]`
 
 | Rule | Detection |
@@ -89,6 +95,7 @@ Rules for reviewing frontend code (React, TypeScript, CSS).
 
 | Flag | Severity |
 |------|----------|
+| Hardcoded user-facing text (not using i18n) | `[must]` |
 | 3+ boolean props | `[q]` |
 | useEffect for derived state | `[q]` |
 | useState without callback form | `[must]` |
