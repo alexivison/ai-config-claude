@@ -42,6 +42,12 @@ Classify every finding before acting:
 
 **Scope enforcement:** Every sub-agent prompt MUST include TASK file scope boundaries. Critics review the diff, not the codebase. Pre-existing code is non-blocking unless newly reachable.
 
+## Task Management
+
+- Update checkboxes in PLAN.md and TASK*.md after completing tasks: `- [ ]` → `- [x]`
+- Commit checkbox updates with implementation (not as separate commits)
+- Wait for user approval before moving to next task in multi-task work
+
 ## Decision Matrix
 
 | Step | Outcome | Next | Pause? |
