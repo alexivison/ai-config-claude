@@ -48,7 +48,6 @@ When dispatched by the Paladin, treat it as delegated Rogue intent.
 - You run as a persistent session in a tmux pane alongside Claude.
 - Communicate with Claude via `tmux-claude.sh`.
 - File-based handoff is how agents exchange structured data. Always write output to files when asked.
-- You produce FINDINGS, not verdicts. Claude triages and decides.
 
 ## Worktree Isolation
 1. Prefer `gwta <branch>` if available.
