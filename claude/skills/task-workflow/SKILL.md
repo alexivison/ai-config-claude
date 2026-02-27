@@ -44,7 +44,7 @@ After passing the gate, execute continuously — **no stopping until PR is creat
    Fix any failures before proceeding. Do not invoke critics on code you know is incomplete.
 6. **code-critic + minimizer** — Run in parallel with scope context and diff focus (see [Review Governance](#review-governance)).
    - Round 1: collect findings, fix only `[must]` in one batch.
-   - Round 2: re-run both critics once.
+   - **After fixing blocking items → re-run BOTH critics (one pass).** Do NOT proceed to codex without this re-run. Only when both return APPROVE (or only non-blocking findings remain) may you proceed.
    - Stop critic loop at 2 rounds. If blocking findings still remain, escalate `NEEDS_DISCUSSION`.
    - `[q]`/`[nit]` are non-blocking and should not trigger another critic round.
 7. **codex** — Request codex review via tmux (non-blocking):
@@ -52,11 +52,12 @@ After passing the gate, execute continuously — **no stopping until PR is creat
    ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
    ```
    `work_dir` is required — pass the worktree/repo path. Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
-8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, record evidence (`--review-complete`), triage by severity.
-   - Round 1: fix blocking findings in one batch, then one codex re-review.
-   - Round 2: if blocking findings remain, escalate `--needs-discussion`.
-   - Non-blocking findings: record and proceed.
+8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity.
+   - **After fixing blocking items → use `--re-review` (NOT `--review-complete`).** Wait for the re-review findings before proceeding. `--review-complete` only records evidence — it does not re-validate.
+   - Round 2: if blocking findings remain after re-review, escalate `--needs-discussion`.
+   - Non-blocking findings: record with `--review-complete` and proceed.
 9. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
+   - **If you edit ANY implementation file after this step passes → re-run `/pre-pr-verification` before commit.** Even a JSDoc fix invalidates prior evidence.
 10. **Commit & PR** — Create commit and draft PR
 
 **Note:** Step 4 (Checkboxes) MUST include PLAN.md. Forgetting PLAN.md is a common violation.
