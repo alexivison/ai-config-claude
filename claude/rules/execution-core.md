@@ -74,6 +74,8 @@ Investigation (codex debug): always pause, show full findings. Verification (tes
 
 Evidence before claims. No assertions without proof (test output, file:line, grep result). Code edits invalidate prior evidence — rerun. Red flags: "should work", commit without checks, stale evidence.
 
+**Always use sub-agents for verification.** Use `test-runner` for tests and `check-runner` for lint/typecheck. Never run partial checks via Bash directly — the sub-agents discover and run the full suite (e.g., `pnpm lint` runs `lint:script`, `lint:css`, `lint:csv`, `lint:spell`). Run `check-runner` before every push.
+
 ## PR Gate
 
 Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex, test-runner, check-runner, security-scanner. Markers created by `agent-trace.sh` and `codex-trace.sh`.
@@ -94,3 +96,5 @@ Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex
 | Create markers manually | Forbidden — hooks create evidence |
 | Call codex without re-running critics | Gate blocks — re-run critics |
 | Third critic/codex round on same diff | Stop and escalate with NEEDS_DISCUSSION |
+| Run lint/typecheck via Bash instead of check-runner | Always delegate to sub-agents — they run the full suite |
+| Push without running check-runner | Run check-runner before every push, no exceptions |
