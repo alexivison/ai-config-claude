@@ -120,12 +120,3 @@ Invoke via Skill tool. `skill-eval.sh` suggests; `pr-gate.sh` enforces.
 3. One session per worktree. Never use `git checkout` or `git switch` in shared repos.
 4. After PR merge, clean up: `git worktree remove ../<repo>-<branch>`.
 
-### Task Management
-- Update checkboxes in PLAN.md and TASK*.md after completing tasks: `- [ ]` → `- [x]`
-- Commit checkbox updates with implementation (not as separate commits)
-- Wait for user approval before moving to next task in multi-task work
-
-### Code Style
-- Prefer early guard returns over nested if clauses.
-- Keep comments short — only remark on logically difficult code.
-- Never use Bash for file editing (sed, awk, echo >) — always use Edit/Write tools. Hook-based marker invalidation depends on this.
