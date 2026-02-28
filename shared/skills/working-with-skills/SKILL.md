@@ -1,7 +1,6 @@
 ---
 name: working-with-skills
 description: Rules and conventions for writing, editing, and organizing agent skills. MUST BE USED when creating a new skill, editing an existing SKILL.md, proposing skill changes via autoskill, or reviewing skill quality. Invoke when asked about skill format, structure, or best practices.
-user-invocable: true
 ---
 
 # Working with Skills
@@ -28,7 +27,6 @@ Every SKILL.md starts with a YAML frontmatter block:
 ---
 name: kebab-case-name
 description: What the skill does and when to trigger it.
-user-invocable: true
 ---
 ```
 
@@ -36,7 +34,7 @@ user-invocable: true
 |-------|----------|-------------|
 | `name` | Yes | Kebab-case, lowercase letters/numbers/hyphens, max 64 chars |
 | `description` | Yes | Max 1024 chars, no XML/HTML tags |
-| `user-invocable` | Yes | `true` if callable via `/skill-name`, `false` if loaded implicitly |
+| `user-invocable` | No | Defaults to `true`. Set `false` for passive reference skills loaded implicitly |
 | `model` | No | Target a specific model (e.g., `claude-opus-4-6` for heavy reasoning) |
 | `allowed-tools` | No | Restrict to least-privilege toolset (e.g., `[Read, Grep, Glob]`) |
 
@@ -131,7 +129,7 @@ Before committing a new or edited skill, verify:
 
 - [ ] `name` is kebab-case, max 64 characters
 - [ ] `description` is under 1024 characters, includes trigger phrases
-- [ ] `user-invocable` is set correctly (`true` only if direct invocation makes sense)
+- [ ] `user-invocable: false` is set for passive reference skills (omit for user-invocable skills)
 - [ ] `allowed-tools` restricts to minimum necessary (if specified)
 - [ ] No hardcoded secrets, API keys, or PII
 - [ ] No absolute paths in shared skills
