@@ -132,7 +132,7 @@ party_launch_agents() {
   tmux set-option -p -t "$session:0.1" @party_role claude
 
   # Pane 2: Shell (operator terminal)
-  tmux split-window -v -t "$session:0.1" -c "$session_cwd" -l 25%
+  tmux split-window -h -t "$session:0.1" -c "$session_cwd"
   tmux set-option -p -t "$session:0.2" @party_role shell
 
   tmux select-pane -t "$session:0.0" -T "The Wizard"

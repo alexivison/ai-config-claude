@@ -63,7 +63,8 @@ Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 
 ## tmux Session Context
 
-- You run in a tmux pane alongside Codex. Use `tmux-codex.sh` to communicate.
+- You run in a tmux pane alongside Codex. Communicate via: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh`
+- All `--review`, `--plan-review`, and `--prompt` modes require `work_dir` as their last argument (absolute path to the repo/worktree).
 - Codex reviews are non-blocking — continue with other work while Codex reviews.
 - "Ask the Wizard" / "have Codex check" / "dispatch Codex" → ALWAYS `tmux-codex.sh`, NEVER Task subagents.
 - `[CODEX]` messages are from Codex. Handle per `tmux-handler` skill.
