@@ -76,7 +76,7 @@ bash tests/test-party-routing.sh
 
 ## Acceptance Criteria
 
-- [ ] Shared resolver helper(s) exist in `party-lib.sh` and are callable from scripts.
-- [ ] Resolver behavior matches role-first, topology-guarded-fallback-second policy.
-- [ ] Duplicate-role detection returns `ROLE_AMBIGUOUS`.
-- [ ] Routing tests for resolver pass (including topology guard and duplicate-role cases).
+- [x] Shared resolver helper(s) exist in `party-lib.sh` and are callable from scripts.
+- [x] Resolver behavior matches role-first, topology-guarded-fallback-second policy.
+- [x] Duplicate-role detection returns `ROLE_AMBIGUOUS`.
+- [x] Routing tests for resolver pass (including topology guard and duplicate-role cases).

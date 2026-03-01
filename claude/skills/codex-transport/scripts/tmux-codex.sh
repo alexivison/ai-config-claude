@@ -12,7 +12,10 @@ source "$SCRIPT_DIR/../../../../session/party-lib.sh"
 # only emit sentinel strings and work without a party session.
 _require_session() {
   discover_session
-  CODEX_PANE="$SESSION_NAME:0.1"
+  CODEX_PANE=$(party_role_pane_target_with_fallback "$SESSION_NAME" "codex") || {
+    echo "Error: Cannot resolve Codex pane in session '$SESSION_NAME'" >&2
+    exit 1
+  }
 }
 
 case "$MODE" in

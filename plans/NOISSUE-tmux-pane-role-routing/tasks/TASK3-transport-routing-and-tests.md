@@ -80,7 +80,7 @@ bash tests/run-tests.sh
 
 ## Acceptance Criteria
 
-- [ ] Both transports are role-routed, not index-routed.
-- [ ] Non-session modes in `tmux-codex.sh` remain session-independent.
-- [ ] Routing regression tests are green (including topology guard and duplicate-role cases).
-- [ ] Existing hook/state test suites remain green.
+- [x] Both transports are role-routed, not index-routed.
+- [x] Non-session modes in `tmux-codex.sh` remain session-independent.
+- [x] Routing regression tests are green (including topology guard and duplicate-role cases).
+- [x] Existing hook/state test suites remain green.

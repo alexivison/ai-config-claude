@@ -66,6 +66,6 @@ bash tests/run-tests.sh
 
 ## Acceptance Criteria
 
-- [ ] Docs reflect implemented behavior.
-- [ ] Automated verification passes.
+- [x] Docs reflect implemented behavior.
+- [x] Automated verification passes.
 - [ ] Manual routing smoke check passes.

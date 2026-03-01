@@ -76,6 +76,6 @@ Verification commands:
 
 ## Acceptance Criteria
 
-- [ ] Default layout and role tags match specification.
-- [ ] Theme labels use role metadata, not index assumptions.
-- [ ] No regression in startup/attach flow.
+- [x] Default layout and role tags match specification.
+- [x] Theme labels use role metadata, not index assumptions.
+- [x] No regression in startup/attach flow.
