@@ -104,11 +104,11 @@ Code edits after verification invalidate it. Check for claims without fresh evid
 
 # Creating New Skills (TDD)
 
-3+ related signals not fitting existing skills → new skill.
+3+ related signals not fitting existing skills → new skill. Follow the `working-with-skills` conventions for format, naming, description writing, and verification.
 
 1. **RED** — Document the gap (problem observed, desired behavior)
-2. **GREEN** — Create minimal skill at `~/.<agent>/skills/<name>/SKILL.md` (path depends on invoking agent: `.claude` or `.codex`)
-3. **REFACTOR** — Close loopholes, resist scope creep
+2. **GREEN** — Create minimal skill at `~/.<agent>/skills/<name>/SKILL.md` (path depends on invoking agent: `.claude` or `.codex`). For shared skills: `shared/skills/<name>/` with symlinks to both agents.
+3. **REFACTOR** — Close loopholes, resist scope creep. Run the verification checklist from `working-with-skills`.
 
 ---
 
