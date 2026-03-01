@@ -311,10 +311,19 @@ party_role_pane_target_with_fallback() {
   local session="${1:?Usage: party_role_pane_target_with_fallback SESSION ROLE}"
   local role="${2:?Missing role}"
 
-  local target
-  if target=$(party_role_pane_target "$session" "$role" 2>/dev/null); then
-    printf '%s\n' "$target"
+  # Capture both stdout (target) and stderr (diagnostics) to preserve error codes
+  local output rc=0
+  output=$(party_role_pane_target "$session" "$role" 2>&1) || rc=$?
+
+  if [[ $rc -eq 0 ]]; then
+    printf '%s\n' "$output"
     return 0
+  fi
+
+  # Propagate ROLE_AMBIGUOUS — fallback cannot resolve duplicate roles
+  if [[ "$output" == *"ROLE_AMBIGUOUS"* ]]; then
+    echo "$output" >&2
+    return 1
   fi
 
   # Topology-guarded fallback: only for legacy 2-pane sessions without role metadata

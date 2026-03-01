@@ -114,6 +114,21 @@ err=$(party_role_pane_target_with_fallback "party-test" "claude" 2>&1 >/dev/null
 assert "fallback: 3-pane without roles emits ROUTING_UNRESOLVED" \
   '[[ "$err" == *"ROUTING_UNRESOLVED"* ]]'
 
+# Duplicate role through fallback wrapper → ROLE_AMBIGUOUS propagated (not masked)
+MOCK_PANE_DATA=$'0 codex\n1 codex\n2 shell'
+
+if party_role_pane_target_with_fallback "party-test" "codex" 2>/dev/null; then
+  FAIL=$((FAIL + 1))
+  echo "  [FAIL] fallback: duplicate role returns error"
+else
+  PASS=$((PASS + 1))
+  echo "  [PASS] fallback: duplicate role returns error"
+fi
+
+err=$(party_role_pane_target_with_fallback "party-test" "codex" 2>&1 >/dev/null || true)
+assert "fallback: duplicate role propagates ROLE_AMBIGUOUS (not ROUTING_UNRESOLVED)" \
+  '[[ "$err" == *"ROLE_AMBIGUOUS"* ]]'
+
 # Unknown role in legacy session → unresolved (no fallback for non-agent roles)
 MOCK_PANE_DATA=$'0 \n1 '
 
