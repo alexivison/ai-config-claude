@@ -27,13 +27,13 @@ No feature flag. This is a foundational tmux orchestration behavior change.
 
 ## Acceptance Criteria
 
-- [ ] `party.sh` creates the default 3-pane layout with roles: `codex` (pane `0`), `claude` (pane `1`), `shell` (pane `2`).
-- [ ] `tmux-claude.sh` no longer hardcodes `CLAUDE_PANE="$SESSION_NAME:0.0"`; it resolves the Claude pane by role first.
-- [ ] `tmux-codex.sh` no longer hardcodes `CODEX_PANE="$SESSION_NAME:0.1"`; it resolves the Codex pane by role first.
-- [ ] `configure_party_theme` labels panes by role metadata, not by `pane_index == 0` assumptions.
-- [ ] Automated tests cover role-based pane lookup, legacy fallback behavior, topology guard, and duplicate-role detection.
-- [ ] Non-session modes in `tmux-codex.sh` (`--approve`, `--review-complete`, `--re-review`, `--needs-discussion`) remain session-independent — no role resolution on these paths.
-- [ ] `bash tests/run-tests.sh` passes.
+- [x] `party.sh` creates the default 3-pane layout with roles: `codex` (pane `0`), `claude` (pane `1`), `shell` (pane `2`).
+- [x] `tmux-claude.sh` no longer hardcodes `CLAUDE_PANE="$SESSION_NAME:0.0"`; it resolves the Claude pane by role first.
+- [x] `tmux-codex.sh` no longer hardcodes `CODEX_PANE="$SESSION_NAME:0.1"`; it resolves the Codex pane by role first.
+- [x] `configure_party_theme` labels panes by role metadata, not by `pane_index == 0` assumptions.
+- [x] Automated tests cover role-based pane lookup, legacy fallback behavior, topology guard, and duplicate-role detection.
+- [x] Non-session modes in `tmux-codex.sh` (`--approve`, `--review-complete`, `--re-review`, `--needs-discussion`) remain session-independent — no role resolution on these paths.
+- [x] `bash tests/run-tests.sh` passes.
 
 ## Non-Goals
 

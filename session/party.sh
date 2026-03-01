@@ -72,11 +72,11 @@ party_window_name() {
 configure_party_theme() {
   local session="${1:?Usage: configure_party_theme SESSION_NAME}"
 
-  # Role labels based on pane index, with session ID suffix when available.
+  # Role labels driven by @party_role metadata, with session ID suffix when available.
   # IDs appear after agents register (Claude on SessionStart, Codex on first message).
   tmux set-option -t "$session" pane-border-status top
   tmux set-option -t "$session" pane-border-format \
-    ' #{?#{==:#{pane_index},0},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{CLAUDE_SESSION_ID}),},The Wizard#{?#{CODEX_THREAD_ID}, (#{CODEX_THREAD_ID}),}} '
+    ' #{?#{==:#{@party_role},claude},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{CLAUDE_SESSION_ID}),},#{?#{==:#{@party_role},codex},The Wizard#{?#{CODEX_THREAD_ID}, (#{CODEX_THREAD_ID}),},#{?#{==:#{@party_role},shell},Shell,}}} '
 }
 
 party_set_cleanup_hook() {
@@ -123,14 +123,24 @@ party_launch_agents() {
     tmux set-environment -t "$session" CODEX_THREAD_ID "$codex_resume_id" 2>/dev/null || true
   fi
 
-  tmux respawn-pane -k -t "$session:0.0" -c "$session_cwd" "$claude_cmd"
-  tmux split-window -h -t "$session:0" -c "$session_cwd" "$codex_cmd"
+  # Pane 0: Codex (The Wizard)
+  tmux respawn-pane -k -t "$session:0.0" -c "$session_cwd" "$codex_cmd"
+  tmux set-option -p -t "$session:0.0" @party_role codex
 
-  tmux select-pane -t "$session:0.0" -T "The Paladin"
-  tmux select-pane -t "$session:0.1" -T "The Wizard"
+  # Pane 1: Claude (The Paladin)
+  tmux split-window -h -t "$session:0.0" -c "$session_cwd" "$claude_cmd"
+  tmux set-option -p -t "$session:0.1" @party_role claude
+
+  # Pane 2: Shell (operator terminal)
+  tmux split-window -v -t "$session:0.1" -c "$session_cwd" -l 25%
+  tmux set-option -p -t "$session:0.2" @party_role shell
+
+  tmux select-pane -t "$session:0.0" -T "The Wizard"
+  tmux select-pane -t "$session:0.1" -T "The Paladin"
+  tmux select-pane -t "$session:0.2" -T "Shell"
   configure_party_theme "$session"
   party_set_cleanup_hook "$session"
-  tmux select-pane -t "$session:0.0"
+  tmux select-pane -t "$session:0.1"
 }
 
 party_create_session() {

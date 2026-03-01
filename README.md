@@ -70,13 +70,21 @@ Removes symlinks but keeps the repository.
 
 ## Usage
 
-Launch a party session to run Claude and Codex side by side in a two-pane tmux layout:
+Launch a party session to run Claude and Codex side by side in a three-pane tmux layout:
 
 ```bash
 ./session/party.sh
 ```
 
-The left pane runs Claude (the Paladin), the right pane runs Codex (the Wizard). Claude communicates with Codex via `tmux-codex.sh` for reviews, analysis, and deep reasoning tasks.
+Default pane layout:
+
+| Pane | Role | Agent |
+|------|------|-------|
+| 0 | `codex` | The Wizard (Codex CLI) |
+| 1 | `claude` | The Paladin (Claude Code) |
+| 2 | `shell` | Operator terminal |
+
+Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) route messages by `@party_role` metadata rather than fixed pane indices, so the layout remains correct even if panes are reordered. Legacy two-pane sessions without role metadata fall back to the original index-based routing.
 
 | Flag | Description |
 |------|-------------|

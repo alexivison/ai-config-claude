@@ -16,7 +16,10 @@ if [[ -n "${CODEX_THREAD_ID:-}" && ! -s "$STATE_DIR/codex-thread-id" ]]; then
   party_state_set_field "$SESSION_NAME" "codex_thread_id" "$CODEX_THREAD_ID" >/dev/null 2>&1 || true
 fi
 
-CLAUDE_PANE="$SESSION_NAME:0.0"
+CLAUDE_PANE=$(party_role_pane_target_with_fallback "$SESSION_NAME" "claude") || {
+  echo "Error: Cannot resolve Claude pane in session '$SESSION_NAME'" >&2
+  exit 1
+}
 
 if tmux_send "$CLAUDE_PANE" "[CODEX] $MESSAGE" "tmux-claude.sh"; then
   echo "CLAUDE_MESSAGE_SENT"

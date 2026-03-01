@@ -264,3 +264,81 @@ tmux_send() {
   # Timeout — message dropped (best-effort delivery)
   return 75
 }
+
+# ---------------------------------------------------------------------------
+# Role-based pane routing
+# ---------------------------------------------------------------------------
+
+# Resolve a pane target by @party_role metadata.
+# Usage: party_role_pane_target SESSION ROLE
+# stdout: target pane (e.g. "session:0.1")
+# exit 0: resolved | exit 1: not found or ambiguous
+party_role_pane_target() {
+  local session="${1:?Usage: party_role_pane_target SESSION ROLE}"
+  local role="${2:?Missing role}"
+
+  local pane_list
+  pane_list=$(tmux list-panes -t "$session:0" -F '#{pane_index} #{@party_role}' 2>/dev/null) || {
+    echo "Error: Cannot list panes for session '$session'" >&2
+    return 1
+  }
+
+  local -a found=()
+  local idx pane_role
+  while IFS=' ' read -r idx pane_role; do
+    [[ -n "$idx" ]] || continue
+    [[ "$pane_role" == "$role" ]] && found+=("$idx")
+  done <<< "$pane_list"
+
+  if [[ ${#found[@]} -eq 0 ]]; then
+    echo "ROLE_NOT_FOUND: No pane with @party_role='$role' in session '$session'" >&2
+    return 1
+  fi
+
+  if [[ ${#found[@]} -gt 1 ]]; then
+    echo "ROLE_AMBIGUOUS: Multiple panes with @party_role='$role' in session '$session'" >&2
+    return 1
+  fi
+
+  printf '%s:0.%s\n' "$session" "${found[0]}"
+}
+
+# Resolve pane target with legacy fallback for pre-change sessions.
+# Fallback only activates for exactly 2-pane sessions with no role metadata.
+# Usage: party_role_pane_target_with_fallback SESSION ROLE
+# stdout: target pane | exit 0: resolved | exit 1: unresolved
+party_role_pane_target_with_fallback() {
+  local session="${1:?Usage: party_role_pane_target_with_fallback SESSION ROLE}"
+  local role="${2:?Missing role}"
+
+  local target
+  if target=$(party_role_pane_target "$session" "$role" 2>/dev/null); then
+    printf '%s\n' "$target"
+    return 0
+  fi
+
+  # Topology-guarded fallback: only for legacy 2-pane sessions without role metadata
+  local pane_list
+  pane_list=$(tmux list-panes -t "$session:0" -F '#{pane_index} #{@party_role}' 2>/dev/null) || {
+    echo "ROUTING_UNRESOLVED: Cannot list panes for session '$session'" >&2
+    return 1
+  }
+
+  local pane_count=0 has_roles=0
+  local idx pane_role
+  while IFS=' ' read -r idx pane_role; do
+    [[ -n "$idx" ]] || continue
+    pane_count=$((pane_count + 1))
+    [[ -z "$pane_role" ]] || has_roles=1
+  done <<< "$pane_list"
+
+  if [[ "$pane_count" -eq 2 && "$has_roles" -eq 0 ]]; then
+    case "$role" in
+      claude) printf '%s:0.0\n' "$session"; return 0 ;;
+      codex)  printf '%s:0.1\n' "$session"; return 0 ;;
+    esac
+  fi
+
+  echo "ROUTING_UNRESOLVED: Cannot resolve role '$role' in session '$session'" >&2
+  return 1
+}

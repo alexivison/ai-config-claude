@@ -19,10 +19,10 @@ This plan covers launcher, shared routing helpers, transport scripts, tests, and
 
 ## Tasks
 
-- [ ] [Task 1](./tasks/TASK1-role-resolution-primitives.md) — Add role-to-pane resolver helpers and legacy fallback in `party-lib.sh` (deps: none)
-- [ ] [Task 2](./tasks/TASK2-party-layout-and-theme.md) — Change launcher to 3-pane default order and role-aware pane labeling (deps: Task 1)
-- [ ] [Task 3](./tasks/TASK3-transport-routing-and-tests.md) — Migrate transport scripts to role routing and add regression tests (deps: Task 1, Task 2)
-- [ ] [Task 4](./tasks/TASK4-docs-and-verification.md) — Update documentation and run full verification (deps: Task 3)
+- [x] [Task 1](./tasks/TASK1-role-resolution-primitives.md) — Add role-to-pane resolver helpers and legacy fallback in `party-lib.sh` (deps: none)
+- [x] [Task 2](./tasks/TASK2-party-layout-and-theme.md) — Change launcher to 3-pane default order and role-aware pane labeling (deps: Task 1)
+- [x] [Task 3](./tasks/TASK3-transport-routing-and-tests.md) — Migrate transport scripts to role routing and add regression tests (deps: Task 1, Task 2)
+- [x] [Task 4](./tasks/TASK4-docs-and-verification.md) — Update documentation and run full verification (deps: Task 3)
 
 ## Coverage Matrix (REQUIRED for new fields/endpoints)
 
@@ -78,6 +78,6 @@ Source reconciliation:
 
 ## Definition of Done
 
-- [ ] All task checkboxes complete
-- [ ] All verification commands pass
-- [ ] SPEC.md acceptance criteria satisfied
+- [x] All task checkboxes complete
+- [x] All verification commands pass
+- [x] SPEC.md acceptance criteria satisfied
