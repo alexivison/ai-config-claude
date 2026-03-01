@@ -22,9 +22,9 @@ case "$MODE" in
 
   --review)
     _require_session
-    BASE="${2:-main}"
-    TITLE="${3:-Code review}"
-    WORK_DIR="${4:?Missing work_dir — pass the worktree/repo path as 4th argument}"
+    WORK_DIR="${2:?Missing work_dir — pass the worktree/repo path as 2nd argument}"
+    BASE="${3:-main}"
+    TITLE="${4:-Code review}"
     FINDINGS_FILE="$STATE_DIR/codex-findings-$(date +%s%N).toon"
 
     # Resolve tmux-claude.sh path for the notification callback

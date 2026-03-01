@@ -24,9 +24,9 @@ Use the transport script:
 ### Request code review (non-blocking)
 After implementing changes and passing sub-agent critics:
 ```bash
-~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review <base_branch> "<PR title>" <work_dir>
+~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review <work_dir> [base_branch] ["PR title"]
 ```
-`work_dir` is **REQUIRED** — the absolute path to the worktree or repo where changes live. The script will error if omitted. Codex's pane is in a different directory; it needs this to `cd` into the correct location.
+`work_dir` is **REQUIRED** — the absolute path to the worktree or repo where changes live. The script will error if omitted. Codex's pane is in a different directory; it needs this to `cd` into the correct location. `base_branch` defaults to `main`, `PR title` defaults to `Code review`.
 
 This sends a message to Codex's pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done. Findings are TOON format (`.toon` file). Handle that message per your `tmux-handler` skill.
 
