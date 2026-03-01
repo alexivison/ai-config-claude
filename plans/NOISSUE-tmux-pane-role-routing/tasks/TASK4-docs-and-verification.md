@@ -26,7 +26,7 @@ Align user-facing docs with the new 3-pane default and role-based routing model,
 
 - `README.md:73` — current two-pane description
 - `README.md:79` — current left/right role description
-- `tests/run-tests.sh:24` — verification entrypoint
+- `tests/run-tests.sh:28` — verification entrypoint (suite registration)
 
 ## Data Transformation Checklist (REQUIRED for shape changes)
 

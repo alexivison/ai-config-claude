@@ -57,6 +57,7 @@ Transformation shape here is role token → tmux target:
 
 **Key gotchas:**
 - Do not alter mode semantics in `tmux-codex.sh` (`--review`, `--prompt`, etc.).
+- Non-session modes (`--approve`, `--review-complete`, `--re-review`, `--needs-discussion`) must remain session-independent — role resolution must not run on these paths.
 - Do not alter session discovery behavior.
 - Keep failures explicit and observable in stdout/stderr.
 
@@ -64,8 +65,10 @@ Transformation shape here is role token → tmux target:
 
 Test cases:
 - Routing by role succeeds when role metadata exists.
-- Routing falls back to legacy indices when metadata absent.
+- Routing falls back to legacy indices when metadata absent (2-pane topology).
+- Routing fails with explicit error when metadata absent in 3-pane topology.
 - Routing fails with explicit error when neither lookup nor fallback resolves.
+- Non-session modes (`--approve`, `--review-complete`, etc.) work without a party session.
 - Existing hook tests still pass.
 
 Verification commands:
@@ -78,5 +81,6 @@ bash tests/run-tests.sh
 ## Acceptance Criteria
 
 - [ ] Both transports are role-routed, not index-routed.
-- [ ] Routing regression tests are green.
+- [ ] Non-session modes in `tmux-codex.sh` remain session-independent.
+- [ ] Routing regression tests are green (including topology guard and duplicate-role cases).
 - [ ] Existing hook/state test suites remain green.

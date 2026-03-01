@@ -31,9 +31,11 @@ This plan covers launcher, shared routing helpers, transport scripts, tests, and
 | `@party_role=codex` | Task 2 | Claude→Codex routing, pane labels | Task 3 (routing), Task 2 (labels) | `party_role_pane_target*` |
 | `@party_role=claude` | Task 2 | Codex→Claude routing, pane labels | Task 3 (routing), Task 2 (labels) | `party_role_pane_target*` |
 | `@party_role=shell` | Task 2 | Visual labeling, operator shell pane | Task 2 | `configure_party_theme` role mapping |
-| Legacy fallback (`claude=>0.0`, `codex=>0.1`) | Task 1 | Existing sessions started pre-change | Task 3 validation | `party_role_pane_target_with_fallback` |
+| Legacy fallback (`claude=>0.0`, `codex=>0.1`) | Task 1 | Existing 2-pane sessions started pre-change | Task 3 validation | `party_role_pane_target_with_fallback` (topology-guarded) |
+| Topology guard (2-pane check) | Task 1 | Fallback activation path | Task 1 + Task 3 tests | `party_role_pane_target_with_fallback` |
+| Duplicate-role detection | Task 1 | Any session with tag drift | Task 1 + Task 3 tests | `party_role_pane_target` |
 
-**Validation:** Each role mapping is produced once (launcher) and consumed by both transport directions.
+**Validation:** Each role mapping is produced once (launcher) and consumed by both transport directions. Fallback only activates for proven legacy topology (exactly 2 panes, no role metadata).
 
 ## Dependency Graph
 
@@ -45,7 +47,7 @@ Task 1 ───> Task 2 ───> Task 3 ───> Task 4
 
 | After Task | State |
 |------------|-------|
-| Task 1 | Shared resolver APIs exist; no behavior change yet |
+| Task 1 | Shared resolver APIs exist with topology guard and duplicate-role detection; no behavior change yet |
 | Task 2 | New party sessions launch with target 3-pane role layout |
 | Task 3 | Script routing is role-based with test coverage for fallback/regressions |
 | Task 4 | Docs match behavior; full test suite passes |

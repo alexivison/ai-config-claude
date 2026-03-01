@@ -95,9 +95,11 @@ sequenceDiagram
 | Role request → concrete pane target | Claude → Codex | `_require_session`/resolver call (modified) | role literal `codex` → `CODEX_PANE=<resolved target>` | `claude/skills/codex-transport/scripts/tmux-codex.sh:13` |
 | Role request → concrete pane target | Codex → Claude | resolver call (modified) | role literal `claude` → `CLAUDE_PANE=<resolved target>` | `codex/skills/claude-transport/scripts/tmux-claude.sh:19` |
 | Pane metadata → border label | Shared | `configure_party_theme` (modified) | role metadata + env IDs → visible border format string | `session/party.sh:72` |
-| Legacy fallback mapping | Shared fallback | resolver fallback logic (new) | missing `@party_role` → legacy index (`claude`=>`0.0`, `codex`=>`0.1`) | `session/party-lib.sh` (new helper) |
+| Legacy fallback mapping | Shared fallback | resolver fallback logic (new) | missing `@party_role` + exactly 2 panes → legacy index (`claude`=>`0.0`, `codex`=>`0.1`) | `session/party-lib.sh` (new helper) |
 
-**Silent drop check:** Role resolution must return a target or fail loudly before send. It must never silently choose an arbitrary pane.
+**Silent drop check:** Role resolution must return a target or fail loudly before send. It must never silently choose an arbitrary pane. Duplicate roles (two panes with the same `@party_role`) must be treated as an error, not resolved nondeterministically.
+
+**Fallback topology guard:** Legacy fallback must only activate when the session has exactly 2 panes and no role metadata — i.e., a proven pre-change layout. A 3-pane session missing metadata is not a legacy session; fallback must fail with `ROUTING_UNRESOLVED` to avoid cross-routing agents in the new layout.
 
 ## Integration Points (REQUIRED)
 
@@ -106,7 +108,7 @@ sequenceDiagram
 | Session launch | `session/party.sh:88` | Add shell pane creation and role tagging for all panes |
 | Theme rendering | `session/party.sh:72` | Replace index-driven label logic with role-driven logic |
 | Claude transport entry | `claude/skills/codex-transport/scripts/tmux-codex.sh:13` | Route via role resolver before `tmux_send` |
-| Codex transport entry | `codex/skills/claude-transport/scripts/tmux-claude.sh:10` | Route via role resolver before `tmux_send` |
+| Codex transport entry | `codex/skills/claude-transport/scripts/tmux-claude.sh:19` | Route via role resolver before `tmux_send` |
 | Shared transport function | `session/party-lib.sh:226` | Keep unchanged; only target resolution changes upstream |
 | Test suite orchestration | `tests/run-tests.sh:28` | Add routing test suite to prevent index-coupling regressions |
 | User-facing docs | `README.md:73` | Update default layout/routing explanation |
@@ -132,6 +134,7 @@ party_role_pane_target_with_fallback SESSION ROLE
 | Status | Code | Description |
 |--------|------|-------------|
 | 1 | `ROLE_NOT_FOUND` | Requested role has no pane in session |
+| 1 | `ROLE_AMBIGUOUS` | Multiple panes carry the same `@party_role` value |
 | 1 | `ROUTING_UNRESOLVED` | Neither role lookup nor fallback could resolve target |
 
 ## Design Decisions
@@ -139,7 +142,7 @@ party_role_pane_target_with_fallback SESSION ROLE
 | Decision | Rationale | Alternatives Considered |
 |----------|-----------|-------------------------|
 | Use tmux pane user option `@party_role` | Stable across pane reordering and splits; native tmux metadata | Parsing pane title text (rejected: cosmetic, mutable) |
-| Keep legacy fallback during migration | Existing running sessions may lack role metadata | Hard-fail only (rejected: brittle upgrade path) |
+| Keep legacy fallback during migration, guarded by topology check | Existing 2-pane sessions may lack role metadata; 3-pane sessions without metadata are not legacy and must fail explicitly | Hard-fail only (rejected: brittle upgrade path); unconditional fallback (rejected: misroutes in new layout) |
 | Keep `tmux_send` unchanged | Current idle/backoff behavior is proven and already shared | Reimplement send logic per script (rejected: duplication risk) |
 | Default to 3-pane layout | Matches requested operator workflow with local shell pane | Keep 2-pane default + optional shell command (rejected: misses stated target setup) |
 
