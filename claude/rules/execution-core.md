@@ -98,3 +98,4 @@ Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex
 | Third critic/codex round on same diff | Stop and escalate with NEEDS_DISCUSSION |
 | Run lint/typecheck via Bash instead of check-runner | Always delegate to sub-agents — they run the full suite |
 | Push without running check-runner | Run check-runner before every push, no exceptions |
+| Add dependency without committing lockfile | Stage lockfile in same commit as package.json change |

@@ -44,7 +44,7 @@ After writing findings to the specified file:
 ### Ask a question
 When you need information from Claude:
 ```bash
-RESPONSE_FILE="$STATE_DIR/response-$(date +%s%N).md"
+RESPONSE_FILE="$STATE_DIR/response-$(date +%s%N).toon"
 ~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Question: <your question>. Write response to: $RESPONSE_FILE"
 ```
 

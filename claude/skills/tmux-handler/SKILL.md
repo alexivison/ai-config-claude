@@ -51,7 +51,7 @@ Message: `[CODEX] Question: <question>. Write response to: <response_file>`
 ### Task complete
 Message: `[CODEX] Task complete. Response at: <path>`
 
-1. Read the response file
+1. Read the response file (TOON format)
 2. Continue your workflow with the information Codex provided
 
 ### Plan review complete

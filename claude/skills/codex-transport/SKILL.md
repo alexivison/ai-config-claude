@@ -41,7 +41,7 @@ After creating a plan:
 ```bash
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --prompt "<task description>" <work_dir>
 ```
-`work_dir` is **REQUIRED**. Returns immediately. Codex will notify you when done.
+`work_dir` is **REQUIRED**. Returns immediately. Codex will notify via `[CODEX] Task complete. Response at: <path>` when done. Response is TOON format (`.toon` file).
 
 ### Record review completion evidence
 After Codex notifies you that findings are ready:

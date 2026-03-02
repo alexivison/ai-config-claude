@@ -66,7 +66,7 @@ case "$MODE" in
     _require_session
     PROMPT_TEXT="${2:?Missing prompt text}"
     WORK_DIR="${3:?Missing work_dir — pass the worktree/repo path as 3rd argument}"
-    RESPONSE_FILE="$STATE_DIR/codex-response-$(date +%s%N).md"
+    RESPONSE_FILE="$STATE_DIR/codex-response-$(date +%s%N).toon"
 
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"
 

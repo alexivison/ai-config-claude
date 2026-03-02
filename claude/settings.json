@@ -101,6 +101,11 @@
             "type": "command",
             "command": "~/.claude/hooks/pr-gate.sh 2>>~/.claude/logs/hook-debug-pr-gate.log",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/push-lint-reminder.sh",
+            "timeout": 5
           }
         ]
       }
