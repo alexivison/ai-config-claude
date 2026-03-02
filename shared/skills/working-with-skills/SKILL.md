@@ -122,6 +122,7 @@ The context window is a finite budget. Manage it aggressively:
 - Never use absolute paths in shared skills — use relative paths or `{baseDir}` for bundled resources
 - Never reference agent-specific config files (e.g., `~/.claude/rules/`) from shared skills
 - If a shared skill needs agent-specific behavior, document both paths and let the agent resolve at runtime
+- Skills in `~/.claude/skills/` (user-global) must not reference project-specific design systems, component libraries, or team conventions by name. Use generic terms ("design system tokens", "design system components") — the subagent discovers project specifics at runtime
 
 ## Verification Checklist
 
