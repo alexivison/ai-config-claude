@@ -5,12 +5,8 @@ Shared rules for all workflow skills. Bugfix-workflow omits checkboxes (no PLAN.
 ## Core Sequence
 
 ```
-/write-tests → implement → checkboxes → self-review → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
+/write-tests → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 ```
-
-## Self-Review
-
-Before critics, verify: (1) acceptance criteria met, (2) tests cover criteria, (3) no debug artifacts, (4) `git diff` matches intent, (5) no obvious bugs. Fix failures before proceeding.
 
 ## Marker System
 
@@ -48,7 +44,6 @@ Classify every finding before acting:
 |------|---------|------|--------|
 | /write-tests | Written (RED) | Implement | NO |
 | Implement | Done | Checkboxes | NO |
-| Self-review | PASS/FAIL | Critics / fix | NO |
 | code-critic or minimizer | APPROVE | Wait for other / codex | NO |
 | code-critic or minimizer | REQUEST_CHANGES (blocking) | Fix in one batch + one re-run of both critics | NO |
 | code-critic or minimizer | REQUEST_CHANGES (non-blocking) | Record and treat as effective APPROVE (LLM misclassified) | NO |
@@ -59,7 +54,6 @@ Classify every finding before acting:
 | codex | REQUEST_CHANGES (non-blocking) | Record and proceed to /pre-pr-verification | NO |
 | codex | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | Pass/Fail | PR / fix | NO |
-| security-scanner | HIGH/CRITICAL | Ask user | YES |
 | Edit/Write (impl) | Markers invalidated | Re-run cascade | NO |
 
 ## Valid Pause Conditions
@@ -68,7 +62,7 @@ Investigation findings, NEEDS_DISCUSSION, 2-strike cap reached, oscillation, exp
 
 ## Sub-Agent Behavior
 
-Investigation (codex debug): always pause, show full findings. Verification (test/check/security): never pause, summary only. Iterative (critics, codex): pause on NEEDS_DISCUSSION/oscillation/cap.
+Investigation (codex debug): always pause, show full findings. Verification (test/check): never pause, summary only. Iterative (critics, codex): pause on NEEDS_DISCUSSION/oscillation/cap.
 
 ## Verification Principle
 
@@ -78,7 +72,7 @@ Evidence before claims. No assertions without proof (test output, file:line, gre
 
 ## PR Gate
 
-Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex, test-runner, check-runner, security-scanner. Markers created by `agent-trace.sh` and `codex-trace.sh`.
+Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex, test-runner, check-runner. Markers created by `agent-trace.sh` and `codex-trace.sh`.
 
 **Post-PR:** Changes in same branch → re-run /pre-pr-verification → amend + force-push with `--force-with-lease`.
 
@@ -90,7 +84,6 @@ Code PRs require all markers: pre-pr-verification, code-critic, minimizer, codex
 | Chase non-blocking nits 2+ rounds | Triage, note, move on |
 | Implement every finding without triage | Classify blocking/non-blocking/out-of-scope first |
 | Full cascade after one-line fix | Tiered re-review |
-| Skip self-review | Run it — critics depend on it |
 | Approve without --review-complete | Gate blocks — run review first |
 | Edit after approval, then PR | Markers invalidated — re-run |
 | Create markers manually | Forbidden — hooks create evidence |

@@ -31,6 +31,7 @@ Before generating PLAN.md or TASK*.md, verify ALL of the following. If any are m
 | Data transformation points mapped | Every converter/adapter for each code path |
 | Integration points identified | Where new code touches existing code |
 | Acceptance criteria defined | Machine-verifiable, not vague |
+| UI/component task design context captured | Each UI/component TASK includes a Figma node URL or image/screenshot link/path |
 
 If design decisions were made inline during planning, auto-materialise them into DESIGN.md before final plan output.
 
@@ -54,6 +55,7 @@ If design decisions were made inline during planning, auto-materialise them into
 1. Read DESIGN.md and SPEC.md
 2. Create PLAN.md with task breakdown, dependencies, verification commands
 3. Create `tasks/TASK*.md` — small, independently executable tasks (~200 LOC each)
+   - For every task that creates or updates UI components, include a `Design References` section with at least one Figma node URL or image/screenshot link/path
 4. Evaluate against planning checks (see below)
 5. Refine until evaluation passes
 
@@ -65,6 +67,7 @@ If design decisions were made inline during planning, auto-materialise them into
 4. Dependencies and verification commands listed per task
 5. Requirements reconciled against source inputs; mismatches documented
 6. Whole-architecture coherence evaluated across full task sequence
+7. UI/component tasks include design references (Figma node URL or image/screenshot link/path)
 
 ## Self-Evaluation
 
@@ -82,6 +85,7 @@ Evidence:
 - [ ] Dependencies and verification commands listed per task
 - [ ] Requirements reconciled against source inputs
 - [ ] Whole-architecture coherence evaluated
+- [ ] UI/component tasks include design references
 ```
 
 If FAIL: fix blocking gaps, re-evaluate.
@@ -95,6 +99,7 @@ If FAIL: fix blocking gaps, re-evaluate.
 5. Risks and dependencies called out
 6. Source conflicts called out explicitly
 7. Combined end-state architecture is coherent
+8. UI/component tasks include design references (Figma node URL or image/screenshot)
 
 ## Output
 

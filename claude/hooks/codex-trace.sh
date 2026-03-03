@@ -18,8 +18,10 @@ fi
 
 command=$(echo "$hook_input" | jq -r '.tool_input.command // ""' 2>/dev/null)
 
-# Verify the command succeeded (exit code 0)
-exit_code=$(echo "$hook_input" | jq -r '.tool_exit_code // .exit_code // "0"' 2>/dev/null)
+# Verify the command succeeded (exit code 0).
+# Exit code may be at top level or nested in tool_response object.
+# Use try-catch to avoid crashing on string tool_response.
+exit_code=$(echo "$hook_input" | jq -r '(.tool_exit_code // .exit_code // (try .tool_response.exit_code catch null) // "0") | tostring' 2>/dev/null)
 if [ "$exit_code" != "0" ]; then
   exit 0
 fi
@@ -34,7 +36,16 @@ if ! echo "$command" | grep -qE '(^|[;&|] *)([^ ]*/)?tmux-codex\.sh'; then
   exit 0
 fi
 
-response=$(echo "$hook_input" | jq -r '.tool_response // ""' 2>/dev/null)
+# Extract stdout from tool_response.
+# Bash tool_response may be a string or an object {"stdout":"...","stderr":"...",...}.
+response_type=$(echo "$hook_input" | jq -r '.tool_response | type' 2>/dev/null)
+if [ "$response_type" = "object" ]; then
+  response=$(echo "$hook_input" | jq -r '.tool_response.stdout // ""' 2>/dev/null)
+elif [ "$response_type" = "string" ]; then
+  response=$(echo "$hook_input" | jq -r '.tool_response // ""' 2>/dev/null)
+else
+  response=""
+fi
 
 # --- Evidence marker: codex review actually completed ---
 # tmux-codex.sh --review-complete emits CODEX_REVIEW_RAN after verifying findings file exists

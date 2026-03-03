@@ -44,9 +44,6 @@ elif echo "$PROMPT_LOWER" | grep -qE '\breview (this|my|the) code\b|\bcode revie
 elif echo "$PROMPT_LOWER" | grep -qE '\bquality.?critical\b|\bimportant.*code\b|\bproduction.*ready\b'; then
   SUGGESTION="RECOMMENDED: Use code-critic agent for iterative quality refinement."
   PRIORITY="should"
-elif echo "$PROMPT_LOWER" | grep -qE '\bsecurity\b|\bvulnerab\b|\baudit\b|\bsecret\b'; then
-  SUGGESTION="RECOMMENDED: Run security-scanner agent for security analysis."
-  PRIORITY="should"
 elif echo "$PROMPT_LOWER" | grep -qE '\bpr comment|\breview(er)? (comment|feedback|request)|\baddress (the |this |pr )?feedback|\bfix.*comment|\brespond to.*review'; then
   SUGGESTION="RECOMMENDED: Invoke /address-pr to systematically address comments."
   PRIORITY="should"

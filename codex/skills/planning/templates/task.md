@@ -38,6 +38,14 @@ Files to study before implementing:
 - `path/to/similar/implementation` — Reference implementation to follow
 - `path/to/types/or/interfaces` — Type/interface definitions to reuse
 
+## Design References (REQUIRED for UI/component tasks)
+
+For tasks that create or update UI/components, include at least one of:
+- Figma node URL (preferred): `https://www.figma.com/design/...?...node-id=...`
+- Image/screenshot link or path: `docs/designs/<component>.png` or external URL
+
+If this is not a UI/component task, write: `N/A (non-UI task)`.
+
 ## Data Transformation Checklist (REQUIRED for shape changes)
 
 For ANY request/response shape change, check:

@@ -35,13 +35,24 @@ agent_type=$(echo "$hook_input" | jq -r '.tool_input.subagent_type // "unknown"'
 description=$(echo "$hook_input" | jq -r '.tool_input.description // ""')
 model=$(echo "$hook_input" | jq -r '.tool_input.model // "inherit"')
 
-# Extract result summary from tool_response
-# Get full response for verdict detection (verdict may be at end)
-full_response=$(echo "$hook_input" | jq -r '.tool_response // ""')
+# Extract text from tool_response for verdict detection.
+# tool_response may be a plain string OR a JSON array of content blocks:
+#   [{"type":"text","text":"...verdict..."},{"type":"text","text":"agentId: ..."}]
+# Handle both formats, then strip metadata before scanning.
+response_type=$(echo "$hook_input" | jq -r '.tool_response | type' 2>/dev/null)
+if [ "$response_type" = "array" ]; then
+  # Array of content blocks — extract text from objects and pass strings through.
+  # Type-safe: handles mixed arrays (objects, strings, nulls) without failing under set -e.
+  full_response=$(echo "$hook_input" | jq -r '[.tool_response[]? | if type=="object" then (.text // empty) elif type=="string" then . else empty end] | join("\n")' 2>/dev/null)
+else
+  full_response=$(echo "$hook_input" | jq -r '.tool_response // ""' 2>/dev/null)
+fi
 
-# Detect verdict/status from tail of response (agents output verdicts near the end).
-# Scanning only the last 500 chars reduces false positives from "APPROVE" in prose.
-verdict_region=$(echo "$full_response" | tail -c 500)
+# Strip trailing metadata (agentId line, <usage> block) that pushes verdicts out of range.
+# Use anchored patterns to avoid eating legitimate content mid-response.
+cleaned_response=$(echo "$full_response" | sed -E '/^[[:space:]]*agentId:/d' | sed '/<usage>total_tokens:/,/<\/usage>/d')
+# Scanning only the last 1000 chars reduces false positives from "APPROVE" in prose.
+verdict_region=$(echo "$cleaned_response" | tail -c 1000)
 verdict="unknown"
 if echo "$verdict_region" | grep -qE '\*\*REQUEST_CHANGES\*\*|^REQUEST_CHANGES'; then
   verdict="REQUEST_CHANGES"
@@ -94,11 +105,6 @@ echo "$trace_entry" >> "$TRACE_FILE"
 
 # Create markers for PR gate enforcement
 # Each marker proves a workflow step was completed
-
-# security-scanner: any completion creates marker
-if [ "$agent_type" = "security-scanner" ]; then
-  touch "/tmp/claude-security-scanned-$session_id"
-fi
 
 # code-critic: only APPROVE creates marker (must pass before PR)
 if [ "$agent_type" = "code-critic" ] && [ "$verdict" = "APPROVED" ]; then

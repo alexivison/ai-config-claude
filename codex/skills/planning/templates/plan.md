@@ -36,6 +36,8 @@ What this plan covers. If multi-service, note the order.
 - [ ] [Task 3](./tasks/TASK3-short-title.md) — <Description> (deps: Task 1)
 - [ ] [Task 4](./tasks/TASK4-short-title.md) — <Description> (deps: Task 2, Task 3)
 
+If a task creates or updates UI/components, that task file must include a `Design References` section with a Figma node URL or image/screenshot link/path.
+
 ## Coverage Matrix (REQUIRED for new fields/endpoints)
 
 **Purpose:** Verify that every new field/endpoint added in one task is handled in all related tasks.
@@ -79,6 +81,7 @@ Evidence:
 - [ ] Dependencies and verification commands listed per task
 - [ ] Requirements reconciled against source inputs
 - [ ] Whole-architecture coherence evaluated
+- [ ] UI/component tasks include design references
 
 Source reconciliation: [References or "None"]
 

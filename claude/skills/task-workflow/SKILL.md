@@ -26,7 +26,7 @@ State which items were checked before proceeding.
 After passing the gate, execute continuously — **no stopping until PR is created**.
 
 ```
-/write-tests (if needed) → implement → checkboxes → self-review → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
+/write-tests (if needed) → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 ```
 
 ### Step-by-Step
@@ -35,30 +35,23 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 2. **Implement** — Write the code to make tests pass
 3. **GREEN phase** — Run test-runner agent to verify tests pass
 4. **Checkboxes** — Update both TASK*.md AND PLAN.md: `- [ ]` → `- [x]` (MANDATORY — both files)
-5. **Self-Review** — Before invoking critics, verify your own work (see [execution-core.md](~/.claude/rules/execution-core.md#self-review)):
-   - Acceptance criteria met? (each criterion → evidence)
-   - Tests cover acceptance criteria?
-   - No debug artifacts?
-   - Diff matches intent? (`git diff`)
-   - No obvious bugs?
-   Fix any failures before proceeding. Do not invoke critics on code you know is incomplete.
-6. **code-critic + minimizer** — Run in parallel with scope context and diff focus (see [Review Governance](#review-governance)).
+5. **code-critic + minimizer** — Run in parallel with scope context and diff focus (see [Review Governance](#review-governance)).
    - Round 1: collect findings, fix only `[must]` in one batch.
    - **After fixing blocking items → re-run BOTH critics (one pass).** Do NOT proceed to codex without this re-run. Only when both return APPROVE (or only non-blocking findings remain) may you proceed.
    - Stop critic loop at 2 rounds. If blocking findings still remain, escalate `NEEDS_DISCUSSION`.
    - `[q]`/`[nit]` are non-blocking and should not trigger another critic round.
-7. **codex** — Request codex review via tmux (non-blocking):
+6. **codex** — Request codex review via tmux (non-blocking):
    ```bash
    ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
    ```
    `work_dir` is required — pass the worktree/repo path. Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
-8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity.
+7. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity.
    - **After fixing blocking items → use `--re-review` (NOT `--review-complete`).** Wait for the re-review findings before proceeding. `--review-complete` only records evidence — it does not re-validate.
    - Round 2: if blocking findings remain after re-review, escalate `--needs-discussion`.
    - Non-blocking findings: record with `--review-complete` and proceed.
-9. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
+8. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
    - **If you edit ANY implementation file after this step passes → re-run `/pre-pr-verification` before commit.** Even a JSDoc fix invalidates prior evidence.
-10. **Commit & PR** — Create commit and draft PR
+9. **Commit & PR** — Create commit and draft PR
 
 **Note:** Step 4 (Checkboxes) MUST include PLAN.md. Forgetting PLAN.md is a common violation.
 
@@ -81,7 +74,7 @@ When PLAN.md exists, enforce:
 2. **Dependency/order changes:** If task execution reveals the need to reorder or add tasks, update PLAN.md explicitly before proceeding.
 3. **Commit together:** Checkbox updates go WITH implementation, not as separate commits.
 
-Forgetting PLAN.md is the most common violation. Verify both files are updated before proceeding to self-review.
+Forgetting PLAN.md is the most common violation. Verify both files are updated before proceeding to critics.
 
 **Pre-filled checkbox prohibition:** Never write `- [x]` when creating new checklist items. All new items start as `- [ ]` and are only checked after the work is done and verified. Pre-filling checkboxes is falsifying evidence.
 

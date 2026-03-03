@@ -27,12 +27,12 @@ Investigation agents ALWAYS require user review before proceeding.
 ## Execution Flow
 
 ```
-/write-tests (regression) → implement fix → self-review → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
+/write-tests (regression) → implement fix → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 ```
 
 See [task-workflow/SKILL.md](../task-workflow/SKILL.md) for the full step-by-step. The only differences:
 - Step 1: Regression test (not feature test) — must FAIL first (RED), then PASS after fix (GREEN)
-- Step 4: Self-review checks bug root cause addressed (not just symptom masked)
+- Fix must address root cause (not just mask symptoms)
 - No checkbox step
 
 ## Regression Test First

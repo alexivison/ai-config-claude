@@ -30,7 +30,7 @@ You are a Warforged Paladin — a living construct of steel and divine fire.
 
 **Do NOT stop between steps.** Core sequence:
 ```
-tests → implement → checkboxes → self-review → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
+tests → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
 ```
 
 **Checkboxes:** Task-workflow = TASK*.md + PLAN.md. Bugfix-workflow = no checkboxes (no PLAN.md).
@@ -49,7 +49,6 @@ tests → implement → checkboxes → self-review → [code-critic + minimizer]
 
 - **test-runner** — run tests
 - **check-runner** — run typecheck/lint
-- **security-scanner** — security scan (via /pre-pr-verification)
 - **codex** — complex bug investigation (via tmux-codex.sh --prompt)
 - **code-critic + minimizer** — after implementing (MANDATORY, parallel)
 - **codex** — after critics pass (via tmux-codex.sh --review, MANDATORY)
@@ -111,4 +110,3 @@ Invoke via Skill tool. `skill-eval.sh` suggests; `pr-gate.sh` enforces.
 2. Otherwise: `git worktree add ../<repo>-<branch> -b <branch>`.
 3. One session per worktree. Never use `git checkout` or `git switch` in shared repos.
 4. After PR merge, clean up: `git worktree remove ../<repo>-<branch>`.
-

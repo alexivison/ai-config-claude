@@ -41,7 +41,6 @@ markers=(
   "/tmp/claude-tests-passed-$session_id"
   "/tmp/claude-checks-passed-$session_id"
   "/tmp/claude-pr-verified-$session_id"
-  "/tmp/claude-security-scanned-$session_id"
 )
 
 deleted=0

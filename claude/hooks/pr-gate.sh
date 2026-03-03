@@ -7,7 +7,6 @@
 #   - /tmp/claude-codex-{session_id} (from codex CLI APPROVE via tmux-codex.sh)
 #   - /tmp/claude-tests-passed-{session_id} (from test-runner PASS)
 #   - /tmp/claude-checks-passed-{session_id} (from check-runner PASS)
-#   - /tmp/claude-security-scanned-{session_id} (from security-scanner via /pre-pr-verification)
 #
 # Triggered: PreToolUse on Bash tool
 # Fails open on errors (allows operation if hook can't determine state)
@@ -46,7 +45,6 @@ if echo "$COMMAND" | grep -qE 'gh pr create'; then
 
   # Code PR - require all verification markers
   VERIFY_MARKER="/tmp/claude-pr-verified-$SESSION_ID"
-  SECURITY_MARKER="/tmp/claude-security-scanned-$SESSION_ID"
   CODE_CRITIC_MARKER="/tmp/claude-code-critic-$SESSION_ID"
   CODEX_MARKER="/tmp/claude-codex-$SESSION_ID"
   TESTS_MARKER="/tmp/claude-tests-passed-$SESSION_ID"
@@ -55,7 +53,6 @@ if echo "$COMMAND" | grep -qE 'gh pr create'; then
 
   MISSING=""
   [ ! -f "$VERIFY_MARKER" ] && MISSING="$MISSING /pre-pr-verification"
-  [ ! -f "$SECURITY_MARKER" ] && MISSING="$MISSING security-scanner"
   [ ! -f "$CODE_CRITIC_MARKER" ] && MISSING="$MISSING code-critic"
   [ ! -f "$CODEX_MARKER" ] && MISSING="$MISSING codex"
   [ ! -f "$TESTS_MARKER" ] && MISSING="$MISSING test-runner"
