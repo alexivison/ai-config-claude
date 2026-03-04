@@ -29,10 +29,10 @@ Out of scope:
 
 ## Tasks
 
-- [ ] [Task 1](./tasks/TASK-ledger-01-schema-and-writer.md) - Define ledger schema, writer library, and dual-write event emission in existing hooks (deps: none)
-- [ ] [Task 2](./tasks/TASK-ledger-02-evaluator-and-shadow-mode.md) - Build ledger evaluator and run gates in marker-enforced shadow mode with mismatch logging (deps: Task 1)
-- [ ] [Task 3](./tasks/TASK-ledger-03-enforcement-cutover.md) - Switch gates to ledger enforcement with marker fallback and explicit mode control (deps: Task 2)
-- [ ] [Task 4](./tasks/TASK-ledger-04-marker-demotion-and-retention.md) - Demote markers to compatibility cache, add ledger retention cleanup, and finalize docs/tests (deps: Task 3)
+- [ ] [Task 1](./TASK-ledger-01-schema-and-writer.md) - Define ledger schema, writer library, and dual-write event emission in existing hooks (deps: none)
+- [ ] [Task 2](./TASK-ledger-02-evaluator-and-shadow-mode.md) - Build ledger evaluator and run gates in marker-enforced shadow mode with mismatch logging (deps: Task 1)
+- [ ] [Task 3](./TASK-ledger-03-enforcement-cutover.md) - Switch gates to ledger enforcement with marker fallback and explicit mode control (canary: codex-gate first, then pr-gate) (deps: Task 2)
+- [ ] [Task 4](./TASK-ledger-04-marker-demotion-and-retention.md) - Demote markers to compatibility cache, add ledger retention cleanup, and finalize docs/tests (deps: Task 3)
 
 ## Coverage Matrix
 
@@ -79,6 +79,8 @@ Task 1 ---> Task 2 ---> Task 3 ---> Task 4
    - `bash claude/hooks/tests/test-ledger-lib.sh`
    - `bash claude/hooks/tests/test-ledger-eval.sh`
    - `bash claude/hooks/tests/test-ledger-gates.sh`
+4. Shadow parity metric (Task 2 and pre-cutover):
+   - `grep -c "LEDGER_SHADOW_MISMATCH" ~/.claude/logs/ledger-shadow.log || true`
 
 ## Plan Evaluation Record
 
@@ -91,7 +93,7 @@ Evidence:
 - [x] Dependencies and verification commands listed per task
 - [x] Requirements reconciled against source inputs
 - [x] Whole-architecture coherence evaluated
-- [x] UI/component tasks include design references
+- [x] UI/component tasks include design references (N/A: non-UI migration tasks)
 
 Source reconciliation:
 
@@ -105,3 +107,5 @@ Source reconciliation:
 - [ ] All verification commands pass
 - [ ] Gates can run in `off`, `shadow`, and `enforce` modes as specified
 - [ ] PR and codex gate decisions are explainable from ledger evidence
+- [ ] Shadow mismatch metric is zero for promotion window
+- [ ] Rollback check (`enforce` -> `off`) is validated

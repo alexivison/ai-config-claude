@@ -47,7 +47,7 @@ N/A (non-UI task).
 - [ ] Hook payload -> canonical event mapping for all producer hooks
 - [ ] Event serialization uses stable JSON keys/order expectations
 - [ ] Append operation is atomic per event line
-- [ ] Required fields populated (`v`, `ts`, `session`, `repo`, `branch`, `head`, `event`, `actor`)
+- [ ] Required fields populated (`v`, `ts`, `session`, `repo`, `branch`, full `head` SHA, `event`, `actor`)
 - [ ] Invalid/unknown payloads fail safely (no crash)
 
 ## Files to Create/Modify
@@ -67,7 +67,8 @@ N/A (non-UI task).
 
 1. Canonical events are dual-written alongside existing markers.
 2. Ledger path is session-scoped: `~/.claude/state/ledger/<session_id>.jsonl`.
-3. Existing marker-based gates remain unaffected.
+3. Writer ensures ledger directory exists before append (`mkdir -p ~/.claude/state/ledger`).
+4. `head` is recorded as full SHA (`git rev-parse HEAD`) for audit/debug metadata; existing marker-based gates remain unaffected.
 
 **Key gotchas:**
 

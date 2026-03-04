@@ -15,7 +15,10 @@ Promote ledger verdicts from observational to authoritative for PR and codex gat
 1. Add mode switch behavior:
    - `CLAUDE_LEDGER_MODE=off|shadow|enforce`
 2. In `enforce`, gate allow/deny is driven by ledger evaluator.
-3. Markers remain fallback when ledger cannot be read.
+3. Roll out as canary inside this task:
+   - `codex-gate` enforce first
+   - `pr-gate` enforce after canary passes
+4. Markers remain fallback when ledger cannot be read.
 
 **Out of scope (handled by other tasks):**
 
@@ -28,6 +31,9 @@ Promote ledger verdicts from observational to authoritative for PR and codex gat
 1. In `off`, behavior is identical to current marker-only flow.
 2. In `shadow`, behavior matches Task 2.
 3. In `enforce`, denials are explainable solely by missing/stale ledger events.
+4. Mode behavior is treated as feature-flag parity:
+   - ON (`enforce`) = ledger-driven behavior
+   - OFF (`off`) = pre-migration marker behavior
 
 ## Reference
 
@@ -63,6 +69,7 @@ N/A (non-UI task).
 1. `off`: marker-only enforcement.
 2. `shadow`: marker enforcement + ledger comparison logs.
 3. `enforce`: ledger enforcement + marker fallback only on evaluator failure.
+4. Rollback path (`enforce` -> `off`) restores marker-only behavior without session restart.
 
 **Key gotchas:**
 
@@ -74,6 +81,8 @@ N/A (non-UI task).
 1. Mode matrix tests for both gates.
 2. Regression tests for existing marker-only scenarios.
 3. Negative tests with stale evidence and missing codex completion.
+4. Rollback regression test (`enforce` -> `off`) for both gates.
+5. Canary sequence validation (`codex-gate` enforce before `pr-gate` enforce).
 
 ## Verification Commands
 

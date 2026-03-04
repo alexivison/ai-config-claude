@@ -26,6 +26,7 @@ Demote markers to compatibility cache, formalize ledger retention/cleanup, and f
 
 1. Gates remain functional with markers absent when `CLAUDE_LEDGER_MODE=enforce`.
 2. Cleanup does not delete active-session ledger files.
+3. Retention behavior preserves rollback safety by pruning only cold ledgers.
 
 ## Reference
 
@@ -42,6 +43,7 @@ N/A (non-UI task).
 - [ ] Retention filter maps filesystem state -> preserved/deleted ledger files
 - [ ] Compatibility marker path remains non-authoritative
 - [ ] Docs align with actual mode behavior and fallback semantics
+- [ ] Retention decision uses deterministic signals (current session id + mtime age window)
 
 ## Files to Create/Modify
 
@@ -63,17 +65,25 @@ N/A (non-UI task).
 1. Ledger files are retained for a defined window (example: 14 days) and then pruned.
 2. Marker writes are optional compatibility behavior, not required for enforcement.
 3. Documentation clearly states operational mode and rollback path.
+4. Cleanup must never prune:
+   - current session ledger file
+   - ledgers newer than a minimum age window (for long-running concurrent sessions)
 
 **Key gotchas:**
 
 1. Do not remove marker compatibility before ledger enforce tests are green.
 2. Avoid cleanup race conditions with active sessions.
+3. Prefer deterministic age/session guards over best-effort process discovery tooling.
 
 ## Tests
 
 1. Enforce-mode tests with markers disabled.
 2. Retention cleanup tests against synthetic old/new ledgers.
-3. Full hook suite regression.
+3. Retention race mitigation tests:
+   - current session ledger is never pruned
+   - recently touched ledger is not pruned even if filename session differs
+   - stale ledger older than retention window is pruned
+4. Full hook suite regression.
 
 ## Verification Commands
 
@@ -86,4 +96,5 @@ N/A (non-UI task).
 - [ ] Ledger-first operation works without marker dependency in enforce mode
 - [ ] Retention cleanup is safe and deterministic
 - [ ] Migration docs reflect final behavior and rollback switch
+- [ ] Active-session and recent-ledger race protections are covered by tests
 - [ ] Verification commands pass

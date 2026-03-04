@@ -30,6 +30,7 @@ Create a shared ledger evaluator and integrate it into PR/codex gates in shadow 
    - PR gate required markers from `pr-gate.sh:47-60`
    - Codex gate required markers from `codex-gate.sh:52-57` and `codex-gate.sh:28-35`
 2. `code_changed` boundary invalidates prior evidence in evaluator output.
+3. Evaluator must enforce strict tuple filter (`session + repo + branch`) to prevent cross-branch evidence leakage.
 
 ## Reference
 
@@ -47,6 +48,7 @@ N/A (non-UI task).
 - [ ] Event stream -> freshness boundary (`latest code_changed`)
 - [ ] Boundary + required events -> `{allow, missing}` deterministic output
 - [ ] Shadow compare output includes both marker verdict and ledger verdict
+- [ ] Shadow mismatch entries use a stable token (`LEDGER_SHADOW_MISMATCH`) for metric queries
 
 ## Files to Create/Modify
 
@@ -69,6 +71,7 @@ N/A (non-UI task).
    - marker verdict
    - ledger verdict
    - missing evidence list
+3. Cross-session and cross-branch evidence are isolated by evaluator keying.
 
 **Key gotchas:**
 
@@ -81,13 +84,17 @@ N/A (non-UI task).
    - complete evidence
    - missing required event
    - stale evidence after `code_changed`
-2. Shadow-mode gates still match prior marker allow/deny outcomes.
+   - cross-session isolation
+   - branch switch isolation (`feature-a` evidence not accepted on `feature-b`)
+2. Shadow divergence scenario is covered: marker allows + ledger denies -> action still allowed and mismatch logged.
+3. End-to-end chain test is covered: PostToolUse producer -> ledger append -> PreToolUse gate evaluation.
 
 ## Verification Commands
 
 1. `bash claude/hooks/tests/test-ledger-eval.sh`
 2. `bash claude/hooks/tests/test-ledger-gates.sh`
 3. `bash claude/hooks/tests/run-all.sh`
+4. `grep -c "LEDGER_SHADOW_MISMATCH" ~/.claude/logs/ledger-shadow.log || true`
 
 ## Acceptance Criteria
 

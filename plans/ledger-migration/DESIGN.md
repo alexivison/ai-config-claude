@@ -76,7 +76,7 @@ Legend: `New` = create, `Modify` = edit existing
 | `session` | string | yes | Claude session id |
 | `repo` | string | yes | Absolute git root |
 | `branch` | string | yes | Current branch |
-| `head` | string | yes | Current `git rev-parse --short HEAD` |
+| `head` | string | yes | Full commit SHA from `git rev-parse HEAD` (audit/debug metadata in v1) |
 | `event` | string | yes | One of canonical event types |
 | `actor` | string | yes | hook/agent source (`test-runner`, `codex-trace`, etc.) |
 | `meta` | object | no | Event-specific details |
@@ -98,17 +98,23 @@ Legend: `New` = create, `Modify` = edit existing
 
 1. Hook receives tool payload.
 2. Hook validates/normalizes outcome into canonical event type.
-3. Hook appends one JSON line to `~/.claude/state/ledger/<session>.jsonl` atomically.
+3. Hook ensures `~/.claude/state/ledger/` exists (`mkdir -p`) and appends one JSON line to `~/.claude/state/ledger/<session>.jsonl` atomically.
 4. During compatibility phases, hook also writes legacy marker files.
 
 ### Read Path
 
-1. Gate loads ledger entries for `session + repo + branch`.
+1. Gate loads ledger entries using strict tuple filter: `session + repo + branch`.
 2. Gate computes `latest_code_changed_boundary`.
 3. Gate verifies required evidence events occur after boundary.
 4. Gate returns:
    - `allow=true` when complete
    - `allow=false` + explicit missing list when incomplete
+
+### Boundary Semantics
+
+1. Branch changes are an implicit boundary because evaluator scope is strict `session + repo + branch`.
+2. Evidence from `feature-a` is never considered when evaluating `feature-b`.
+3. `head` is not used for pass/fail decisions in v1; it is retained for auditability and mismatch diagnostics.
 
 ## Data Transformation Points (REQUIRED)
 
@@ -146,11 +152,11 @@ Use env-controlled mode:
 1. Ledger write failure:
    - In `off`: no effect.
    - In `shadow`: log mismatch risk but do not block.
-   - In `enforce`: fail closed for gate evaluation only when required evidence cannot be computed.
+   - In `enforce`: use marker fallback when evaluator cannot compute verdict (for safe rollback compatibility); log explicit fallback reason.
 2. Corrupt line in ledger:
    - Skip malformed line, continue evaluation, emit warning.
 3. Session file missing:
-   - Treat as no evidence, deny with explicit message.
+   - In `enforce`, attempt marker fallback first; if fallback is also unavailable, deny with explicit message.
 
 ## Verification Strategy
 
@@ -159,6 +165,9 @@ Use env-controlled mode:
    - complete happy path
    - stale evidence after `code_changed`
    - missing codex review completion
+   - marker allows / ledger denies in shadow mode (must log mismatch and still allow)
+   - rollback behavior (`enforce` -> `off`) restores marker-based behavior
+   - end-to-end chain: PostToolUse event emission -> ledger write -> PreToolUse gate decision
    - cross-session isolation
 3. Existing hook suites remain green:
    - `tests/test-hooks.sh`
@@ -175,9 +184,10 @@ Use env-controlled mode:
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Ledger and marker verdict diverge in shadow mode | Confusing enforcement | Log diff with deterministic reason; block enforcement promotion until mismatch threshold is zero. |
+| Ledger and marker verdict diverge in shadow mode | Confusing enforcement | Log diff with deterministic reason to `~/.claude/logs/ledger-shadow.log`; block promotion until `grep -c "LEDGER_SHADOW_MISMATCH" ~/.claude/logs/ledger-shadow.log` is zero for the evaluation window. |
 | Event spam inflates session ledger | Slower gate eval | Filter by event type and by latest `code_changed` boundary; add retention in cleanup. |
 | Shell JSON parsing edge cases | Incorrect events | Keep strict schema checks in `ledger.sh`; add malformed-input tests. |
+| Retention cleanup races with long-running active sessions | Evidence loss | Skip pruning ledgers with recent mtime and never prune current session ledger during SessionStart. |
 
 ## Design Decisions
 
