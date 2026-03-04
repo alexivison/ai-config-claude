@@ -46,12 +46,19 @@ stats:
 ### Review request
 Message asks you to review changes against a base branch.
 
+Default priority for review findings (highest first):
+1. Correctness and regression risk
+2. Unnecessary complexity / over-abstraction
+3. Simpler equivalent approach
+4. Style and preference nits (only when explicitly requested)
+
 1. **Get the diff**: Run `git diff $(git merge-base HEAD <base>)..HEAD` to see the changes
 2. **Review scope**: Review changed files AND adjacent files (callers, callees, types, tests)
-   for: correctness bugs, crash paths, security issues, wrong output, architectural concerns
+   for: correctness bugs, crash/regression paths, security issues, wrong output, and avoidable complexity
 3. **Classify each finding**:
-   - **blocking**: correctness bug, crash path, wrong output, security HIGH/CRITICAL
-   - **non-blocking**: style nit, "could be simpler", defensive edge case, consistency preference
+   - **blocking**: correctness bug, crash/regression path, wrong output, security HIGH/CRITICAL
+   - **non-blocking**: a materially simpler equivalent implementation that reduces complexity/risk
+   - **omit by default**: style nits, naming preferences, minor consistency tweaks (include only if Claude explicitly asks for polish/nits)
 4. **Write findings** to the file path specified in the message, using the TOON findings schema above.
 5. **Do NOT include a "verdict" field.** You produce findings — the verdict is Claude's decision.
 6. **Notify Claude** when done:
@@ -63,8 +70,9 @@ Message asks you to review changes against a base branch.
 Claude fixed blocking issues and requests another pass.
 
 - Verify previous blocking issues were addressed
-- Flag only genuinely NEW issues
+- Flag only genuinely NEW blocking/non-blocking issues
 - Do NOT re-raise findings that were already addressed
+- Do not introduce new nit-level churn in re-review unless explicitly requested
 
 ### Task request
 Claude asks you to investigate or work on something.
