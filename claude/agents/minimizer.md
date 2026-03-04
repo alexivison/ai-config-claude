@@ -75,6 +75,10 @@ One sentence assessment.
 **REQUEST_CHANGES** when: one or more `[must]` findings exist.
 **NEEDS_DISCUSSION** when: iteration 2 still has unresolved `[must]`.
 
+CRITICAL: The verdict line MUST be the absolute last line of your response.
+Format exactly as: **APPROVE**, **REQUEST_CHANGES**, or **NEEDS_DISCUSSION**
+No text after the verdict line.
+
 ## Boundaries
 
 - **DO**: Read code, analyze diff, provide feedback with file:line references

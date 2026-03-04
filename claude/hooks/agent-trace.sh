@@ -74,6 +74,23 @@ elif echo "$verdict_region" | grep -qi "complete\|done\|finished"; then
   verdict="COMPLETED"
 fi
 
+# Fallback: scan full cleaned response when verdict_region missed it.
+# Short agent responses (e.g. minimizer APPROVE with no findings) can be
+# lost when content-block extraction produces unexpected output in parallel.
+if [ "$verdict" = "unknown" ] && [ -n "$cleaned_response" ]; then
+  if echo "$cleaned_response" | grep -qE '\*\*REQUEST_CHANGES\*\*|^REQUEST_CHANGES'; then
+    verdict="REQUEST_CHANGES"
+  elif echo "$cleaned_response" | grep -qE '\*\*NEEDS_DISCUSSION\*\*|^NEEDS_DISCUSSION'; then
+    verdict="NEEDS_DISCUSSION"
+  elif echo "$cleaned_response" | grep -qE '\*\*APPROVE\*\*|^APPROVE'; then
+    verdict="APPROVED"
+  elif echo "$cleaned_response" | grep -qiE '\bFAIL\b'; then
+    verdict="FAIL"
+  elif echo "$cleaned_response" | grep -qiE '\bPASS\b'; then
+    verdict="PASS"
+  fi
+fi
+
 # Get session info
 session_id=$(echo "$hook_input" | jq -r '.session_id // "unknown"')
 cwd=$(echo "$hook_input" | jq -r '.cwd // ""')
@@ -82,7 +99,7 @@ project=$(basename "$cwd")
 # Create trace entry
 timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-trace_entry=$(jq -n \
+trace_entry=$(jq -cn \
   --arg ts "$timestamp" \
   --arg session "$session_id" \
   --arg project "$project" \

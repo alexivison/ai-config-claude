@@ -65,6 +65,10 @@ Verdict rules:
 - **REQUEST_CHANGES** only when one or more `[must]` findings exist.
 - **NEEDS_DISCUSSION** when blocking findings persist at iteration 2.
 
+CRITICAL: The verdict line MUST be the absolute last line of your response.
+Format exactly as: **APPROVE**, **REQUEST_CHANGES**, or **NEEDS_DISCUSSION**
+No text after the verdict line.
+
 ## Acceptance Criteria Coverage
 
 When acceptance criteria are provided in the prompt context, verify each criterion:

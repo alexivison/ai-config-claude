@@ -317,6 +317,8 @@ try:
                 entry = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            if not isinstance(entry, dict):
+                continue
             ts = entry.get('timestamp', '')
             if ts < since or ts >= until_date:
                 continue
