@@ -2,13 +2,13 @@
 # tmux-codex.sh — Claude's direct interface to Codex via tmux
 set -euo pipefail
 
-MODE="${1:?Usage: tmux-codex.sh --review|--plan-review|--prompt|--review-complete|--approve|--re-review|--needs-discussion}"
+MODE="${1:?Usage: tmux-codex.sh --review|--plan-review|--prompt|--review-complete|--approve|--needs-discussion}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../../../session/party-lib.sh"
 
 # Session discovery only for modes that need tmux (--review, --prompt).
-# Verdict/evidence modes (--approve, --re-review, --needs-discussion, --review-complete)
+# Verdict/evidence modes (--approve, --needs-discussion, --review-complete)
 # only emit sentinel strings and work without a party session.
 _require_session() {
   discover_session
@@ -95,11 +95,6 @@ case "$MODE" in
     echo "CODEX APPROVED"
     ;;
 
-  --re-review)
-    REASON="${2:-Blocking findings fixed}"
-    echo "CODEX REQUEST_CHANGES — $REASON"
-    ;;
-
   --needs-discussion)
     REASON="${2:-Multiple valid approaches or unresolvable findings}"
     echo "CODEX NEEDS_DISCUSSION — $REASON"
@@ -107,7 +102,7 @@ case "$MODE" in
 
   *)
     echo "Error: Unknown mode '$MODE'" >&2
-    echo "Usage: tmux-codex.sh --review|--plan-review|--prompt|--review-complete|--approve|--re-review|--needs-discussion" >&2
+    echo "Usage: tmux-codex.sh --review|--plan-review|--prompt|--review-complete|--approve|--needs-discussion" >&2
     exit 1
     ;;
 esac

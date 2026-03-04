@@ -48,8 +48,8 @@ Use the canonical sequence in [execution-core.md](~/.claude/rules/execution-core
    ```
    `work_dir` is required — pass the worktree/repo path. Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
 8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity.
-   - **After fixing blocking items → use `--re-review` (NOT `--review-complete`).** Wait for the re-review findings before proceeding. `--review-complete` only records evidence — it does not re-validate.
-   - Round 2: if blocking findings remain after re-review, escalate `--needs-discussion`.
+   - **Blocking findings:** fix code → re-run critics → dispatch new `--review` → `--review-complete` → `--approve`. Editing code auto-invalidates all markers.
+   - Round 2: if blocking findings remain after second Codex review, escalate `--needs-discussion`.
    - Non-blocking findings: record with `--review-complete` and proceed.
 9. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
    - **If you edit ANY implementation file after this step passes → re-run `/pre-pr-verification` before commit.** Even a JSDoc fix invalidates prior evidence.
@@ -83,14 +83,14 @@ Forgetting PLAN.md is the most common violation. Verify both files are updated b
 
 ## Codex Step
 
-See the `codex-transport` skill for full invocation details (`--review`, `--plan-review`, `--prompt`, `--review-complete`, `--approve`, `--re-review`, `--needs-discussion`).
+See the `codex-transport` skill for full invocation details (`--review`, `--plan-review`, `--prompt`, `--review-complete`, `--approve`, `--needs-discussion`).
 
 Key points for task workflow:
 - Invoke after critics have no remaining blocking findings
 - Non-blocking — continue with non-edit work while Codex reviews
-- **Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — use `--re-review` instead of `--approve`.
+- **Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — discard it, re-run critics, and dispatch a fresh `--review`.
 - Max 2 iterations for blocking findings, then NEEDS_DISCUSSION
-- Non-blocking codex findings do not trigger re-review
+- Non-blocking codex findings: proceed to `--review-complete` → `--approve`
 
 ## Core Reference
 

@@ -14,7 +14,7 @@ When reading a TOON findings file:
 1. Validate header line matches `findings[N]{id,file,line,severity,category,description,suggestion}:`
 2. Verify `[N]` equals the actual row count
 3. Read `summary` and `stats` sections
-4. If malformed: record validation issue, request re-emit from Codex via `--re-review`, OR triage manually as plain text if urgent
+4. If malformed: record validation issue, request re-emit from Codex via `--prompt`, OR triage manually as plain text if urgent
 
 ## Transport direction
 
@@ -36,7 +36,7 @@ Message: `[CODEX] Review complete. Findings at: <path>`
 5. Update your issue ledger (reject re-raised closed findings, detect oscillation)
 6. Decide verdict:
    - All non-blocking → `tmux-codex.sh --approve`
-   - Blocking findings → fix them, choose re-review tier, then `tmux-codex.sh --re-review`
+   - Blocking findings → fix code, re-run critics, dispatch new `tmux-codex.sh --review`, then `--review-complete` → `--approve`
    - Unresolvable → `tmux-codex.sh --needs-discussion "reason"`
 
 ### Question from Codex

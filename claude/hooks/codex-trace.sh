@@ -54,16 +54,6 @@ if echo "$response" | grep -qx "CODEX_REVIEW_RAN"; then
   exit 0
 fi
 
-# --- Re-review: delete codex-ran marker to force new review cycle ---
-# Without this, --re-review leaves codex-ran alive, allowing --approve
-# to bypass the gate without a second Codex pass.
-# Prefix match (not -qx) because --re-review appends a reason string.
-if echo "$response" | grep -q "^CODEX REQUEST_CHANGES"; then
-  rm -f "/tmp/claude-codex-ran-$session_id"
-  rm -f "/tmp/claude-codex-$session_id"
-  exit 0
-fi
-
 # --- Verdict marker: tmux-codex.sh --approve ---
 if echo "$response" | grep -qx "CODEX APPROVED"; then
   # Gate: only create approval marker if codex was actually run

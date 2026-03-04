@@ -83,7 +83,7 @@ Classify every finding before acting:
 | code-critic or minimizer | NEEDS_DISCUSSION / oscillation / cap | Ask user | YES |
 | Both critics done, no blocking | — | Run codex | NO |
 | codex | APPROVE | /pre-pr-verification | NO |
-| codex | REQUEST_CHANGES (blocking) | Fix in one batch + one codex re-review | NO |
+| codex | REQUEST_CHANGES (blocking) | Fix in one batch + re-run critics + new `--review` | NO |
 | codex | REQUEST_CHANGES (non-blocking) | Record and proceed to /pre-pr-verification | NO |
 | codex | NEEDS_DISCUSSION | Ask user | YES |
 | /pre-pr-verification | Pass/Fail | PR / fix | NO |

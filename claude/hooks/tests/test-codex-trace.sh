@@ -87,21 +87,6 @@ touch "/tmp/claude-codex-ran-$SESSION"
 run_hook "$(bash_input_str 'tmux-codex.sh --approve /tmp/f.toon' 'CODEX APPROVED')"
 assert "String response → codex marker created" '[ -f /tmp/claude-codex-$SESSION ]'
 
-# ═══ --re-review ══════════════════════════════════════════════════════════════
-
-echo "=== re-review: Clears both markers ==="
-cleanup
-touch "/tmp/claude-codex-ran-$SESSION" "/tmp/claude-codex-$SESSION"
-run_hook "$(bash_input_obj 'tmux-codex.sh --re-review /tmp/f.toon' 'CODEX REQUEST_CHANGES — F1 not fixed')"
-assert "Re-review → codex-ran marker removed" '[ ! -f /tmp/claude-codex-ran-$SESSION ]'
-assert "Re-review → codex marker removed" '[ ! -f /tmp/claude-codex-$SESSION ]'
-
-echo "=== re-review: String response format ==="
-cleanup
-touch "/tmp/claude-codex-ran-$SESSION" "/tmp/claude-codex-$SESSION"
-run_hook "$(bash_input_str 'tmux-codex.sh --re-review /tmp/f.toon' 'CODEX REQUEST_CHANGES — reason here')"
-assert "String re-review → markers removed" '[ ! -f /tmp/claude-codex-ran-$SESSION ]'
-
 # ═══ --plan-review (advisory only) ════════════════════════════════════════════
 
 echo "=== plan-review: Object response does not create markers ==="
@@ -159,12 +144,13 @@ assert "Step 1: codex-ran created" '[ -f /tmp/claude-codex-ran-$SESSION ]'
 run_hook "$(bash_input_obj 'tmux-codex.sh --approve /tmp/f.toon' 'CODEX APPROVED')"
 assert "Step 2: codex marker created" '[ -f /tmp/claude-codex-$SESSION ]'
 
-echo "=== Workflow: review-complete → re-review → review-complete → approve ==="
+echo "=== Workflow: review-complete → (markers cleared externally) → review-complete → approve ==="
 cleanup
 run_hook "$(bash_input_obj 'tmux-codex.sh --review-complete /tmp/f.toon' 'CODEX_REVIEW_RAN')"
 assert "Step 1: codex-ran created" '[ -f /tmp/claude-codex-ran-$SESSION ]'
-run_hook "$(bash_input_obj 'tmux-codex.sh --re-review /tmp/f.toon' 'CODEX REQUEST_CHANGES — fix F1')"
-assert "Step 2: codex-ran cleared" '[ ! -f /tmp/claude-codex-ran-$SESSION ]'
+# Simulate marker-invalidate.sh clearing markers after code edit
+rm -f "/tmp/claude-codex-ran-$SESSION" "/tmp/claude-codex-$SESSION"
+assert "Step 2: markers cleared by invalidation" '[ ! -f /tmp/claude-codex-ran-$SESSION ]'
 run_hook "$(bash_input_obj 'tmux-codex.sh --review-complete /tmp/f.toon' 'CODEX_REVIEW_RAN')"
 assert "Step 3: codex-ran recreated" '[ -f /tmp/claude-codex-ran-$SESSION ]'
 run_hook "$(bash_input_obj 'tmux-codex.sh --approve /tmp/f.toon' 'CODEX APPROVED')"

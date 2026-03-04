@@ -61,26 +61,23 @@ Short prompts can be passed directly:
 This preserves the existing evidence-chain invariant: `CODEX_REVIEW_RAN` means a completed review, not merely a queued request. The file existence check is extension-agnostic.
 
 ### Signal verdict (after triaging findings)
-**IMPORTANT:** `--re-review` does NOT trigger a fresh Codex review — it only echoes the existing verdict status for hook detection. To get Codex to re-examine code after fixing blocking findings, dispatch a new `--review`, then use `--review-complete` on the new findings file.
-
 ```bash
 # All findings non-blocking — approve
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --approve
 
-# Blocking findings fixed, request re-review
-~/.claude/skills/codex-transport/scripts/tmux-codex.sh --re-review "what was fixed"
-
 # Unresolvable after max iterations
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --needs-discussion "reason"
 ```
-Verdict modes output sentinel strings that hooks detect to create evidence markers.
+
+**Blocking findings?** Fix the code, re-run critics, then dispatch a new `--review`. Editing code auto-invalidates all markers (via `marker-invalidate.sh`), so the full cascade re-runs naturally. There is no shortcut — the gates enforce it.
 
 ## Important
 
 - `--review`, `--plan-review`, and `--prompt` are NON-BLOCKING. Continue working while Codex processes.
 - `--review-complete` emits `CODEX_REVIEW_RAN` only after findings exist.
-- Verdict modes (`--approve`, `--re-review`, `--needs-discussion`) are instant — they output sentinels for hook detection.
+- Verdict modes (`--approve`, `--needs-discussion`) are instant — they output sentinels for hook detection.
 - You decide the verdict. Codex produces findings, you triage them.
 - Before calling `--review`, ensure sub-agent critics have passed (codex-gate.sh enforces this).
 - Before calling `--approve`, ensure codex-ran marker exists (codex-gate.sh enforces this).
 - `--plan-review` is ungated — no critic markers or codex-ran markers required or affected.
+- **Blocking codex findings:** fix code → (markers auto-invalidated) → re-run critics → new `--review` → `--review-complete` → `--approve`. No special flag needed.
