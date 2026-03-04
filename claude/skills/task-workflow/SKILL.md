@@ -15,9 +15,8 @@ Execute tasks from TASK*.md files with the full autonomous workflow.
 1. **Create worktree first** — `git worktree add ../repo-branch-name -b branch-name`
 2. **Behavior change?** → invoke `/write-tests` FIRST and capture RED evidence (failing test + failure reason)
 3. **Requirements unclear?** → Ask user
-4. **Will this bloat into a large PR?** → Split into smaller tasks
-5. **Locate PLAN.md** — Find the project's PLAN.md for checkbox updates later
-6. **Extract scope boundaries** — Read the TASK file's "In Scope" and "Out of Scope" sections for use in all sub-agent prompts
+4. **Locate PLAN.md** — Find the project's PLAN.md for checkbox updates later
+5. **Extract scope boundaries** — Read the TASK file's "In Scope" and "Out of Scope" sections for use in all sub-agent prompts
 
 State which items were checked before proceeding.
 
