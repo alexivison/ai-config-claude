@@ -42,12 +42,16 @@ Use the canonical sequence in [execution-core.md](~/.claude/rules/execution-core
    - **After fixing blocking items → re-run BOTH critics (one pass).** Do NOT proceed to codex without this re-run. Only when both return APPROVE (or only non-blocking findings remain) may you proceed.
    - Stop critic loop at 2 rounds. If blocking findings still remain, escalate `NEEDS_DISCUSSION`.
    - `[q]`/`[nit]` are opt-in only (explicit polish request) and should not trigger another critic round.
-7. **codex** — Request codex review via tmux (non-blocking):
-   ```bash
-   ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
-   ```
-   `work_dir` is required — pass the worktree/repo path. Continue with non-edit work while Codex reviews. Codex notifies via `[CODEX]` message when done.
-   - **7b. Adversarial reviewer (opt-in):** If `CLAUDE_TEAM_REVIEW=1`, invoke the `review-team` skill immediately after dispatching Codex. The reviewer runs concurrently via Agent Teams. **BARRIER:** no code edits until both Codex AND reviewer return (or 5-minute timeout). See `review-team` skill for preflight, spawn, and synthesis details. Reviewer findings are advisory (no gating markers).
+7. **codex + team review** — Dispatch reviews:
+   a. Dispatch Codex review via tmux (non-blocking):
+      ```bash
+      ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
+      ```
+      `work_dir` is required — pass the worktree/repo path. Codex notifies via `[CODEX]` message when done.
+   b. Check team review flag: `echo "${CLAUDE_TEAM_REVIEW:-0}"`
+      - If `1`: invoke `review-team` skill immediately (concurrent with Codex). See skill for preflight, spawn, and synthesis details. Reviewer findings are advisory (no gating markers).
+      - **BARRIER:** no code edits until both Codex AND reviewer return (or 5-minute timeout).
+      - If `0` or unset: continue with non-edit work while Codex reviews.
 8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity. If team review was active, triage the UNION of Codex + reviewer findings.
    - **Blocking findings:** fix code → re-run critics → dispatch new `--review` → `--review-complete` → `--approve`. Editing code auto-invalidates all markers.
    - Round 2: if blocking findings remain after second Codex review, escalate `--needs-discussion`.
