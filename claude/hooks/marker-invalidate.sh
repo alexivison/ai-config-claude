@@ -53,6 +53,7 @@ done
 
 if [ "$deleted" -gt 0 ]; then
   echo "Markers invalidated ($deleted removed) — code edit detected: $(basename "$file_path")"
+  echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') | invalidate | ${deleted}_markers | $session_id | $(basename "$file_path")" >> "$HOME/.claude/logs/evidence-trace.log"
 fi
 
 exit 0

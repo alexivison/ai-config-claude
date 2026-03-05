@@ -120,6 +120,9 @@ trace_entry=$(jq -cn \
 # Append to trace file
 echo "$trace_entry" >> "$TRACE_FILE"
 
+# One-line evidence log for quick grep debugging
+echo "$timestamp | $agent_type | $verdict | $session_id" >> "$HOME/.claude/logs/evidence-trace.log"
+
 # Create markers for PR gate enforcement
 # Each marker proves a workflow step was completed
 

@@ -47,10 +47,15 @@ else
   response=""
 fi
 
+# One-line evidence log for quick grep debugging
+ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+log_evidence() { echo "$ts | codex-trace | $1 | $session_id" >> "$HOME/.claude/logs/evidence-trace.log"; }
+
 # --- Evidence marker: codex review actually completed ---
 # tmux-codex.sh --review-complete emits CODEX_REVIEW_RAN after verifying findings file exists
 if echo "$response" | grep -qx "CODEX_REVIEW_RAN"; then
   touch "/tmp/claude-codex-ran-$session_id"
+  log_evidence "CODEX_REVIEW_RAN"
   exit 0
 fi
 
@@ -59,8 +64,10 @@ if echo "$response" | grep -qx "CODEX APPROVED"; then
   # Gate: only create approval marker if codex was actually run
   if [ -f "/tmp/claude-codex-ran-$session_id" ]; then
     touch "/tmp/claude-codex-$session_id"
+    log_evidence "CODEX_APPROVED"
   else
     echo "BLOCKED: tmux-codex.sh --approve called without evidence of codex review completion"
+    log_evidence "CODEX_APPROVE_BLOCKED"
   fi
 fi
 
