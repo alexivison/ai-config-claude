@@ -6,7 +6,8 @@
 
 set -euo pipefail
 
-HOOK="$HOME/.claude/hooks/agent-trace.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOOK="${SCRIPT_DIR}/../agent-trace.sh"
 TRACE_FILE="$HOME/.claude/logs/agent-trace.jsonl"
 PASS=0
 FAIL=0
@@ -170,6 +171,50 @@ echo "=== Priority: REQUEST_CHANGES wins over APPROVE ==="
 cleanup
 run_hook "$(agent_input code-critic '[{"type":"text","text":"APPROVE in prose but **REQUEST_CHANGES** is the verdict."},{"type":"text","text":"agentId: p1\n<usage>total_tokens: 100\ntool_uses: 1\nduration_ms: 100</usage>"}]')"
 assert "REQUEST_CHANGES takes priority" '[ "$(last_verdict)" = "REQUEST_CHANGES" ]'
+
+# ─── Token extraction tests ─────────────────────────────────────────────────
+
+last_tokens() {
+  tail -80 "$TRACE_FILE" | python3 -c "
+import sys, json, re
+text = sys.stdin.read()
+entries = re.findall(r'\{[^{}]*\}', text, re.DOTALL)
+last = '?'
+for e in entries:
+    try:
+        d = json.loads(e)
+        if d.get('session') == '$SESSION':
+            last = str(d.get('tokens', '?'))
+    except (json.JSONDecodeError, ValueError):
+        pass
+print(last)
+" 2>/dev/null
+}
+
+echo "=== Tokens: Extracted from <usage> block ==="
+cleanup
+run_hook "$(agent_input code-critic '[{"type":"text","text":"**APPROVE**"},{"type":"text","text":"agentId: t1\n<usage>total_tokens: 25000\ntool_uses: 5\nduration_ms: 10000</usage>"}]')"
+assert "Token count 25000 captured" '[ "$(last_tokens)" = "25000" ]'
+
+echo "=== Tokens: Missing <usage> block defaults to 0 ==="
+cleanup
+run_hook "$(agent_input code-critic '[{"type":"text","text":"**APPROVE**"}]')"
+assert "Missing <usage> → tokens 0" '[ "$(last_tokens)" = "0" ]'
+
+echo "=== Tokens: Plain string response defaults to 0 ==="
+cleanup
+run_hook "$(agent_input test-runner '"All tests passed.\nPASS"')"
+assert "String response → tokens 0" '[ "$(last_tokens)" = "0" ]'
+
+echo "=== Tokens: Large token count parsed correctly ==="
+cleanup
+run_hook "$(agent_input minimizer '[{"type":"text","text":"**APPROVE**"},{"type":"text","text":"agentId: t2\n<usage>total_tokens: 150000\ntool_uses: 20\nduration_ms: 60000</usage>"}]')"
+assert "Token count 150000 captured" '[ "$(last_tokens)" = "150000" ]'
+
+echo "=== Tokens: Appears in evidence-trace.log ==="
+cleanup
+run_hook "$(agent_input code-critic '[{"type":"text","text":"**APPROVE**"},{"type":"text","text":"agentId: t3\n<usage>total_tokens: 42000\ntool_uses: 8\nduration_ms: 15000</usage>"}]')"
+assert "Token count in evidence-trace.log" 'grep "$SESSION" "$HOME/.claude/logs/evidence-trace.log" | grep -q "42000"'
 
 # ─── Summary ─────────────────────────────────────────────────────────────────
 

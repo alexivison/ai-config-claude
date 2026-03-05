@@ -48,6 +48,11 @@ else
   full_response=$(echo "$hook_input" | jq -r '.tool_response // ""' 2>/dev/null)
 fi
 
+# Extract token count from <usage> block before stripping metadata.
+# Format: <usage>total_tokens: NNN ... </usage> — default to 0 on parse failure.
+total_tokens=$(echo "$full_response" | grep -oE 'total_tokens:[[:space:]]*[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+total_tokens=${total_tokens:-0}
+
 # Strip trailing metadata (agentId line, <usage> block) that pushes verdicts out of range.
 # Use anchored patterns to avoid eating legitimate content mid-response.
 cleaned_response=$(echo "$full_response" | sed -E '/^[[:space:]]*agentId:/d' | sed '/<usage>total_tokens:/,/<\/usage>/d')
@@ -107,6 +112,7 @@ trace_entry=$(jq -cn \
   --arg desc "$description" \
   --arg model "$model" \
   --arg verdict "$verdict" \
+  --argjson tokens "${total_tokens:-0}" \
   '{
     timestamp: $ts,
     session: $session,
@@ -114,14 +120,15 @@ trace_entry=$(jq -cn \
     agent: $agent,
     description: $desc,
     model: $model,
-    verdict: $verdict
+    verdict: $verdict,
+    tokens: $tokens
   }')
 
 # Append to trace file
 echo "$trace_entry" >> "$TRACE_FILE"
 
 # One-line evidence log for quick grep debugging
-echo "$timestamp | $agent_type | $verdict | $session_id" >> "$HOME/.claude/logs/evidence-trace.log"
+echo "$timestamp | $agent_type | $verdict | $session_id | ${total_tokens:-0}" >> "$HOME/.claude/logs/evidence-trace.log"
 
 # Create markers for PR gate enforcement
 # Each marker proves a workflow step was completed

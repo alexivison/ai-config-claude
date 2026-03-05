@@ -7,8 +7,10 @@ Shared rules for all workflow skills. Bugfix-workflow omits checkboxes (no PLAN.
 This section is the single source of truth for execution order across workflow docs.
 
 ```
-/write-tests → implement → checkboxes → [code-critic + minimizer] → codex → /pre-pr-verification → commit → PR
+/write-tests → implement → checkboxes → [code-critic + minimizer] → codex [+ adversarial reviewer] → /pre-pr-verification → commit → PR
 ```
+
+Adversarial reviewer is opt-in (`CLAUDE_TEAM_REVIEW=1`). When active, runs concurrently with Codex. Advisory only — no gating markers.
 
 ## RED Evidence Gate
 
@@ -86,6 +88,8 @@ Classify every finding before acting:
 | codex | REQUEST_CHANGES (blocking) | Fix in one batch + re-run critics + new `--review` | NO |
 | codex | REQUEST_CHANGES (non-blocking) | Record and proceed to /pre-pr-verification | NO |
 | codex | NEEDS_DISCUSSION | Ask user | YES |
+| adversarial reviewer | Any findings | Paladin triages (advisory, no gating markers) | NO |
+| adversarial reviewer | Timeout | Proceed with Codex findings only | NO |
 | /pre-pr-verification | Pass/Fail | PR / fix | NO |
 | Edit/Write (impl) | Markers invalidated | Re-run cascade | NO |
 
