@@ -47,23 +47,25 @@ Use the canonical sequence in [execution-core.md](~/.claude/rules/execution-core
    - **After fixing blocking items → re-run BOTH critics (one pass).** Do NOT proceed to codex without this re-run. Only when both return APPROVE (or only non-blocking findings remain) may you proceed.
    - Stop critic loop at 2 rounds. If blocking findings still remain, escalate `NEEDS_DISCUSSION`.
    - `[q]`/`[nit]` are opt-in only (explicit polish request) and should not trigger another critic round.
-7. **codex + team review** — Dispatch reviews:
-   a. Dispatch Codex review via tmux (non-blocking):
+7. **Dispatch Codex review** (non-blocking):
       ```bash
       ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
       ```
       `work_dir` is required — pass the worktree/repo path. Codex notifies via `[CODEX]` message when done.
-   b. Check team review flag: `echo "${CLAUDE_TEAM_REVIEW:-0}"`
-      - If `1`: invoke `review-team` skill immediately (concurrent with Codex). See skill for preflight, spawn, and synthesis details. Reviewer findings are advisory (no gating markers).
-      - **BARRIER:** no code edits until both Codex AND reviewer return (or 5-minute timeout).
+8. **Team review check** — Run immediately after dispatching Codex:
+      ```bash
+      echo "${CLAUDE_TEAM_REVIEW:-0}"
+      ```
+      - If `1`: invoke `review-team` skill now (concurrent with Codex). See skill for preflight, spawn, and synthesis. Reviewer findings are advisory (no gating markers). **BARRIER:** no code edits until both Codex AND reviewer return (or 5-minute timeout).
       - If `0` or unset: continue with non-edit work while Codex reviews.
-8. **Triage codex findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity. If team review was active, triage the UNION of Codex + reviewer findings.
+      - **Known failure pattern:** In past sessions this step was skipped because it was buried as a sub-step. It is now a top-level step specifically to prevent that. Do not skip it.
+9. **Triage findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity. If team review was active, triage the UNION of Codex + reviewer findings.
    - **Blocking findings:** fix code → re-run critics → dispatch new `--review` → `--review-complete` → `--approve`. Editing code auto-invalidates all markers.
    - Round 2: if blocking findings remain after second Codex review, escalate `--needs-discussion`.
    - Non-blocking findings: record with `--review-complete` and proceed.
-9. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
+10. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
    - **If you edit ANY implementation file after this step passes → re-run `/pre-pr-verification` before commit.** Even a JSDoc fix invalidates prior evidence.
-10. **Commit & PR** — Create commit and draft PR
+11. **Commit & PR** — Create commit and draft PR
 
 **Note:** Step 4 (Checkboxes) MUST include PLAN.md. Forgetting PLAN.md is a common violation.
 

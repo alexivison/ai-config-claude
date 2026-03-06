@@ -10,7 +10,9 @@ user-invocable: false
 
 # Review Team — Adversarial Reviewer
 
-Spawns one Agent Teams teammate that tries to break the code while Codex performs deep review. Both run concurrently; no code edits until both return (or timeout).
+Spawns one **Agent Teams** teammate that tries to break the code while Codex performs deep review. Both run concurrently; no code edits until both return (or timeout).
+
+**This skill uses Agent Teams — NOT a regular sub-agent.** The reviewer must appear as a `@teammate` in the session, not as a `code-critic(...)` sub-agent call. Using a regular Agent sub-agent is the wrong mechanism and a process violation.
 
 ## Preflight
 
@@ -27,7 +29,7 @@ timestamp | review-team | SKIP:reason | session_id
 
 ## When to Invoke
 
-After critics APPROVE (both code-critic and minimizer), immediately after dispatching Codex review. Step 7b in task-workflow.
+After critics APPROVE (both code-critic and minimizer), immediately after dispatching Codex review. Step 8 in task-workflow.
 
 ## Teammate Role — Adversarial Reviewer
 
@@ -40,30 +42,17 @@ The teammate's sole purpose is to try to break the code. Focus areas:
 - "What's the worst that happens if X fails?"
 - Security surface (injection, privilege escalation, data leakage)
 
-## Display Mode
+## How to Spawn
 
-The adversarial reviewer is short-lived and read-only — it does not need its own pane.
-**Always use `in-process` mode** to avoid spawning new tmux windows/panes.
+Use the Agent tool with `subagent_type: "teammate"` and a descriptive `name` (e.g., `"adversarial-reviewer"`). This creates an Agent Teams teammate that appears as `@adversarial-reviewer` in the session.
 
-Before creating the team, ensure the session uses in-process mode. Since `teammateMode`
-cannot be set per-spawn, the Paladin must be running in a tmux session where `auto`
-would default to split panes. Override by checking/setting the flag before `TeamCreate`:
-
-```
-# In the Agent tool spawn, no extra step needed — in-process is the default
-# when not in tmux. But since we ARE in tmux, we must be explicit.
-```
-
-**Implementation:** When spawning the teammate via the `Agent` tool, there is no
-per-spawn display mode parameter. The `teammateMode` setting applies session-wide.
-If the current session defaults to split panes (tmux), accept this but note that
-`in-process` is preferred for single short-lived reviewers.
+The teammate is short-lived and read-only. Prefer `in-process` display mode (set via `teammateMode` in settings.json or `--teammate-mode in-process` CLI flag). If running in tmux where `auto` defaults to split panes, accept the split pane.
 
 ## Spawn Prompt
 
 Include in the teammate prompt:
 
-1. The working tree diff against merge-base (`git diff "$(git merge-base HEAD main)"`) — this captures uncommitted changes since step 7b runs before commit
+1. The working tree diff against merge-base (`git diff "$(git merge-base HEAD main)"`) — this captures uncommitted changes since step 8 runs before commit
 2. TASK scope boundaries (in-scope and out-of-scope files)
 3. Instruction: produce concise findings (max 20 lines) with `file:line` references
 4. Instruction: classify each finding as `[must]` (correctness/security) or `[should]` (robustness)
@@ -97,6 +86,11 @@ No marker file — Agent Teams lacks per-teammate hooks, and markers must be hoo
 ```
 timestamp | review-team | COMPLETED | session_id
 ```
+
+## Common Mistakes
+
+1. **Using a regular sub-agent instead of Agent Teams.** Spawning `code-critic(Adversarial reviewer...)` as a standard Agent sub-agent is wrong. The reviewer must be a `teammate` sub-agent that shows up as `@adversarial-reviewer`. If you catch yourself writing `code-critic(...)` for this step, stop — you are using the wrong mechanism.
+2. **Skipping this step entirely.** In past sessions the team review check was skipped because it was a sub-step. It is now step 8 in task-workflow. Check `CLAUDE_TEAM_REVIEW` right after dispatching Codex.
 
 ## Cleanup
 
