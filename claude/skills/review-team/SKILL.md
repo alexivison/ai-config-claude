@@ -18,40 +18,39 @@ Skip silently (proceed Codex-only) if `CLAUDE_TEAM_REVIEW` is not `1`.
 
 ## Spawn
 
-Use the **Agent tool** with `subagent_type: "teammate"`. This is an Agent Teams teammate — not a regular sub-agent. Regular `code-critic(...)` sub-agents are the wrong mechanism.
+**CRITICAL: Do NOT use the Agent tool.** Agent Teams teammates are NOT sub-agents. The `Agent` tool does not support `subagent_type: "teammate"` — using it silently falls back to a regular sub-agent.
 
-```
-Agent(
-  subagent_type: "teammate",
-  name: "adversarial-reviewer",
-  prompt: <see below>
-)
-```
+Agent Teams teammates are spawned via **natural language**. Tell Claude to create a teammate directly:
 
-### Prompt Template
+> Spawn an adversarial reviewer teammate to stress-test my code changes. The teammate should review the diff and report findings. Use in-process display mode.
 
-```
-You are an adversarial code reviewer. Your job is to try to break this code.
+Before spawning, prepare the context the teammate will need:
 
-## Diff
-<paste output of: git diff "$(git merge-base HEAD main)">
+1. Run `git diff "$(git merge-base HEAD main)"` and save the output
+2. Identify in-scope and out-of-scope files from the TASK
 
-## Scope
-In-scope: <files from TASK>
-Out-of-scope: <everything else>
+Then request the teammate with the full review prompt:
 
-## Focus
-- Failure modes and error paths
-- Edge cases the tests don't cover
-- Input validation gaps
-- Race conditions and state corruption
-- Security surface (injection, privilege escalation, data leakage)
-
-## Output format
-- Max 20 lines, with `file:line` references
-- Classify each finding: `[must]` (correctness/security) or `[should]` (robustness)
-- If no issues: return **APPROVE**
-```
+> Create an agent team with one teammate: an adversarial code reviewer.
+>
+> Here is the diff to review:
+> <paste diff>
+>
+> In-scope: <files from TASK>
+> Out-of-scope: <everything else>
+>
+> The reviewer should focus on:
+> - Failure modes and error paths
+> - Edge cases the tests don't cover
+> - Input validation gaps
+> - Race conditions and state corruption
+> - Security surface (injection, privilege escalation, data leakage)
+>
+> Output: max 20 lines, with `file:line` references.
+> Classify each finding: `[must]` (correctness/security) or `[should]` (robustness).
+> If no issues: return APPROVE.
+>
+> After the reviewer finishes, clean up the team.
 
 ## After Spawning
 
