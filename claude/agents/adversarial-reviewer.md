@@ -44,16 +44,21 @@ Do not flag style, naming, abstraction, or "simpler approach" unless it creates 
 - **[should] file.ts:70** - Robustness gap. What could go wrong.
 
 ### Verdict
-APPROVE
+**REQUEST_CHANGES**
 ```
 
 - `[must]` = correctness/security/availability issue worth fixing now
 - `[should]` = robustness gap worth fixing soon, advisory only
 - Max 20 lines of findings
 - Use `file:line` references
-- If no findings, output exactly: **APPROVE**
+
+Verdict rules:
+- **APPROVE** when there are no `[must]` findings (even if `[should]` exist)
+- **REQUEST_CHANGES** when one or more `[must]` findings exist
 
 CRITICAL: The verdict line MUST be the absolute last line of your response.
+Format exactly as: **APPROVE** or **REQUEST_CHANGES**
+No text after the verdict line.
 
 ## Boundaries
 

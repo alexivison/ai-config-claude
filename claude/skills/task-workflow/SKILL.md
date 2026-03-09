@@ -52,8 +52,20 @@ Use the canonical sequence in [execution-core.md](~/.claude/rules/execution-core
       ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
       ```
       `work_dir` is required — pass the worktree/repo path. Codex notifies via `[CODEX]` message when done.
-8. **Adversarial review** — Immediately after dispatching Codex, launch `adversarial-reviewer` sub-agent in the background, passing: merge-base diff, scope boundaries from TASK, short PR goal context.
-      - **BARRIER:** no code edits until both Codex AND adversarial reviewer return (or 5-minute timeout).
+8. **Adversarial review** — Immediately after dispatching Codex, launch the `adversarial-reviewer` sub-agent:
+      ```
+      Agent tool:
+        subagent_type: adversarial-reviewer
+        run_in_background: true
+        prompt: |
+          Review the diff for this PR: {PR title}
+          Scope: {in-scope files from TASK}
+          Out of scope: {out-of-scope files from TASK}
+          <diff>
+          {output of git diff "$(git merge-base HEAD main)"}
+          </diff>
+      ```
+      - **BARRIER:** no code edits until both Codex AND adversarial reviewer return (or 5-minute timeout). If 5 minutes pass, proceed with Codex findings only.
       - Reviewer findings are advisory (no gating markers).
 9. **Triage findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity. Triage the UNION of Codex + adversarial reviewer findings.
    - **Blocking findings:** fix code → re-run critics → dispatch new `--review` → `--review-complete` → `--approve`. Editing code auto-invalidates all markers.
