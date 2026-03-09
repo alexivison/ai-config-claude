@@ -66,14 +66,14 @@ Signal about...
 ├── Code style          → Rules
 ├── Global preferences  → CLAUDE.md
 ├── Flow violation      → Workflow skill / rule / hook
-└── Doesn't fit (3+)   → New skill (TDD via working-with-skills)
+└── Doesn't fit (3+)   → New skill (TDD via skill-creator)
 ```
 
 ---
 
 # New Skills (TDD)
 
-3+ related signals not fitting existing skills → new skill per `working-with-skills`.
+3+ related signals not fitting existing skills → new skill per `skill-creator`.
 
 1. **RED** — Document gap (problem, desired behavior)
 2. **GREEN** — Minimal skill at `~/.<agent>/skills/<name>/SKILL.md` (shared: `shared/skills/` + symlinks)
