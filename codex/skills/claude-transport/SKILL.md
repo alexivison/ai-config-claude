@@ -51,6 +51,8 @@ RESPONSE_FILE="$STATE_DIR/response-$(date +%s%N).toon"
 ~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Question: <your question>. Write response to: $RESPONSE_FILE"
 ```
 
+If you need structured findings rather than narrative prose, say so explicitly and have Claude emit canonical TOON via `~/.claude/skills/codex-transport/scripts/toon-transport.sh`. A `.toon` response path alone does not guarantee a structured payload.
+
 ### Notify plan review complete
 After writing plan-review findings to the specified `.toon` file:
 ```bash
@@ -75,5 +77,6 @@ When you see a message in your pane from Claude (e.g., "Response ready at: <path
 - Each exchange creates unique timestamped files — multi-turn dialogue works naturally
 - You retain your full context across exchanges (persistent tmux session)
 - Keep questions specific and actionable — Claude will investigate the codebase for you
+- `.toon` is the transport-file convention. It implies canonical TOON only when the request explicitly asks for structured findings.
 - Do NOT ask Claude to make code changes. You make changes, Claude reviews.
 - Always post the required local digest after messaging Claude.

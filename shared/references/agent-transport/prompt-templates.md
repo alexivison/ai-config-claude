@@ -15,6 +15,7 @@ Evaluate:
 
 Write TOON findings to: {FINDINGS_FILE}
 Use findings[N]{id,file,line,severity,category,description,suggestion}; no verdict.
+Emit raw TOON file contents only; no markdown fences.
 ```
 
 ## 2) Code Review
@@ -29,6 +30,7 @@ Prioritize:
 
 Write TOON findings to: {FINDINGS_FILE}
 Use findings[N]{id,file,line,severity,category,description,suggestion}; no verdict.
+Emit raw TOON file contents only; no markdown fences.
 ```
 
 ## 3) Design Trade-off

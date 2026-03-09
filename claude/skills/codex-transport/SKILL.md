@@ -33,14 +33,14 @@ After implementing changes and passing sub-agent critics:
 ```
 `work_dir` is **REQUIRED** — the absolute path to the worktree or repo where changes live. The script will error if omitted. Codex's pane is in a different directory; it needs this to `cd` into the correct location. `base_branch` defaults to `main`, `PR title` defaults to `Code review`.
 
-This sends a message to Codex's pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done. Findings are TOON format (`.toon` file). Handle that message per your `tmux-handler` skill.
+This sends a message to Codex's pane. You are NOT blocked — continue with non-edit work while Codex reviews. Codex will notify you via `[CODEX] Review complete. Findings at: <path>` when done. Findings are raw TOON (`.toon` file, no markdown fences). Handle that message per your `tmux-handler` skill.
 
 ### Request plan review (non-blocking)
 After creating a plan:
 ```bash
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --plan-review "<plan_path>" <work_dir>
 ```
-`work_dir` is **REQUIRED**. Plan review is advisory — it is intentionally ungated by critic markers and does NOT create or reuse the `codex-ran` approval marker. Codex will notify via `[CODEX] Plan review complete. Findings at: <path>` when done. Findings are TOON format (`.toon` file).
+`work_dir` is **REQUIRED**. Plan review is advisory — it is intentionally ungated by critic markers and does NOT create or reuse the `codex-ran` approval marker. Codex will notify via `[CODEX] Plan review complete. Findings at: <path>` when done. Findings are raw TOON (`.toon` file, no markdown fences).
 
 ### Send a task (non-blocking)
 **IMPORTANT:** Prompts with quotes, backticks, or >500 characters risk `unmatched '` shell errors when passed inline. Write to a temp file first:
@@ -55,7 +55,7 @@ Short prompts can be passed directly:
 ```bash
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --prompt "<task description>" <work_dir>
 ```
-`work_dir` is **REQUIRED**. Returns immediately. Codex will notify via `[CODEX] Task complete. Response at: <path>` when done. Response is TOON format (`.toon` file).
+`work_dir` is **REQUIRED**. Returns immediately. Codex will notify via `[CODEX] Task complete. Response at: <path>` when done. The response path uses `.toon` by convention. If you requested structured findings, expect canonical TOON; if you asked for narrative analysis, plain text is acceptable unless you explicitly required TOON.
 
 ### Record review completion evidence
 **CRITICAL:** The argument is the **full path to the `.toon` findings file** from the `[CODEX] Review complete. Findings at: <path>` notification — NOT a worktree path. Passing a worktree path will fail with "Findings file not found."

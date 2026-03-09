@@ -32,7 +32,25 @@ stats:
 - `description` and `suggestion` MUST be quoted when they contain commas, colons, quotes, backslashes, or control characters.
 - Quoted strings use TOON escaping: `\\`, `\"`, `\n`, `\r`, `\t`.
 - `findings[N]` MUST equal the actual row count.
-- Always wrap the TOON block in a fenced ` ```toon ` code block.
+- Findings files contain raw TOON only. Do NOT wrap file contents in markdown fences.
+
+### Helper workflow
+
+When Bash is available, do not hand-type structured TOON.
+
+Use `~/.codex/skills/claude-transport/scripts/toon-transport.sh`:
+
+- Encode canonical findings JSON to raw TOON:
+  `~/.codex/skills/claude-transport/scripts/toon-transport.sh encode-findings /tmp/findings.json <findings_file>`
+- Decode a TOON findings file to JSON for inspection:
+  `~/.codex/skills/claude-transport/scripts/toon-transport.sh decode <findings_file>`
+- Validate a TOON findings file:
+  `~/.codex/skills/claude-transport/scripts/toon-transport.sh validate-findings <findings_file>`
+
+Preferred emission flow:
+1. Draft findings as canonical JSON in a temp file.
+2. Run `encode-findings` to produce the final `.toon` file.
+3. If uncertain, run `validate-findings` before notifying Claude.
 
 ## Transport direction
 
@@ -59,7 +77,7 @@ Default priority for review findings (highest first):
    - **blocking**: correctness bug, crash/regression path, wrong output, security HIGH/CRITICAL
    - **non-blocking**: a materially simpler equivalent implementation that reduces complexity/risk
    - **omit by default**: style nits, naming preferences, minor consistency tweaks (include only if Claude explicitly asks for polish/nits)
-4. **Write findings** to the file path specified in the message, using the TOON findings schema above.
+4. **Write findings** to the file path specified in the message, using the helper workflow above whenever Bash is available.
 5. **Do NOT include a "verdict" field.** You produce findings — the verdict is Claude's decision.
 6. **Notify Claude** when done:
    ```bash
@@ -86,7 +104,7 @@ Claude shares a plan and asks for your assessment.
 
 1. Read the plan
 2. Evaluate feasibility, risks, missing steps
-3. Write feedback to the specified file using the TOON findings schema above (categories may include `architecture`, `feasibility`, `missing-step`)
+3. Write feedback to the specified file using the TOON findings schema above (categories may include `architecture`, `feasibility`, `missing-step`). Prefer the helper workflow above over hand-typing TOON.
 4. Notify Claude: `tmux-claude.sh "Plan review complete. Findings at: <path>"`
 
 ### Question from Claude
@@ -94,7 +112,7 @@ Claude asks for information or your opinion.
 
 1. Read the question
 2. Investigate the codebase or reason about the answer
-3. **Structured findings response**: When Claude requests structured findings and provides a `.toon` response path, emit TOON with the canonical schema above — not markdown.
-4. **Narrative Q&A**: When the request is conversational, write concise text.
+3. **Structured findings response**: When Claude requests structured findings and provides a `.toon` response path, emit canonical TOON with the helper workflow above — not markdown.
+4. **Narrative Q&A**: When the request is conversational, write concise text. A `.toon` extension alone does not mean the payload must be structured TOON.
 5. Write response to the exact path Claude specified (do not change the extension).
 6. Notify Claude: `tmux-claude.sh "Response ready at: <path>"`

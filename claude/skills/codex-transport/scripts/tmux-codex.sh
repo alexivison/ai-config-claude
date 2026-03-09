@@ -30,7 +30,7 @@ case "$MODE" in
     # Resolve tmux-claude.sh path for the notification callback
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"
 
-    MSG="[CLAUDE] cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write TOON findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
+    MSG="[CLAUDE] cd '$WORK_DIR' && Review the changes on this branch against $BASE. Title: $TITLE. Write TOON findings to: $FINDINGS_FILE. Emit raw TOON file contents only; no markdown fences. — When done, run: $NOTIFY_SCRIPT \"Review complete. Findings at: $FINDINGS_FILE\""
     if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:review"; then
       echo "CODEX_REVIEW_REQUESTED"
       echo "Claude is NOT blocked. Codex will notify via tmux when complete."
@@ -50,7 +50,7 @@ case "$MODE" in
 
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"
 
-    MSG="[CLAUDE] cd '$WORK_DIR' && Review '$PLAN_PATH' for architecture soundness and execution feasibility. Write TOON findings to: $FINDINGS_FILE — When done, run: $NOTIFY_SCRIPT \"Plan review complete. Findings at: $FINDINGS_FILE\""
+    MSG="[CLAUDE] cd '$WORK_DIR' && Review '$PLAN_PATH' for architecture soundness and execution feasibility. Write TOON findings to: $FINDINGS_FILE. Emit raw TOON file contents only; no markdown fences. — When done, run: $NOTIFY_SCRIPT \"Plan review complete. Findings at: $FINDINGS_FILE\""
     if tmux_send "$CODEX_PANE" "$MSG" "tmux-codex.sh:plan-review"; then
       echo "CODEX_PLAN_REVIEW_REQUESTED"
       echo "Claude is NOT blocked. Codex will notify via tmux when complete."
