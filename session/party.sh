@@ -288,12 +288,17 @@ party_pick_entries() {
   live_sessions=$(tmux ls -F '#{session_name}' 2>/dev/null | grep '^party-' || true)
   manifest_dir="$(party_state_root)"
 
+  local current_session
+  current_session="$(tmux display-message -p '#{session_name}' 2>/dev/null || true)"
+
   if [[ -n "$live_sessions" ]]; then
     while IFS= read -r name; do
-      local cwd title
+      local cwd title marker
       cwd="$(party_state_get_field "$name" "cwd" 2>/dev/null || true)"
       title="$(party_state_get_field "$name" "title" 2>/dev/null || true)"
-      printf '%s\tactive\t%s\t%s\n' "$name" "${title:--}" "$(_party_short_path "${cwd:--}")"
+      marker="active"
+      [[ "$name" == "$current_session" ]] && marker="* current"
+      printf '%s\t%s\t%s\t%s\n' "$name" "$marker" "${title:--}" "$(_party_short_path "${cwd:--}")"
     done <<< "$live_sessions"
   fi
 
@@ -327,38 +332,25 @@ party_pick_entries() {
   fi
 }
 
-_party_fzf_preview() {
-  local manifest_root="$1"
-  printf 'sid={1}; f="%s/${sid}.json"; if [[ -f "$f" ]]; then ' "$manifest_root"
-  printf 'if tmux has-session -t "$sid" 2>/dev/null; then echo "active"; else echo "resumable"; fi; '
-  printf 'echo "$(jq -r '"'"'.cwd // "-"'"'"' "$f" | sed "s|%s|~|")"; ' "$HOME"
-  printf 'echo "$(jq -r '"'"'.last_started_at // .created_at // "-"'"'"' "$f")"; '
-  printf 'prompt=$(jq -r '"'"'.initial_prompt // empty'"'"' "$f"); [[ -n "$prompt" ]] && echo "prompt: $prompt"; '
-  printf 'cid=$(jq -r '"'"'.claude_session_id // empty'"'"' "$f"); [[ -n "$cid" ]] && echo "claude: ${cid:0:8}…"; '
-  printf 'tid=$(jq -r '"'"'.codex_thread_id // empty'"'"' "$f"); [[ -n "$tid" ]] && echo "codex: ${tid:0:8}…"; '
-  printf 'fi'
-}
-
 # Shared fzf picker. Args: entries, header, [extra_fzf_args...]
 _party_fzf_select() {
   local entries="$1"
   local header="$2"
   shift 2
 
-  local manifest_root
+  local manifest_root preview_script
   manifest_root="$(party_state_root)"
-
-  local preview
-  preview="$(_party_fzf_preview "$manifest_root")"
+  preview_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/party-preview.sh"
 
   printf '%s\n' "$entries" | fzf \
+    --ansi \
     --delimiter='\t' \
     --with-nth=1,2,3,4 \
     --header="$header" \
     --no-info \
     --reverse \
-    --preview="$preview" \
-    --preview-window=right:30% \
+    --preview="bash \"$preview_script\" {1} \"$manifest_root\" \"$HOME\"" \
+    --preview-window=right:40% \
     "$@"
 }
 
@@ -395,7 +387,8 @@ party_switch() {
   local entries
   entries="$(party_pick_entries 1)"
   if [[ -z "$entries" ]]; then
-    echo "No active party sessions." >&2
+    echo "No active parties."
+    read -r -s -n 1
     return 1
   fi
 
