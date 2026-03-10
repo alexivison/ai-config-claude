@@ -8,7 +8,7 @@
 
 # Default model configuration
 model = "gpt-5.4"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 model_reasoning_summary = "detailed"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
