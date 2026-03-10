@@ -26,6 +26,17 @@ ensure_party_state_dir() {
   printf '%s\n' "$state_dir"
 }
 
+# Attach or switch to a party session. Uses switch-client inside tmux,
+# exec attach outside tmux.
+party_attach() {
+  local session="${1:?Usage: party_attach SESSION_NAME}"
+  if [[ -n "${TMUX:-}" ]]; then
+    tmux switch-client -t "$session"
+  else
+    exec tmux attach -t "$session"
+  fi
+}
+
 # Persist launch metadata for a party session. JSON persistence is best-effort:
 # if jq is unavailable, runtime behavior still works, but resume metadata is skipped.
 party_state_upsert_manifest() {

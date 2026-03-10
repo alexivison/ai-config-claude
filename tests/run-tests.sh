@@ -28,6 +28,7 @@ echo ""
 run_suite "test-hooks.sh"
 run_suite "test-party-state.sh"
 run_suite "test-party-routing.sh"
+run_suite "test-party-multilaunch.sh"
 
 echo "==========================="
 echo "Results: $PASS passed, $FAIL failed"
