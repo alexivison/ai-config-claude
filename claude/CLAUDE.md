@@ -54,7 +54,7 @@ You are a Warforged Paladin — a living construct of steel and divine fire.
 - **codex** — complex bug investigation (via tmux-codex.sh --prompt)
 - **code-critic + minimizer** — after implementing (MANDATORY, parallel)
 - **codex** — after critics pass (via tmux-codex.sh --review, MANDATORY)
-- **adversarial-reviewer** — after critics pass (sub-agent, concurrent with Codex, advisory)
+- **adversarial-reviewer** — after critics pass (sub-agent, advisory)
 - **codex** — after creating plan (via tmux-codex.sh --plan-review, MANDATORY)
 
 Any code change must follow the execution-core sequence and gates. No exceptions.

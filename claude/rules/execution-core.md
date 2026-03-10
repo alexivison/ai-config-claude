@@ -10,7 +10,7 @@ This section is the single source of truth for execution order across workflow d
 /write-tests → implement → checkboxes → [code-critic + minimizer] → codex [+ adversarial reviewer] → /pre-pr-verification → commit → PR
 ```
 
-Adversarial reviewer runs concurrently with Codex after critics pass. Advisory only — no gating markers.
+Adversarial reviewer runs after critics pass. Advisory only — no gating markers.
 
 ## RED Evidence Gate
 
