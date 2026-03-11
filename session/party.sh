@@ -446,6 +446,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Remaining positional args after -- (e.g., title from tracker spawn)
+[[ $# -gt 0 && -z "$_party_title" ]] && _party_title="$1"
+
 if [[ "$_party_master" -eq 1 ]]; then
   party_start_master "$_party_title" "$_party_resume_claude" "$_party_detached" "$_party_prompt"
 elif [[ -n "$_party_master_id" ]]; then
