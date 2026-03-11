@@ -89,8 +89,9 @@ Run /task-workflow on the task file at: <absolute-path>
 Read the file first to understand the scope, then execute the workflow.
 ```
 
-Spawn all remaining parties in parallel (multiple Bash calls in one turn).
-Each `party.sh` invocation is independent.
+Spawn parties **sequentially** (one Bash call at a time, not parallel).
+Concurrent tmux session creation causes pane layout corruption due to
+global tmux hooks. Wait for each spawn to complete before starting the next.
 
 ### Step 5 — Report
 
