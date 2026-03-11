@@ -632,7 +632,12 @@ _party_fzf_select() {
     "$@"
 }
 
-party_pick() {
+# Shared fzf session picker. Returns selected session ID.
+# Args: header_text [extra_fzf_args...]
+_party_pick_session() {
+  local header="${1:?Missing header}"
+  shift
+
   if ! command -v fzf &>/dev/null; then
     echo "Error: fzf is required for interactive picker. Install with: brew install fzf" >&2
     return 1
@@ -649,40 +654,27 @@ party_pick() {
   script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/party.sh"
 
   local selected
-  selected="$(_party_fzf_select "$entries" "enter:resume  ctrl-d:delete  esc:cancel" \
+  selected="$(_party_fzf_select "$entries" "$header" \
     --bind="ctrl-d:execute(echo {} | grep -qv 'current' && echo {} | awk '{print \$1}' | xargs -I{} bash \"$script_path\" --delete {} || true)+reload(bash \"$script_path\" --pick-entries)" \
-  )" || return 1
-
-  echo "$selected" | awk '{print $1}'
-}
-
-party_switch() {
-  if ! command -v fzf &>/dev/null; then
-    echo "Error: fzf is required for interactive picker. Install with: brew install fzf" >&2
-    return 1
-  fi
-
-  local entries
-  entries="$(party_pick_entries)"
-  if [[ -z "$entries" ]]; then
-    echo "No party sessions found."
-    [[ -t 0 ]] && read -r -s -n 1
-    return 1
-  fi
-
-  local script_path
-  script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/party.sh"
-
-  local selected
-  selected="$(_party_fzf_select "$entries" "enter:switch/resume  ctrl-d:delete  esc:cancel" \
-    --bind="ctrl-d:execute(echo {} | grep -qv 'current' && echo {} | awk '{print \$1}' | xargs -I{} bash \"$script_path\" --delete {} || true)+reload(bash \"$script_path\" --pick-entries)" \
+    "$@" \
   )" || return 1
 
   local target
   target="$(echo "$selected" | awk '{print $1}')"
 
   # Ignore separator line selection
-  [[ "$target" =~ ^party- ]] || return 0
+  [[ "$target" =~ ^party- ]] || return 1
+
+  echo "$target"
+}
+
+party_pick() {
+  _party_pick_session "enter:resume  ctrl-d:delete  esc:cancel"
+}
+
+party_switch() {
+  local target
+  target="$(_party_pick_session "enter:switch/resume  ctrl-d:delete  esc:cancel")" || return 1
 
   if tmux has-session -t "$target" 2>/dev/null; then
     party_attach "$target"
