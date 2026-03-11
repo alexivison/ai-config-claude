@@ -515,14 +515,69 @@ party_pick_entries() {
   current_session="$(tmux display-message -p '#{session_name}' 2>/dev/null || true)"
 
   if [[ -n "$live_sessions" ]]; then
+    # Separate sessions into masters, workers, and standalone
+    local -a masters=() workers=() standalone=()
+    local -A worker_parent=()
+
     while IFS= read -r name; do
+      local stype parent
+      stype="$(party_state_get_field "$name" "session_type" 2>/dev/null || true)"
+      parent="$(party_state_get_field "$name" "parent_session" 2>/dev/null || true)"
+      if [[ "$stype" == "master" ]]; then
+        masters+=("$name")
+      elif [[ -n "$parent" ]]; then
+        workers+=("$name")
+        worker_parent["$name"]="$parent"
+      else
+        standalone+=("$name")
+      fi
+    done <<< "$live_sessions"
+
+    # Print standalone sessions first
+    for name in "${standalone[@]}"; do
       local cwd title marker
       cwd="$(party_state_get_field "$name" "cwd" 2>/dev/null || true)"
       title="$(party_state_get_field "$name" "title" 2>/dev/null || true)"
       marker="active"
       [[ "$name" == "$current_session" ]] && marker="* current"
       printf '%s\t%s\t%s\t%s\n' "$name" "$marker" "${title:--}" "$(_party_short_path "${cwd:--}")"
-    done <<< "$live_sessions"
+    done
+
+    # Print masters with their workers indented beneath
+    for name in "${masters[@]}"; do
+      local cwd title marker worker_count
+      cwd="$(party_state_get_field "$name" "cwd" 2>/dev/null || true)"
+      title="$(party_state_get_field "$name" "title" 2>/dev/null || true)"
+      worker_count="$(party_state_get_workers "$name" 2>/dev/null | grep -c . || echo 0)"
+      marker="master ($worker_count)"
+      [[ "$name" == "$current_session" ]] && marker="* master ($worker_count)"
+      printf '%s\t%s\t%s\t%s\n' "$name" "$marker" "${title:--}" "$(_party_short_path "${cwd:--}")"
+
+      # Indented workers
+      for wname in "${workers[@]}"; do
+        [[ "${worker_parent[$wname]:-}" == "$name" ]] || continue
+        local wcwd wtitle wmarker
+        wcwd="$(party_state_get_field "$wname" "cwd" 2>/dev/null || true)"
+        wtitle="$(party_state_get_field "$wname" "title" 2>/dev/null || true)"
+        wmarker="  worker"
+        [[ "$wname" == "$current_session" ]] && wmarker="* worker"
+        printf '%s\t%s\t%s\t%s\n' "  $wname" "$wmarker" "${wtitle:--}" "$(_party_short_path "${wcwd:--}")"
+      done
+    done
+
+    # Orphan workers (master not running)
+    for wname in "${workers[@]}"; do
+      local parent="${worker_parent[$wname]:-}"
+      local found=0
+      for m in "${masters[@]}"; do [[ "$m" == "$parent" ]] && found=1; done
+      [[ $found -eq 0 ]] || continue
+      local wcwd wtitle wmarker
+      wcwd="$(party_state_get_field "$wname" "cwd" 2>/dev/null || true)"
+      wtitle="$(party_state_get_field "$wname" "title" 2>/dev/null || true)"
+      wmarker="worker (orphan)"
+      [[ "$wname" == "$current_session" ]] && wmarker="* worker (orphan)"
+      printf '%s\t%s\t%s\t%s\n' "$wname" "$wmarker" "${wtitle:--}" "$(_party_short_path "${wcwd:--}")"
+    done
   fi
 
   # Skip stale manifests in active-only mode
