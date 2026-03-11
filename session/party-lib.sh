@@ -399,45 +399,37 @@ party_role_pane_target() {
   local session="${1:?Usage: party_role_pane_target SESSION ROLE}"
   local role="${2:?Missing role}"
 
-  # Auto-discover the window this pane is in. TMUX_PANE gives the exact pane ID
-  # (e.g. %5), so -t ensures we get OUR window, not the client's active window.
-  # This matters when multiple windows have the same roles.
+  # Each session has a single party window (0). Use TMUX_PANE to resolve the
+  # exact window when called from inside a pane, fall back to window 0.
   local window
   if [[ -n "${TMUX_PANE:-}" ]]; then
     window="$(tmux display-message -t "$TMUX_PANE" -p '#{window_index}' 2>/dev/null || echo 0)"
   else
-    window="$(tmux display-message -p '#{window_index}' 2>/dev/null || echo 0)"
+    window=0
   fi
 
-  # Search current window first, then all windows in the session
-  local -a search_windows=("$window")
-  local all_windows
-  all_windows=$(tmux list-windows -t "$session" -F '#{window_index}' 2>/dev/null || true)
-  while IFS= read -r w; do
-    [[ -n "$w" && "$w" != "$window" ]] && search_windows+=("$w")
-  done <<< "$all_windows"
+  local pane_list
+  pane_list=$(tmux list-panes -t "$session:$window" -F '#{pane_index} #{@party_role}' 2>/dev/null) || {
+    echo "ROLE_NOT_FOUND: Cannot list panes for session '$session:$window'" >&2
+    return 1
+  }
 
-  for win in "${search_windows[@]}"; do
-    local pane_list
-    pane_list=$(tmux list-panes -t "$session:$win" -F '#{pane_index} #{@party_role}' 2>/dev/null) || continue
+  local -a found=()
+  local idx pane_role
+  while IFS=' ' read -r idx pane_role; do
+    [[ -n "$idx" ]] || continue
+    [[ "$pane_role" == "$role" ]] && found+=("$idx")
+  done <<< "$pane_list"
 
-    local -a found=()
-    local idx pane_role
-    while IFS=' ' read -r idx pane_role; do
-      [[ -n "$idx" ]] || continue
-      [[ "$pane_role" == "$role" ]] && found+=("$idx")
-    done <<< "$pane_list"
+  if [[ ${#found[@]} -gt 1 ]]; then
+    echo "ROLE_AMBIGUOUS: Multiple panes with @party_role='$role' in session '$session:$window'" >&2
+    return 1
+  fi
 
-    if [[ ${#found[@]} -gt 1 ]]; then
-      echo "ROLE_AMBIGUOUS: Multiple panes with @party_role='$role' in session '$session:$win'" >&2
-      return 1
-    fi
-
-    if [[ ${#found[@]} -eq 1 ]]; then
-      printf '%s:%s.%s\n' "$session" "$win" "${found[0]}"
-      return 0
-    fi
-  done
+  if [[ ${#found[@]} -eq 1 ]]; then
+    printf '%s:%s.%s\n' "$session" "$window" "${found[0]}"
+    return 0
+  fi
 
   echo "ROLE_NOT_FOUND: No pane with @party_role='$role' in session '$session'" >&2
   return 1
@@ -467,12 +459,7 @@ party_role_pane_target_with_fallback() {
   fi
 
   # Topology-guarded fallback: only for legacy 2-pane sessions without role metadata
-  local window
-  if [[ -n "${TMUX_PANE:-}" ]]; then
-    window="$(tmux display-message -t "$TMUX_PANE" -p '#{window_index}' 2>/dev/null || echo 0)"
-  else
-    window="$(tmux display-message -p '#{window_index}' 2>/dev/null || echo 0)"
-  fi
+  local window=0
 
   local pane_list
   pane_list=$(tmux list-panes -t "$session:$window" -F '#{pane_index} #{@party_role}' 2>/dev/null) || {

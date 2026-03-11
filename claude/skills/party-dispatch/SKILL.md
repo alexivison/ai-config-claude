@@ -60,23 +60,31 @@ First, discover the current tmux session name:
 tmux display-message -p '#{session_name}'
 ```
 
-Check if this is a **master session** (`session_type == "master"` in manifest).
+If this session is not already a master (`session_type != "master"`), promote it:
 
-**Master session mode**: Dispatch ALL items to workers (keep none for self). Use
-`--master-id` to register workers with the master:
+```bash
+# Auto-promote to master so workers register back to us
+~/Code/ai-config/session/party-lib.sh is sourced; use:
+party_state_set_field "<session-name>" "session_type" "master"
+```
+
+Or run via bash:
+```bash
+source ~/Code/ai-config/session/party-lib.sh && party_state_set_field "<session-name>" "session_type" "master"
+```
+
+**Master session mode**: Dispatch ALL items to workers (keep none for self).
+
+**Regular session (now promoted)**: Take the first item yourself (Step 3).
+
+Spawn each remaining item as a **detached worker session** registered with the master:
 
 ```bash
 ~/Code/ai-config/session/party.sh --detached --master-id <session-name> --prompt "<prompt>" "<title>"
 ```
 
-**Regular session mode**: Take the first item yourself (Step 3). Spawn remaining
-items as windows in the current session:
-
-```bash
-~/Code/ai-config/session/party.sh --add-window <session-name> --prompt "<prompt>" "<title>"
-```
-
-The `<title>` becomes the tmux window name (e.g., the ticket ID).
+The `<title>` becomes the worker session's window name (e.g., the ticket ID).
+Each worker is an independent tmux session with its own manifest, resumable via `--continue`.
 
 #### Prompt construction
 
@@ -113,8 +121,8 @@ Wait for each spawn to complete before starting the next.
 After spawning, report to the user:
 
 - Which item you are handling in this window
-- Which items were dispatched to worker windows (with window names)
-- How to switch between them: `Alt-1`, `Alt-2`, etc. (tmux window keys)
+- Which items were dispatched to worker sessions (with session names)
+- How to switch between them: `party.sh --switch` or `prefix + s` (tmux session picker)
 
 Then proceed with your own item's workflow — do not wait.
 

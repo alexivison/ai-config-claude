@@ -13,7 +13,7 @@ Usage:
   party.sh [--detached] [--prompt "text"] [--resume-claude ID] [--resume-codex ID] [TITLE]
   party.sh --master [--detached] [--prompt "text"] [TITLE]
   party.sh --master-id <master-id> [--detached] [--prompt "text"] [TITLE]
-  party.sh --add-window <session-id> [--prompt "text"] [TITLE]
+
   party.sh --switch
   party.sh --continue <party-id>
   party.sh continue <party-id>
@@ -256,64 +256,6 @@ party_start_master() {
   else
     party_attach "$session"
   fi
-}
-
-party_add_window() {
-  local parent_session="${1:?Usage: party_add_window PARENT_SESSION CWD CLAUDE_BIN CODEX_BIN AGENT_PATH PROMPT TITLE}"
-  local session_cwd="${2:?Missing session_cwd}"
-  local claude_bin="${3:?Missing claude_bin}"
-  local codex_bin="${4:?Missing codex_bin}"
-  local agent_path="${5:?Missing agent_path}"
-  local prompt="${6:-}"
-  local title="${7:-work}"
-
-  if ! tmux has-session -t "$parent_session" 2>/dev/null; then
-    echo "Error: parent session '$parent_session' not found." >&2
-    return 1
-  fi
-
-  tmux set-environment -t "$parent_session" -u CLAUDECODE 2>/dev/null || true
-
-  local q_agent_path q_claude_bin q_codex_bin
-  printf -v q_agent_path '%q' "$agent_path"
-  printf -v q_claude_bin '%q' "$claude_bin"
-  printf -v q_codex_bin '%q' "$codex_bin"
-
-  local claude_cmd codex_cmd
-  claude_cmd="export PATH=$q_agent_path; unset CLAUDECODE;"
-  claude_cmd="$claude_cmd exec $q_claude_bin --dangerously-skip-permissions"
-
-  if [[ -n "$prompt" ]]; then
-    local q_prompt
-    printf -v q_prompt '%q' "$prompt"
-    claude_cmd="$claude_cmd -- $q_prompt"
-  fi
-
-  codex_cmd="export PATH=$q_agent_path; exec $q_codex_bin --dangerously-bypass-approvals-and-sandbox"
-
-  # Create new window in parent session, capture its index
-  local win_idx
-  win_idx="$(tmux new-window -d -t "$parent_session" -n "$title" -c "$session_cwd" -P -F '#{window_index}')"
-  local base="$parent_session:$win_idx"
-
-  # Pane 0: Codex (The Wizard)
-  tmux respawn-pane -k -t "$base.0" -c "$session_cwd" "$codex_cmd"
-  tmux set-option -p -t "$base.0" @party_role codex
-
-  # Pane 1: Claude (The Paladin)
-  tmux split-window -h -t "$base.0" -c "$session_cwd" "$claude_cmd"
-  tmux set-option -p -t "$base.1" @party_role claude
-
-  # Pane 2: Shell (operator terminal)
-  tmux split-window -h -t "$base.1" -c "$session_cwd"
-  tmux set-option -p -t "$base.2" @party_role shell
-
-  tmux select-pane -t "$base.0" -T "The Wizard"
-  tmux select-pane -t "$base.1" -T "The Paladin"
-  tmux select-pane -t "$base.2" -T "Shell"
-  tmux select-pane -t "$base.1"
-
-  echo "Worker window '$title' added to $parent_session (window $win_idx)."
 }
 
 party_create_session() {
@@ -741,7 +683,6 @@ _party_resume_codex=""
 _party_title=""
 _party_detached=0
 _party_prompt=""
-_party_add_window=""
 _party_master=0
 _party_master_id=""
 
@@ -761,20 +702,14 @@ while [[ $# -gt 0 ]]; do
     --resume-codex)  _party_resume_codex="${2:?--resume-codex requires a session ID}"; shift 2 ;;
     --master) _party_master=1; shift ;;
     --master-id) _party_master_id="${2:?--master-id requires a session ID}"; shift 2 ;;
-    --add-window) _party_add_window="${2:?--add-window requires a session ID}"; shift 2 ;;
-    --parent) _party_add_window="${2:?--parent requires a session ID}"; shift 2 ;;
+
     --)      shift; break ;;
     --*)     party_usage >&2; exit 1 ;;
     *)       _party_title="$1"; shift ;;
   esac
 done
 
-if [[ -n "$_party_add_window" ]]; then
-  claude_bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo "$HOME/.local/bin/claude")}"
-  codex_bin="${CODEX_BIN:-$(command -v codex 2>/dev/null || echo "/opt/homebrew/bin/codex")}"
-  agent_path="$HOME/.local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
-  party_add_window "$_party_add_window" "$PWD" "$claude_bin" "$codex_bin" "$agent_path" "$_party_prompt" "$_party_title"
-elif [[ "$_party_master" -eq 1 ]]; then
+if [[ "$_party_master" -eq 1 ]]; then
   party_start_master "$_party_title" "$_party_resume_claude" "$_party_detached" "$_party_prompt"
 elif [[ -n "$_party_master_id" ]]; then
   party_start "$_party_title" "$_party_resume_claude" "$_party_resume_codex" "$_party_detached" "$_party_prompt" "$_party_master_id"
