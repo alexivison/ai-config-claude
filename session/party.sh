@@ -11,7 +11,9 @@ party_usage() {
   cat <<'EOF'
 Usage:
   party.sh [--detached] [--prompt "text"] [--resume-claude ID] [--resume-codex ID] [TITLE]
-  party.sh --parent <session-id> [--prompt "text"] [TITLE]
+  party.sh --master [--detached] [--prompt "text"] [TITLE]
+  party.sh --master-id <master-id> [--detached] [--prompt "text"] [TITLE]
+  party.sh --add-window <session-id> [--prompt "text"] [TITLE]
   party.sh --switch
   party.sh --continue <party-id>
   party.sh continue <party-id>
@@ -63,7 +65,7 @@ configure_party_theme() {
   # IDs appear after agents register (Claude on SessionStart, Codex on first message).
   tmux set-option -t "$session" pane-border-status top
   tmux set-option -t "$session" pane-border-format \
-    ' #{?#{==:#{@party_role},claude},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{CLAUDE_SESSION_ID}),},#{?#{==:#{@party_role},codex},The Wizard#{?#{CODEX_THREAD_ID}, (#{CODEX_THREAD_ID}),},#{?#{==:#{@party_role},shell},Shell,}}} '
+    ' #{?#{==:#{@party_role},claude},The Paladin#{?#{CLAUDE_SESSION_ID}, (#{CLAUDE_SESSION_ID}),},#{?#{==:#{@party_role},codex},The Wizard#{?#{CODEX_THREAD_ID}, (#{CODEX_THREAD_ID}),},#{?#{==:#{@party_role},shell},Shell,#{?#{==:#{@party_role},tracker},Tracker,}}}} '
 }
 
 party_set_cleanup_hook() {
@@ -138,6 +140,124 @@ party_launch_agents() {
   tmux select-pane -t "$session:0.1"
 }
 
+party_launch_master() {
+  local session="${1:?Usage: party_launch_master SESSION CWD CLAUDE_BIN AGENT_PATH [CLAUDE_RESUME_ID] [PROMPT]}"
+  local session_cwd="${2:?Missing session_cwd}"
+  local claude_bin="${3:?Missing claude_bin}"
+  local agent_path="${4:?Missing agent_path}"
+  local claude_resume_id="${5:-}"
+  local prompt="${6:-}"
+  local state_dir
+
+  state_dir="$(ensure_party_state_dir "$session")"
+
+  tmux set-environment -g -u CLAUDECODE 2>/dev/null || true
+  tmux set-environment -t "$session" -u CLAUDECODE 2>/dev/null || true
+
+  local q_agent_path q_claude_bin
+  printf -v q_agent_path '%q' "$agent_path"
+  printf -v q_claude_bin '%q' "$claude_bin"
+
+  local claude_cmd
+  claude_cmd="export PATH=$q_agent_path; unset CLAUDECODE;"
+  claude_cmd="$claude_cmd exec $q_claude_bin --dangerously-skip-permissions"
+  if [[ -n "$claude_resume_id" ]]; then
+    local q_claude_resume_id
+    printf -v q_claude_resume_id '%q' "$claude_resume_id"
+    claude_cmd="$claude_cmd --resume $q_claude_resume_id"
+    printf '%s\n' "$claude_resume_id" > "$state_dir/claude-session-id"
+    tmux set-environment -t "$session" CLAUDE_SESSION_ID "$claude_resume_id" 2>/dev/null || true
+  fi
+
+  if [[ -n "$prompt" ]]; then
+    local q_prompt
+    printf -v q_prompt '%q' "$prompt"
+    claude_cmd="$claude_cmd -- $q_prompt"
+  fi
+
+  # Resolve tracker binary: PATH first, then repo-local build
+  local tracker_bin
+  tracker_bin="$(command -v party-tracker 2>/dev/null || true)"
+  if [[ -z "$tracker_bin" ]]; then
+    local repo_tracker="$SCRIPT_DIR/../tools/party-tracker/party-tracker"
+    if [[ -x "$repo_tracker" ]]; then
+      tracker_bin="$repo_tracker"
+    else
+      echo "Warning: party-tracker binary not found. Run 'go build' in tools/party-tracker/." >&2
+      tracker_bin="echo 'party-tracker not installed'; read"
+    fi
+  fi
+
+  # Pane 0: Tracker (set PARTY_REPO_ROOT so tracker finds scripts post-install)
+  local repo_root
+  repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
+  tmux respawn-pane -k -t "$session:0.0" -c "$session_cwd" "PARTY_REPO_ROOT=$repo_root $tracker_bin $session"
+  tmux set-option -p -t "$session:0.0" @party_role tracker
+
+  # Pane 1: Claude (The Paladin — orchestrator)
+  tmux split-window -h -t "$session:0.0" -c "$session_cwd" "$claude_cmd"
+  tmux set-option -p -t "$session:0.1" @party_role claude
+
+  # Pane 2: Shell (operator terminal)
+  tmux split-window -h -t "$session:0.1" -c "$session_cwd"
+  tmux set-option -p -t "$session:0.2" @party_role shell
+
+  tmux select-pane -t "$session:0.0" -T "Tracker"
+  tmux select-pane -t "$session:0.1" -T "The Paladin"
+  tmux select-pane -t "$session:0.2" -T "Shell"
+  configure_party_theme "$session"
+  party_set_cleanup_hook "$session"
+  tmux select-pane -t "$session:0.1"
+}
+
+party_start_master() {
+  local title="${1:-}"
+  local resume_claude="${2:-}"
+  local detached="${3:-0}"
+  local prompt="${4:-}"
+  local session="party-$(date +%s)"
+  local state_dir
+  local session_cwd="$PWD"
+  local window_name
+  local claude_bin agent_path
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq is required for master party mode." >&2
+    return 1
+  fi
+
+  while tmux has-session -t "$session" 2>/dev/null; do
+    session="party-$(date +%s)-$RANDOM"
+  done
+
+  window_name="$(party_window_name "$title")"
+  claude_bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo "$HOME/.local/bin/claude")}"
+  agent_path="$HOME/.local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
+
+  party_prune_manifests
+  state_dir="$(ensure_party_state_dir "$session")"
+  # Master manifest uses codex_bin="" since there's no Codex pane
+  party_state_upsert_manifest "$session" "$title" "$session_cwd" "$window_name" "$claude_bin" "" "$agent_path" || true
+  party_state_set_field "$session" "session_type" "master" || true
+  party_state_set_field "$session" "last_started_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+
+  party_create_session "$session" "$window_name" "$session_cwd"
+  party_launch_master "$session" "$session_cwd" "$claude_bin" "$agent_path" "$resume_claude" "$prompt"
+
+  if [[ -n "$prompt" ]]; then
+    party_state_set_field "$session" "initial_prompt" "$prompt" || true
+  fi
+
+  echo "Master session '$session' started."
+  echo "State dir: $state_dir"
+  echo "Manifest: $(party_state_file "$session")"
+  if [[ "$detached" -eq 1 ]]; then
+    echo "Master session '$session' launched detached."
+  else
+    party_attach "$session"
+  fi
+}
+
 party_add_window() {
   local parent_session="${1:?Usage: party_add_window PARENT_SESSION CWD CLAUDE_BIN CODEX_BIN AGENT_PATH PROMPT TITLE}"
   local session_cwd="${2:?Missing session_cwd}"
@@ -210,6 +330,7 @@ party_start() {
   local resume_codex="${3:-}"
   local detached="${4:-0}"
   local prompt="${5:-}"
+  local master_id="${6:-}"
   local session="party-$(date +%s)"
   local state_dir
   local session_cwd="$PWD"
@@ -229,6 +350,13 @@ party_start() {
   state_dir="$(ensure_party_state_dir "$session")"
   party_state_upsert_manifest "$session" "$title" "$session_cwd" "$window_name" "$claude_bin" "$codex_bin" "$agent_path" || true
   party_state_set_field "$session" "last_started_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+
+  # Register as child of master if --master-id was provided
+  if [[ -n "$master_id" ]]; then
+    party_state_set_field "$session" "parent_session" "$master_id" || true
+    party_state_add_worker "$master_id" "$session" 2>/dev/null || true
+  fi
+
   party_create_session "$session" "$window_name" "$session_cwd"
   party_launch_agents "$session" "$session_cwd" "$claude_bin" "$codex_bin" "$agent_path" "$resume_claude" "$resume_codex" "$prompt"
 
@@ -296,21 +424,51 @@ party_continue() {
 
   ensure_party_state_dir "$session" >/dev/null
   party_create_session "$session" "$window_name" "$session_cwd"
-  party_launch_agents "$session" "$session_cwd" "$claude_bin" "$codex_bin" "$agent_path" "$claude_resume_id" "$codex_resume_id"
+
+  # Branch: master vs regular session
+  local session_type
+  session_type="$(party_state_get_field "$session" "session_type" 2>/dev/null || true)"
+
+  if [[ "$session_type" == "master" ]]; then
+    party_launch_master "$session" "$session_cwd" "$claude_bin" "$agent_path" "$claude_resume_id"
+  else
+    party_launch_agents "$session" "$session_cwd" "$claude_bin" "$codex_bin" "$agent_path" "$claude_resume_id" "$codex_resume_id"
+  fi
 
   party_state_upsert_manifest "$session" "$title" "$session_cwd" "$window_name" "$claude_bin" "$codex_bin" "$agent_path" || true
   party_state_set_field "$session" "last_resumed_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
 
+  # Re-register with parent master if this is a child worker
+  local parent_session
+  parent_session="$(party_state_get_field "$session" "parent_session" 2>/dev/null || true)"
+  if [[ -n "$parent_session" ]]; then
+    party_state_add_worker "$parent_session" "$session" 2>/dev/null || true
+  fi
+
   echo "Party session '$session' resumed."
   echo "State dir: $(party_runtime_dir "$session")"
   echo "Manifest: $manifest"
-  if [[ -z "$claude_resume_id" ]]; then
-    echo "Note: Claude session id missing in manifest; launched fresh Claude session."
-  fi
-  if [[ -z "$codex_resume_id" ]]; then
-    echo "Note: Codex session id missing in manifest; launched fresh Codex session."
+  if [[ "$session_type" == "master" ]]; then
+    echo "Master session resumed (no Codex pane)."
+  else
+    if [[ -z "$claude_resume_id" ]]; then
+      echo "Note: Claude session id missing in manifest; launched fresh Claude session."
+    fi
+    if [[ -z "$codex_resume_id" ]]; then
+      echo "Note: Codex session id missing in manifest; launched fresh Codex session."
+    fi
   fi
   party_attach "$session"
+}
+
+# Deregister a session from its parent master (if any).
+_party_deregister_from_parent() {
+  local session="$1"
+  local parent
+  parent="$(party_state_get_field "$session" "parent_session" 2>/dev/null || true)"
+  if [[ -n "$parent" ]]; then
+    party_state_remove_worker "$parent" "$session" 2>/dev/null || true
+  fi
 }
 
 party_delete() {
@@ -319,6 +477,7 @@ party_delete() {
     echo "Error: invalid session name '$session' (must start with party-)" >&2
     return 1
   fi
+  _party_deregister_from_parent "$session"
   tmux kill-session -t "$session" 2>/dev/null || true
   rm -rf "/tmp/$session"
   rm -f "$(party_state_file "$session")"
@@ -481,6 +640,7 @@ party_stop() {
       echo "Error: invalid session name '$target' (must start with party-)" >&2
       return 1
     fi
+    _party_deregister_from_parent "$target"
     tmux kill-session -t "$target" 2>/dev/null || true
     rm -rf "/tmp/$target"
     echo "Party session '$target' stopped."
@@ -497,6 +657,7 @@ party_stop() {
   fi
 
   while IFS= read -r name; do
+    _party_deregister_from_parent "$name"
     tmux kill-session -t "$name" 2>/dev/null || true
     rm -rf "/tmp/$name"
     echo "Stopped: $name"
@@ -580,7 +741,9 @@ _party_resume_codex=""
 _party_title=""
 _party_detached=0
 _party_prompt=""
-_party_parent=""
+_party_add_window=""
+_party_master=0
+_party_master_id=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -596,17 +759,24 @@ while [[ $# -gt 0 ]]; do
     --prompt) _party_prompt="${2:?--prompt requires a message}"; shift 2 ;;
     --resume-claude) _party_resume_claude="${2:?--resume-claude requires a session ID}"; shift 2 ;;
     --resume-codex)  _party_resume_codex="${2:?--resume-codex requires a session ID}"; shift 2 ;;
-    --parent) _party_parent="${2:?--parent requires a session ID}"; shift 2 ;;
+    --master) _party_master=1; shift ;;
+    --master-id) _party_master_id="${2:?--master-id requires a session ID}"; shift 2 ;;
+    --add-window) _party_add_window="${2:?--add-window requires a session ID}"; shift 2 ;;
+    --parent) _party_add_window="${2:?--parent requires a session ID}"; shift 2 ;;
     --*)     party_usage >&2; exit 1 ;;
     *)       _party_title="$1"; shift ;;
   esac
 done
 
-if [[ -n "$_party_parent" ]]; then
+if [[ -n "$_party_add_window" ]]; then
   claude_bin="${CLAUDE_BIN:-$(command -v claude 2>/dev/null || echo "$HOME/.local/bin/claude")}"
   codex_bin="${CODEX_BIN:-$(command -v codex 2>/dev/null || echo "/opt/homebrew/bin/codex")}"
   agent_path="$HOME/.local/bin:/opt/homebrew/bin:${PATH:-/usr/bin:/bin}"
-  party_add_window "$_party_parent" "$PWD" "$claude_bin" "$codex_bin" "$agent_path" "$_party_prompt" "$_party_title"
+  party_add_window "$_party_add_window" "$PWD" "$claude_bin" "$codex_bin" "$agent_path" "$_party_prompt" "$_party_title"
+elif [[ "$_party_master" -eq 1 ]]; then
+  party_start_master "$_party_title" "$_party_resume_claude" "$_party_detached" "$_party_prompt"
+elif [[ -n "$_party_master_id" ]]; then
+  party_start "$_party_title" "$_party_resume_claude" "$_party_resume_codex" "$_party_detached" "$_party_prompt" "$_party_master_id"
 else
   party_start "$_party_title" "$_party_resume_claude" "$_party_resume_codex" "$_party_detached" "$_party_prompt"
 fi

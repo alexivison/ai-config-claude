@@ -52,7 +52,7 @@ context as arguments. For example:
 - `/bugfix-workflow` with the Linear ticket context pasted
 - `/task-workflow` with the file path
 
-### Step 4 — Spawn worker windows for remaining items
+### Step 4 — Spawn workers for remaining items
 
 First, discover the current tmux session name:
 
@@ -60,11 +60,20 @@ First, discover the current tmux session name:
 tmux display-message -p '#{session_name}'
 ```
 
-For each remaining item, construct a prompt and spawn a worker window in the
-current session:
+Check if this is a **master session** (`session_type == "master"` in manifest).
+
+**Master session mode**: Dispatch ALL items to workers (keep none for self). Use
+`--master-id` to register workers with the master:
 
 ```bash
-~/Code/ai-config/session/party.sh --parent <session-name> --prompt "<prompt>" "<title>"
+~/Code/ai-config/session/party.sh --detached --master-id <session-name> --prompt "<prompt>" "<title>"
+```
+
+**Regular session mode**: Take the first item yourself (Step 3). Spawn remaining
+items as windows in the current session:
+
+```bash
+~/Code/ai-config/session/party.sh --add-window <session-name> --prompt "<prompt>" "<title>"
 ```
 
 The `<title>` becomes the tmux window name (e.g., the ticket ID).

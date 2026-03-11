@@ -12,6 +12,11 @@ source "$SCRIPT_DIR/../../../../session/party-lib.sh"
 # only emit sentinel strings and work without a party session.
 _require_session() {
   discover_session
+  # Master sessions have no Codex pane — guard early
+  if party_is_master "$SESSION_NAME" 2>/dev/null; then
+    echo "CODEX_NOT_AVAILABLE: Master sessions have no Codex pane. Route review work through a worker session." >&2
+    exit 1
+  fi
   CODEX_PANE=$(party_role_pane_target_with_fallback "$SESSION_NAME" "codex") || {
     echo "Error: Cannot resolve Codex pane in session '$SESSION_NAME'" >&2
     exit 1

@@ -45,7 +45,7 @@ party_state_upsert_manifest() {
   local cwd="${3:?Missing cwd}"
   local window_name="${4:?Missing window_name}"
   local claude_bin="${5:?Missing claude_bin}"
-  local codex_bin="${6:?Missing codex_bin}"
+  local codex_bin="${6:-}"
   local agent_path="${7:?Missing agent_path}"
 
   command -v jq >/dev/null 2>&1 || return 0
@@ -173,6 +173,104 @@ party_state_get_field() {
   command -v jq >/dev/null 2>&1 || return 1
 
   jq -r --arg key "$key" '.[$key] // empty' "$file" 2>/dev/null
+}
+
+# ---------------------------------------------------------------------------
+# Master mode helpers
+# ---------------------------------------------------------------------------
+
+# Returns 0 if the session is a master session (session_type == "master").
+party_is_master() {
+  local session="${1:?Usage: party_is_master SESSION}"
+  local st
+  st="$(party_state_get_field "$session" "session_type" 2>/dev/null || true)"
+  [[ "$st" == "master" ]]
+}
+
+# Portable lock/unlock using atomic mkdir (works on both macOS and Linux).
+# _party_lock: acquire a lock (blocks until acquired or timeout)
+# Returns 0 on success, 1 on timeout.
+_party_lock() {
+  local lockdir="$1"
+  local max_attempts=100  # 100 × 0.1s = 10s timeout
+  local attempts=0
+
+  while ! mkdir "$lockdir" 2>/dev/null; do
+    if [[ $attempts -ge $max_attempts ]]; then
+      return 1
+    fi
+    sleep 0.1
+    attempts=$((attempts + 1))
+  done
+  return 0
+}
+
+# _party_unlock: release a lock
+_party_unlock() {
+  local lockdir="$1"
+  rmdir "$lockdir" 2>/dev/null || true
+}
+
+# Add a worker to a master's workers array. Deduplicates. Uses portable lock for concurrency.
+party_state_add_worker() {
+  local master="${1:?Usage: party_state_add_worker MASTER WORKER}"
+  local worker="${2:?Missing worker}"
+  local file lockdir tmp
+
+  file="$(party_state_file "$master")"
+  [[ -f "$file" ]] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  lockdir="${file}.lock"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/party-state.XXXXXX")"
+
+  _party_lock "$lockdir" || {
+    rm -f "$tmp"
+    return 1
+  }
+
+  jq --arg w "$worker" '.workers = ((.workers // []) + [$w] | unique)' "$file" > "$tmp" && mv "$tmp" "$file"
+  local rc=$?
+
+  _party_unlock "$lockdir"
+  return $rc
+}
+
+# Remove a worker from a master's workers array. Uses portable lock for concurrency.
+party_state_remove_worker() {
+  local master="${1:?Usage: party_state_remove_worker MASTER WORKER}"
+  local worker="${2:?Missing worker}"
+  local file lockdir tmp
+
+  file="$(party_state_file "$master")"
+  [[ -f "$file" ]] || return 0
+  command -v jq >/dev/null 2>&1 || return 0
+
+  lockdir="${file}.lock"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/party-state.XXXXXX")"
+
+  _party_lock "$lockdir" || {
+    rm -f "$tmp"
+    return 1
+  }
+
+  jq --arg w "$worker" '.workers = ((.workers // []) - [$w])' "$file" > "$tmp" && mv "$tmp" "$file"
+  local rc=$?
+
+  _party_unlock "$lockdir"
+  return $rc
+}
+
+# Print worker IDs from a master's manifest, one per line.
+party_state_get_workers() {
+  local master="${1:?Usage: party_state_get_workers MASTER}"
+  local file
+
+  file="$(party_state_file "$master")"
+  [[ -f "$file" ]] || return 0
+  command -v jq >/dev/null 2>&1 || return 0
+
+  jq -r '.workers // [] | .[]' "$file" 2>/dev/null
 }
 
 # Discovers the party session this script is running inside.

@@ -19,8 +19,14 @@ if [[ ! -f "$f" ]]; then
 fi
 
 # Session info
+session_type="$(jq -r '.session_type // empty' "$f" 2>/dev/null || true)"
 if tmux has-session -t "$sid" 2>/dev/null; then
-  echo "${green}active${reset}"
+  if [[ "$session_type" == "master" ]]; then
+    worker_count="$(jq -r '.workers // [] | length' "$f" 2>/dev/null || echo 0)"
+    echo "${blue}master${reset} ${dim}($worker_count workers)${reset}"
+  else
+    echo "${green}active${reset}"
+  fi
 else
   echo "${dim}resumable${reset}"
 fi

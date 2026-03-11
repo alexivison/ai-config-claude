@@ -73,6 +73,16 @@ Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 - You decide verdicts. Codex produces findings, you triage.
 - After dispatching: keep working. Do NOT poll. Codex notifies via `[CODEX]` when done.
 
+## Master Session Mode
+
+When running in a master session (`session_type == "master"` in manifest):
+- You are an **orchestrator**, not an implementor. Do not write code directly.
+- There is **no Codex pane** — `tmux-codex.sh` will return `CODEX_NOT_AVAILABLE`.
+- Skip codex review/plan-review/prompt steps entirely.
+- Route all implementation work through workers via `party-relay.sh` or the tracker.
+- Use `/party-dispatch` to spawn and assign work to worker sessions.
+- Monitor workers via the tracker pane (left pane).
+
 ## Verification Principle
 
 Evidence before claims. No assertions without proof. Code edits invalidate prior results.
