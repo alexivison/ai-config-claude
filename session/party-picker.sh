@@ -63,7 +63,7 @@ party_pick_entries() {
       title="$(party_state_get_field "$name" "title" 2>/dev/null || true)"
       worker_count="$(party_state_get_workers "$name" 2>/dev/null | grep -c . || echo 0)"
       marker="master ($worker_count)"
-      [[ "$name" == "$current_session" ]] && marker="* master ($worker_count)"
+      [[ "$name" == "$current_session" ]] && marker="* current master ($worker_count)"
       printf '%s\t%s\t%s\t%s\n' "$name" "$marker" "${title:--}" "$(_party_short_path "${cwd:--}")"
 
       # Indented workers
@@ -73,7 +73,7 @@ party_pick_entries() {
         wcwd="$(party_state_get_field "$wname" "cwd" 2>/dev/null || true)"
         wtitle="$(party_state_get_field "$wname" "title" 2>/dev/null || true)"
         wmarker="  worker"
-        [[ "$wname" == "$current_session" ]] && wmarker="* worker"
+        [[ "$wname" == "$current_session" ]] && wmarker="* current worker"
         printf '%s\t%s\t%s\t%s\n' "  $wname" "$wmarker" "${wtitle:--}" "$(_party_short_path "${wcwd:--}")"
       done
     done
@@ -88,7 +88,7 @@ party_pick_entries() {
       wcwd="$(party_state_get_field "$wname" "cwd" 2>/dev/null || true)"
       wtitle="$(party_state_get_field "$wname" "title" 2>/dev/null || true)"
       wmarker="worker (orphan)"
-      [[ "$wname" == "$current_session" ]] && wmarker="* worker (orphan)"
+      [[ "$wname" == "$current_session" ]] && wmarker="* current worker (orphan)"
       printf '%s\t%s\t%s\t%s\n' "$wname" "$wmarker" "${wtitle:--}" "$(_party_short_path "${wcwd:--}")"
     done
   fi

@@ -60,22 +60,17 @@ First, discover the current tmux session name:
 tmux display-message -p '#{session_name}'
 ```
 
-If this session is not already a master (`session_type != "master"`), promote it:
+Check if this is a **master session** (`session_type == "master"` in manifest).
+
+**If not a master**, promote it first so workers register back:
 
 ```bash
-# Auto-promote to master so workers register back to us
-~/Code/ai-config/session/party-lib.sh is sourced; use:
-party_state_set_field "<session-name>" "session_type" "master"
+~/Code/ai-config/session/party.sh --promote <session-name>
 ```
 
-Or run via bash:
-```bash
-source ~/Code/ai-config/session/party-lib.sh && party_state_set_field "<session-name>" "session_type" "master"
-```
+This replaces the Codex pane with the tracker and sets `session_type=master`.
 
 **Master session mode**: Dispatch ALL items to workers (keep none for self).
-
-**Regular session (now promoted)**: Take the first item yourself (Step 3).
 
 Spawn each remaining item as a **detached worker session** registered with the master:
 
