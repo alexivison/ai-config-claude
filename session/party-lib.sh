@@ -70,7 +70,7 @@ party_state_upsert_manifest() {
   local cwd="${3:?Missing cwd}"
   local window_name="${4:?Missing window_name}"
   local claude_bin="${5:?Missing claude_bin}"
-  local codex_bin="${6:?Missing codex_bin}"
+  local codex_bin="${6:-}"
   local agent_path="${7:?Missing agent_path}"
 
   command -v jq >/dev/null 2>&1 || return 0

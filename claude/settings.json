@@ -37,6 +37,7 @@
       "Bash(xargs:*)",
       "Bash(xxd:*)",
       "Bash(~/Code/ai-config/session/party.sh:*)",
+      "Bash(~/Code/ai-config/session/party-relay.sh:*)",
       "Bash(~/.claude/skills/codex-transport/scripts/tmux-codex.sh:*)",
       "WebFetch(domain:*)",
       "WebSearch",

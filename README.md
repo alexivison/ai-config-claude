@@ -23,10 +23,18 @@ ai-config/
 ├── claude/          # Claude Code configuration
 ├── codex/           # OpenAI Codex CLI configuration
 ├── shared/          # Skills shared by both platforms
-├── session/         # tmux party session launcher
+├── session/         # Party session launcher and helpers
+│   ├── party.sh           # CLI entrypoint and core lifecycle
+│   ├── party-lib.sh       # State helpers, locking, routing
+│   ├── party-master.sh    # Master session launch and promote
+│   ├── party-picker.sh    # fzf picker with hierarchical display
+│   ├── party-relay.sh     # Worker message relay CLI
+│   └── party-preview.sh   # fzf preview pane
+├── tools/
+│   └── party-tracker/     # Bubble Tea TUI for master sessions (Go)
 ├── tmux/            # tmux configuration
 ├── tests/           # Test suite
-├── install.sh       # Install CLIs and create symlinks
+├── install.sh       # Install CLIs, create symlinks, build tracker
 ├── uninstall.sh     # Remove symlinks
 └── README.md
 ```
@@ -57,8 +65,10 @@ The installer will:
 | Claude | `curl -fsSL https://cli.anthropic.com/install.sh \| sh` |
 | Codex | `brew install --cask codex` |
 | tmux | `brew install tmux` |
+| fzf | `brew install fzf` |
+| Go | `brew install go` *(optional — for building party-tracker)* |
 
-> **Note:** tmux is required for the party session (`session/party.sh`). The installer does not install tmux automatically.
+> **Note:** tmux and fzf are required for party sessions. Go is only needed to build the tracker TUI for master sessions.
 
 ## Uninstallation
 
@@ -74,10 +84,12 @@ Removes symlinks but keeps the repository.
 Launch a party session to run Claude and Codex side by side in a three-pane tmux layout:
 
 ```bash
-./session/party.sh
+./session/party.sh "my task"
 ```
 
-Default pane layout:
+### Standard Session
+
+Each party is a standalone tmux session with three panes:
 
 | Pane | Role | Agent |
 |------|------|-------|
@@ -85,19 +97,70 @@ Default pane layout:
 | 1 | `claude` | The Paladin (Claude Code) |
 | 2 | `shell` | Operator terminal |
 
-Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) route messages by `@party_role` metadata rather than fixed pane indices, so the layout remains correct even if panes are reordered. Legacy two-pane sessions without role metadata fall back to the original index-based routing.
+### Master Session
+
+A master session replaces the Codex pane with an interactive tracker TUI. The master Claude acts as an orchestrator, dispatching work to worker sessions instead of implementing directly.
+
+```bash
+./session/party.sh --master "Project Alpha"
+```
+
+| Pane | Role | Agent |
+|------|------|-------|
+| 0 | `tracker` | Party Tracker (Bubble Tea TUI) |
+| 1 | `claude` | The Paladin (orchestrator) |
+| 2 | `shell` | Operator terminal |
+
+Workers are separate sessions registered under the master:
+
+```bash
+./session/party.sh --detached --master-id <master-id> "ENG-456 fix auth"
+```
+
+The tracker shows live status of all workers with vim-style navigation. Press `Enter` to jump to a worker, `r` to relay a message, `b` to broadcast, `s` to spawn, `x` to stop.
+
+Any standalone session can be promoted to master mid-flight:
+
+```bash
+./session/party.sh --promote
+```
+
+### Flags
 
 | Flag | Description |
 |------|-------------|
 | *(none)* | Start a new party session |
+| `--master` | Start a master session (tracker + orchestrator) |
+| `--master-id <id>` | Start a worker session registered under a master |
+| `--promote [party-id]` | Promote a standalone session to master |
+| `--switch` | Interactive session switcher |
 | `--continue [party-id]` | Resume a session; opens interactive fzf picker if no ID given |
 | `--list` | List active and resumable party sessions |
 | `--stop [name]` | Stop one or all party sessions |
+| `--detached` | Launch without attaching |
+| `--prompt "text"` | Send an initial prompt to Claude |
 | `--install-tpm` | Install tmux Plugin Manager |
+
+### Session Picker
+
+The interactive picker (requires [fzf](https://github.com/junegunn/fzf)) groups sessions hierarchically:
+
+```
+party-1741230000  active       solo task          ~/Code/project-a
+party-1741234567  master (2)   Project Alpha      ~/Code/project-b
+  party-1741234568  worker     ENG-456 fix auth   ~/Code/project-b
+  party-1741234569  worker     ENG-789 dark mode  ~/Code/project-b
+── resumable ──────────────────────────────
+party-1741200000  03/10        old-task           ~/Code/project-c
+```
+
+Supports **Enter** to switch/resume, **Ctrl-D** to delete, and **Esc** to cancel.
+
+### State
 
 Party metadata is persisted under `~/.party-state/<party-id>.json`. Runtime handoff files in `/tmp/<party-id>/` are rebuilt on demand. Manifests older than 7 days are auto-pruned on start (configurable via `PARTY_PRUNE_DAYS`).
 
-The interactive picker (requires [fzf](https://github.com/junegunn/fzf)) supports **Enter** to resume, **Ctrl-D** to delete, and **Esc** to cancel.
+Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) route messages by `@party_role` metadata and scan all windows in a session, so routing works regardless of pane layout.
 
 ## Documentation
 

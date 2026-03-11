@@ -253,6 +253,22 @@ setup_codex
 setup_tmux
 setup_fzf
 
+# Build party-tracker (optional — requires Go)
+if command -v go &>/dev/null; then
+    echo ""
+    echo "── party-tracker (Go TUI) ──"
+    tracker_dir="$SCRIPT_DIR/tools/party-tracker"
+    if [[ -f "$tracker_dir/go.mod" ]]; then
+        echo "Building party-tracker..."
+        (cd "$tracker_dir" && go build -buildvcs=false -o "$HOME/.local/bin/party-tracker" .) && \
+            echo "✓  party-tracker installed to ~/.local/bin/party-tracker" || \
+            echo "⚠  party-tracker build failed (master party mode will be unavailable)"
+    fi
+else
+    echo ""
+    echo "⏭  Go not found — skipping party-tracker build (master party mode will be unavailable)"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━"
 echo "Installation complete!"

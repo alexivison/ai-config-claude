@@ -52,7 +52,7 @@ context as arguments. For example:
 - `/bugfix-workflow` with the Linear ticket context pasted
 - `/task-workflow` with the file path
 
-### Step 4 — Spawn worker windows for remaining items
+### Step 4 — Spawn workers for remaining items
 
 First, discover the current tmux session name:
 
@@ -60,14 +60,26 @@ First, discover the current tmux session name:
 tmux display-message -p '#{session_name}'
 ```
 
-For each remaining item, construct a prompt and spawn a worker window in the
-current session:
+Check if this is a **master session** (`session_type == "master"` in manifest).
+
+**If not a master**, promote it first so workers register back:
 
 ```bash
-~/Code/ai-config/session/party.sh --parent <session-name> --prompt "<prompt>" "<title>"
+~/Code/ai-config/session/party.sh --promote <session-name>
 ```
 
-The `<title>` becomes the tmux window name (e.g., the ticket ID).
+This replaces the Codex pane with the tracker and sets `session_type=master`.
+
+**Master session mode**: Dispatch ALL items to workers (keep none for self).
+
+Spawn each remaining item as a **detached worker session** registered with the master:
+
+```bash
+~/Code/ai-config/session/party.sh --detached --master-id <session-name> --prompt "<prompt>" "<title>"
+```
+
+The `<title>` becomes the worker session's window name (e.g., the ticket ID).
+Each worker is an independent tmux session with its own manifest, resumable via `--continue`.
 
 #### Prompt construction
 
@@ -104,8 +116,8 @@ Wait for each spawn to complete before starting the next.
 After spawning, report to the user:
 
 - Which item you are handling in this window
-- Which items were dispatched to worker windows (with window names)
-- How to switch between them: `Alt-1`, `Alt-2`, etc. (tmux window keys)
+- Which items were dispatched to worker sessions (with session names)
+- How to switch between them: `party.sh --switch` or `prefix + s` (tmux session picker)
 
 Then proceed with your own item's workflow — do not wait.
 
