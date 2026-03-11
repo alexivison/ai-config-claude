@@ -1,3 +1,6 @@
 # Other
 .DS_Store
 tmux-capture-*.txt
+
+# Go build artifacts
+tools/party-tracker/party-tracker
