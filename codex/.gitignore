@@ -2,6 +2,7 @@
 auth.json
 
 # Local state
+config.toml
 history.jsonl*
 log/
 sessions/
