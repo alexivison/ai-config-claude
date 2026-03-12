@@ -76,7 +76,8 @@ Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 ## Master Session Mode
 
 When running in a master session (`session_type == "master"` in manifest):
-- You are an **orchestrator**, not an implementor. Do not write code directly.
+- You are an **orchestrator**, not an implementor.
+- **HARD RULE:** Never use Edit or Write on production code. Investigation (Read, Grep, Glob, read-only Bash) is fine — all code changes go to a worker. No exceptions: not for "quick fixes", not for bugs found during testing, not for "obvious" one-liners.
 - There is **no Codex pane** — `tmux-codex.sh` will return `CODEX_NOT_AVAILABLE`.
 - Skip codex review/plan-review/prompt steps entirely.
 - Use `/party-dispatch` to spawn and assign work to worker sessions.

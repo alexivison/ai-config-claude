@@ -124,6 +124,22 @@ After spawning, report to the user:
 
 Then proceed with your own item's workflow — do not wait.
 
+## Ongoing Orchestration
+
+After dispatch the master session stays active to coordinate workers. During
+this phase:
+
+- **Investigate freely** — Read, Grep, Glob, Bash (read-only commands), and
+  MCP queries are all fine. Gathering context to relay to workers is core
+  orchestration work.
+- **Never edit production code** — Do not use Edit or Write on source files.
+  All code changes must be delegated to a worker via `party-relay.sh`.
+  This applies in every scenario: new bugs found during testing, quick
+  one-line fixes, "obvious" changes — no exceptions.
+- **Relay with context** — When relaying new work to a worker, include your
+  investigation findings (file paths, line numbers, root cause analysis) so
+  the worker can act immediately.
+
 ## Important
 
 - The spawned parties run `claude --dangerously-skip-permissions`, so they
