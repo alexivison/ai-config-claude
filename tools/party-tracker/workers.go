@@ -45,6 +45,23 @@ func readManifest(sessionID string) (manifest, error) {
 	return m, err
 }
 
+// readManifestPretty returns the manifest JSON pretty-printed for display.
+func readManifestPretty(sessionID string) (string, error) {
+	data, err := os.ReadFile(manifestPath(sessionID))
+	if err != nil {
+		return "", err
+	}
+	var raw json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return string(data), nil // return raw if not valid JSON
+	}
+	pretty, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		return string(data), nil
+	}
+	return string(pretty), nil
+}
+
 // fetchWorkers reads the master manifest and returns worker status.
 func fetchWorkers(masterID string) []Worker {
 	m, err := readManifest(masterID)

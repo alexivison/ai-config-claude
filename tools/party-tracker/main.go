@@ -36,20 +36,24 @@ const (
 	modeRelay
 	modeBroadcast
 	modeSpawn
+	modeManifest
 )
 
 type tickMsg time.Time
 type refreshMsg struct{}
 
 type model struct {
-	masterID string
-	workers  []Worker
-	cursor   int
-	mode     mode
-	input    textinput.Model
-	width    int
-	height   int
-	err      error
+	masterID     string
+	workers      []Worker
+	cursor       int
+	mode         mode
+	input        textinput.Model
+	width        int
+	height       int
+	err          error
+	manifestJSON string // pretty-printed manifest for inspect mode
+	manifestID   string // session ID being inspected
+	manifestScrl int    // scroll offset for manifest view
 }
 
 func initialModel(masterID string) model {
@@ -93,6 +97,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		if m.mode == modeManifest {
+			return m.updateManifest(msg)
+		}
 		if m.mode != modeNormal {
 			return m.updateInput(msg)
 		}
@@ -166,6 +173,25 @@ func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.cursor = max(0, len(m.workers)-1)
 			}
 		}
+
+	case "m":
+		if len(m.workers) > 0 {
+			id := m.workers[m.cursor].ID
+			if j, err := readManifestPretty(id); err == nil {
+				m.mode = modeManifest
+				m.manifestJSON = j
+				m.manifestID = id
+				m.manifestScrl = 0
+			}
+		}
+
+	case "M":
+		if j, err := readManifestPretty(m.masterID); err == nil {
+			m.mode = modeManifest
+			m.manifestJSON = j
+			m.manifestID = m.masterID
+			m.manifestScrl = 0
+		}
 	}
 
 	return m, nil
@@ -224,6 +250,10 @@ func (m model) innerWidth() int {
 }
 
 func (m model) View() string {
+	if m.mode == modeManifest {
+		return m.viewManifest()
+	}
+
 	var b strings.Builder
 	inner := m.innerWidth()
 	compact := m.width < 50
@@ -320,10 +350,68 @@ func (m model) View() string {
 		b.WriteString(fmt.Sprintf(" %s> %s\n", label, m.input.View()))
 		b.WriteString(footerStyle.Render(" ⏎:send esc:cancel") + "\n")
 	} else if compact {
-		b.WriteString(footerStyle.Render(" j/k ⏎ r b s x d q") + "\n")
+		b.WriteString(footerStyle.Render(" j/k ⏎ r b s m M x d q") + "\n")
 	} else {
-		b.WriteString(footerStyle.Render("  j/k:nav  ⏎:attach  r:relay  b:bcast  s:spawn  x:stop  d:delete  q:quit") + "\n")
+		b.WriteString(footerStyle.Render("  j/k:nav  ⏎:attach  r:relay  b:bcast  s:spawn  m/M:manifest  x:stop  d:delete  q:quit") + "\n")
 	}
+
+	return b.String()
+}
+
+func (m model) updateManifest(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	lines := strings.Split(m.manifestJSON, "\n")
+	viewable := m.height - 6 // header + footer overhead
+	if viewable < 1 {
+		viewable = 1
+	}
+	maxScroll := len(lines) - viewable
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+
+	switch msg.String() {
+	case "esc", "m", "M", "q":
+		m.mode = modeNormal
+		return m, nil
+	case "j", "down":
+		if m.manifestScrl < maxScroll {
+			m.manifestScrl++
+		}
+	case "k", "up":
+		if m.manifestScrl > 0 {
+			m.manifestScrl--
+		}
+	}
+	return m, nil
+}
+
+func (m model) viewManifest() string {
+	var b strings.Builder
+	inner := m.innerWidth()
+
+	b.WriteString(titleStyle.Render(fmt.Sprintf("  Manifest: %s", truncate(m.manifestID, inner-12))) + "\n")
+	b.WriteString(headerRule.Render("  "+strings.Repeat("─", inner)) + "\n")
+
+	lines := strings.Split(m.manifestJSON, "\n")
+	viewable := m.height - 6
+	if viewable < 1 {
+		viewable = 1
+	}
+
+	end := m.manifestScrl + viewable
+	if end > len(lines) {
+		end = len(lines)
+	}
+	for _, line := range lines[m.manifestScrl:end] {
+		b.WriteString("  " + truncate(line, inner) + "\n")
+	}
+
+	b.WriteString(headerRule.Render("  "+strings.Repeat("─", inner)) + "\n")
+	scrollInfo := ""
+	if len(lines) > viewable {
+		scrollInfo = fmt.Sprintf("  [%d/%d]  ", m.manifestScrl+1, len(lines))
+	}
+	b.WriteString(footerStyle.Render(scrollInfo+"j/k:scroll  esc:back") + "\n")
 
 	return b.String()
 }
