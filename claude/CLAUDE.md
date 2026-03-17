@@ -54,16 +54,15 @@ Codex runs in a tmux pane alongside you. Communicate via `tmux-codex.sh`. All di
 
 ### When to Dispatch (Autonomous)
 
-| Trigger | Mode | Mandatory? |
-|---------|------|------------|
-| Plan created | `--plan-review` | YES |
-| Critics pass (code changes) | `--review` | YES |
-| Stuck on a bug after 2 failed attempts | `--prompt` (investigate) | YES |
-| Architecture decision with 2+ viable approaches | `--prompt` (analyze tradeoffs) | DO IT |
-| Unfamiliar code area before major changes | `--prompt` (explain area) | DO IT |
-| Complex refactor spanning 3+ files | `--review` (early sanity check) | DO IT |
+**MANDATORY — always dispatch, no exceptions:**
+- Plan created → `--plan-review`
+- Critics pass on code changes → `--review`
+- Stuck on a bug after 2 failed attempts → `--prompt` to investigate
 
-**"DO IT"** = not gated, but dispatch proactively. Don't wait for the user to ask.
+**PROACTIVE — dispatch without being asked:**
+- Architecture decision with 2+ viable approaches → `--prompt` for tradeoff analysis
+- Unfamiliar code area before major changes → `--prompt` to explain the area
+- Complex refactor spanning 3+ files → `--review` for early sanity check
 
 ### Transport
 
