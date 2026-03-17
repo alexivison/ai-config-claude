@@ -44,14 +44,31 @@ Keep context window clean. One task per sub-agent.
 
 Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 
-## tmux Session Context
+## Codex — The Wizard
 
-- You run in a tmux pane alongside Codex. Communicate via: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh`
-- All `--review`, `--plan-review`, and `--prompt` modes require `work_dir` as their last argument (absolute path to the repo/worktree).
-- Codex reviews are non-blocking — continue with other work while Codex reviews.
-- "Ask the Wizard" / "have Codex check" / "dispatch Codex" → ALWAYS `tmux-codex.sh`, NEVER Task subagents.
+Codex runs in a tmux pane alongside you. Communicate via `tmux-codex.sh`. All dispatches are non-blocking — keep working while Codex thinks.
+
+- ALWAYS use `tmux-codex.sh`, NEVER Task sub-agents for Codex.
 - `[CODEX]` messages are from Codex. Handle per `tmux-handler` skill.
 - You decide verdicts. Codex produces findings, you triage.
+
+### When to Dispatch (Autonomous)
+
+| Trigger | Mode | Mandatory? |
+|---------|------|------------|
+| Plan created | `--plan-review` | YES |
+| Critics pass (code changes) | `--review` | YES |
+| Stuck on a bug after 2 failed attempts | `--prompt` (investigate) | YES |
+| Architecture decision with 2+ viable approaches | `--prompt` (analyze tradeoffs) | DO IT |
+| Unfamiliar code area before major changes | `--prompt` (explain area) | DO IT |
+| Complex refactor spanning 3+ files | `--review` (early sanity check) | DO IT |
+
+**"DO IT"** = not gated, but dispatch proactively. Don't wait for the user to ask.
+
+### Transport
+
+- Script: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh`
+- All modes (`--review`, `--plan-review`, `--prompt`) require `work_dir` as last arg.
 - After dispatching: keep working. Do NOT poll. Codex notifies via `[CODEX]` when done.
 
 ## Master Session Mode
