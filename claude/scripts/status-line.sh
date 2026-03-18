@@ -24,5 +24,14 @@ else
     C=$C_GREEN
 fi
 
+# Write context data to cache file for tmux status bar consumption.
+# Keyed by TMUX_PANE so the tmux widget can find it.
+if [[ -n "${TMUX_PANE:-}" ]]; then
+    cache_dir="/tmp/ai-context-cache"
+    mkdir -p "$cache_dir" 2>/dev/null
+    pane_id="${TMUX_PANE#%}"
+    printf '%s\t%s\n' "$model" "$pct" > "$cache_dir/claude-$pane_id"
+fi
+
 C_BLUE='\033[38;5;74m'
 printf '%b\n' "${C_BLUE}${model}${C_GRAY} | ${C}${pct}%${C_GRAY} context remaining${C_RESET}"
