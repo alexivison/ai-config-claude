@@ -9,6 +9,7 @@ stats-cache.json
 statsig/
 
 # Session/runtime data
+sessions/
 history.jsonl
 file-history/
 session-env/
@@ -35,6 +36,7 @@ projects/
 # Machine-specific settings
 settings.local.json
 scripts/*.plist
+policy-limits.json
 
 # Credentials
 .credentials.json
