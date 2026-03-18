@@ -18,11 +18,15 @@ The current PR gate system uses 7 marker files in `/tmp/` to track workflow comp
 Sourced by all writer/reader hooks. Functions:
 
 - `evidence_file(session_id)` → `/tmp/claude-evidence-${session_id}.jsonl`
-- `compute_diff_hash(cwd)` → SHA-256 of `git diff $(git merge-base $default_branch HEAD)..HEAD -- . ':!*.md' ':!*.log' ':!*.jsonl' ':!*.tmp'`
-  - Returns `"clean"` if merge-base equals HEAD (no branch diff)
+- `compute_diff_hash(cwd)` → SHA-256 of the **full working-tree diff** from merge-base:
+  ```
+  git diff $(git merge-base $default_branch HEAD) -- . ':!*.md' ':!*.log' ':!*.jsonl' ':!*.tmp'
+  ```
+  Note: no `..HEAD` — this hashes committed branch changes **plus** staged and unstaged edits in one pass. Any uncommitted edit to an implementation file changes the hash, automatically invalidating prior evidence.
+  - Returns `"clean"` if merge-base equals HEAD **and** working tree is clean (no diff output)
   - Returns `"unknown"` if not a git repo or cwd missing
   - Detects default branch (main vs master)
-- `append_evidence(session_id, type, result, cwd)` → computes diff_hash, appends JSONL line
+- `append_evidence(session_id, type, result, cwd)` → acquires `flock` on `/tmp/claude-evidence-${session_id}.lock`, computes diff_hash, appends JSONL line, releases lock. Single-line JSONL writes are typically atomic under `PIPE_BUF`, but `flock` guarantees correctness when parallel sub-agents (e.g. code-critic + minimizer) complete simultaneously.
 - `check_evidence(session_id, type, cwd)` → returns 0 if matching type+diff_hash exists
 - `check_all_evidence(session_id, types_string, cwd)` → checks multiple types, outputs missing ones to stdout
 - `diff_stats(cwd)` → outputs `lines files new_files` for tiered gate decisions
@@ -32,7 +36,10 @@ Sourced by all writer/reader hooks. Functions:
 
 Tests in a temp git repo (mktemp -d, git init, trap cleanup):
 - `compute_diff_hash` consistency, change detection, .md exclusion, clean state
+- `compute_diff_hash` changes on uncommitted edit (staged-only, unstaged-only, untracked excluded)
+- `compute_diff_hash` changes when merge-base == HEAD but working tree is dirty
 - `append_evidence` creates valid JSONL
+- `append_evidence` concurrent writes preserve valid JSONL (stress test: 20 parallel appends, verify line count + JSON validity)
 - `check_evidence` matches/rejects on diff_hash and type
 - `check_all_evidence` returns missing types
 - `diff_stats` returns correct counts
@@ -116,20 +123,38 @@ Tests in a temp git repo (mktemp -d, git init, trap cleanup):
 - Add `find /tmp -maxdepth 1 -name "claude-evidence-*.jsonl" -mtime +1 -delete`
 - Keep old marker cleanup for transition
 
-### Step 9: Create quick-fix-workflow skill
+### Step 9: Update execution-core.md and CLAUDE.md for tiered workflows
+**Modify: `claude/rules/execution-core.md`**
+- Add a **Tiered Execution** section after the Core Sequence defining two tiers:
+  - **Full tier** (default): current sequence unchanged (`/write-tests → implement → ... → PR`)
+  - **Quick tier**: for non-behavioral changes only (config, docs-with-code, dependency bumps, typo fixes, CI tweaks). Sequence: `implement → test-runner → check-runner → PR`. Explicitly forbidden for: new features, bug fixes, logic changes, API changes, security-relevant changes.
+- Amend the RED Evidence Gate to say: "For behavior-changing production code **under the full execution tier**..."
+- Amend the PR Gate to document both tiers' required evidence types
+
+**Modify: `claude/CLAUDE.md`**
+- Update Workflow Selection to replace `skill-eval.sh` reference with SKILL.md frontmatter routing
+- Add `quick-fix-workflow` to the selection table with scope constraints
+
+### Step 10: Create quick-fix-workflow skill
 **New file: `claude/skills/quick-fix-workflow/SKILL.md`**
 
 Frontmatter: name, description, user-invocable: true
 
+**Scope constraints (enforced, not advisory):**
+- ONLY for non-behavioral changes: config, dependency bumps, typo/comment fixes, CI/build tweaks, docs-with-code
+- If the change modifies runtime logic, control flow, API surface, or security-relevant code → reject and suggest task-workflow or bugfix-workflow
+- Size guardrail: >30 lines / >3 files / new files → reject
+
 Flow:
 1. Pre-gate: working tree must be clean (or use --worktree)
-2. Implement the change
-3. Size guardrail: compute diff stats. If >30 lines / >3 files / new files → warn, suggest task-workflow/bugfix-workflow
-4. Run test-runner sub-agent
-5. Run check-runner sub-agent
-6. Commit and create PR (tiered gate allows this)
+2. Scope check: verify change is non-behavioral (reject otherwise)
+3. Implement the change
+4. Size guardrail: compute diff stats, reject if over threshold
+5. Run test-runner sub-agent
+6. Run check-runner sub-agent
+7. Commit and create PR (tiered gate allows this)
 
-Non-goals: no RED phase, no critics, no codex, no adversarial review, no pre-pr-verification
+Non-goals: no RED phase (not applicable — non-behavioral), no critics, no codex, no adversarial review, no pre-pr-verification
 
 ## Dependency Order
 
@@ -148,16 +173,20 @@ Step 7 (remove old hooks)
   ↓
 Step 8 (cleanup)
   ↓
-Step 9 (quick-fix-workflow skill)
+Step 9 (update execution-core.md + CLAUDE.md)  ← before skill creation
+  ↓
+Step 10 (quick-fix-workflow skill)
 ```
 
 ## Verification
 
 1. Run `bash ~/.claude/hooks/tests/run-all.sh` — all tests pass
 2. Manual: simulate agent-trace-stop with code-critic APPROVED → check JSONL entry exists with diff_hash
-3. Manual: edit a file → re-run agent-trace-stop → new entry has different diff_hash → old evidence ignored by gate
-4. Manual: test tiered gate with small diff → only test-runner + check-runner required
-5. Manual: test full gate with large diff → all 6 evidence types required
+3. Manual: make an **uncommitted** edit to an implementation file → verify diff_hash changes → old evidence ignored by gate
+4. Manual: make a **staged-only** edit → verify diff_hash changes
+5. Manual: test tiered gate with small non-behavioral diff → only test-runner + check-runner required
+6. Manual: test full gate with large diff → all 6 evidence types required
+7. Manual: test concurrent sub-agent completion → JSONL remains valid (no corrupted lines)
 
 ## Files Summary
 
@@ -167,6 +196,8 @@ Step 9 (quick-fix-workflow skill)
 | NEW | `claude/hooks/tests/test-evidence.sh` |
 | NEW | `claude/hooks/tests/test-pr-gate.sh` |
 | NEW | `claude/skills/quick-fix-workflow/SKILL.md` |
+| MODIFY | `claude/rules/execution-core.md` |
+| MODIFY | `claude/CLAUDE.md` |
 | MODIFY | `claude/hooks/agent-trace-stop.sh` |
 | MODIFY | `claude/hooks/codex-trace.sh` |
 | MODIFY | `claude/hooks/skill-marker.sh` |
