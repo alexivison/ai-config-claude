@@ -23,12 +23,17 @@ color_for_pct() {
     fi
 }
 
-# Find the Claude pane in the current window via @party_role metadata.
-pane_id=$(tmux list-panes -F '#{pane_id} #{@party_role}' 2>/dev/null \
+# Find the Claude pane in the current session via @party_role metadata.
+pane_id=$(tmux list-panes -s -F '#{pane_id} #{@party_role}' 2>/dev/null \
     | awk '$2 == "claude" { print $1; exit }')
 [[ -z "$pane_id" ]] && exit 0
 
-cache_file="$CACHE_DIR/claude-${pane_id#%}"
+# Build cache key matching status-line.sh: server hash + pane id.
+socket_path=$(tmux display-message -p '#{socket_path}' 2>/dev/null)
+server_hash=$(printf '%s' "$socket_path" | md5 -q 2>/dev/null || printf '%s' "$socket_path" | md5sum | cut -d' ' -f1)
+server_hash="${server_hash:0:8}"
+
+cache_file="$CACHE_DIR/claude-${server_hash}-${pane_id#%}"
 [[ -f "$cache_file" ]] || exit 0
 
 # Stale check: ignore if older than 60s
