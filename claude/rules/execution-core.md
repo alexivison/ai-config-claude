@@ -70,7 +70,7 @@ Classify every finding before acting:
 - `[q]` and `[nit]` are opt-in (only when explicitly requested). By default, suppress them.
 - Critics should return `APPROVE` when only non-blocking findings remain, so codex-gate markers stay aligned with policy.
 
-**Caps:** Blocking: max 2 critic + 2 codex iterations → NEEDS_DISCUSSION. Non-blocking: max 1 round → accept or drop.
+**Caps:** Blocking: max 3 critic iterations (phase 1) + 3 codex iterations (phase 2) → NEEDS_DISCUSSION. Non-blocking: max 1 round → accept or drop.
 
 **Tiered re-review:** One-symbol swap → test-runner only. Logic change → test-runner + critics. New export/signature/security path → full cascade.
 
@@ -134,7 +134,7 @@ Code PRs require evidence matching the current diff_hash. Full tier: pr-verified
 | Edit after approval, then PR | Evidence stale (diff_hash changed) — re-run |
 | Create evidence outside authorized paths | Forbidden — only hooks and workflow skills write evidence via `append_evidence` |
 | Call codex for first review without critic evidence | Gate blocks — run critics first (phase 1) |
-| Third critic/codex round on same diff | Stop and escalate with NEEDS_DISCUSSION |
+| Fourth critic or codex round on same diff | Stop and escalate with NEEDS_DISCUSSION |
 | Run lint/typecheck via Bash instead of check-runner | Always delegate to sub-agents — they run the full suite |
 | Push without running check-runner | Run check-runner before every push, no exceptions |
 | Add dependency without committing lockfile | Stage lockfile in same commit as package.json change |
