@@ -83,18 +83,18 @@ OUTPUT=$(echo "$(gate_input '~/.claude/skills/codex-transport/scripts/tmux-codex
 assert "gate allows --review with both critic evidence" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-# Test: gate blocks --approve without codex-ran evidence
+# Test: gate always blocks --approve (workers cannot self-approve)
 clean_evidence
 OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --approve')" | bash "$GATE")
-assert "gate blocks --approve without codex-ran evidence" \
+assert "gate blocks --approve without evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
 
-# Test: gate allows --approve with codex-ran evidence
+# Test: gate blocks --approve even with codex-ran evidence
 clean_evidence
 append_evidence "$SESSION_ID" "codex-ran" "COMPLETED" "$TMPDIR_BASE"
 OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --approve')" | bash "$GATE")
-assert "gate allows --approve with codex-ran evidence" \
-  '! echo "$OUTPUT" | grep -q "deny"'
+assert "gate blocks --approve even with codex-ran evidence" \
+  'echo "$OUTPUT" | grep -q "deny"'
 
 # Test: gate allows --prompt without evidence
 clean_evidence

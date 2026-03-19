@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Codex Review Gate Hook
 # Blocks tmux-codex.sh --review unless both critic APPROVE evidence exists.
-# Blocks tmux-codex.sh --approve unless codex-ran evidence exists.
+# Hard-blocks tmux-codex.sh --approve — workers cannot self-approve.
+# Codex approval flows through --review-complete (verdict in findings file).
 # Uses JSONL evidence log with diff_hash matching.
 #
 # Triggered: PreToolUse on Bash tool
@@ -26,21 +27,18 @@ if ! echo "$COMMAND" | grep -qE '(^|[;&|] *)([^ ]*/)?tmux-codex\.sh'; then
   exit 0
 fi
 
-# Gate 2: --approve requires codex-ran evidence (review actually ran)
+# Gate 2: --approve is BLOCKED — only Codex can approve (via verdict in findings file)
+# Workers must use --review-complete <findings_file>, which reads the verdict Codex wrote.
 if echo "$COMMAND" | grep -qE 'tmux-codex\.sh +--approve'; then
-  if ! check_evidence "$SESSION_ID" "codex-ran" "$CWD"; then
-    cat << EOF
+  cat << EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "BLOCKED: Codex approve gate — codex-ran evidence missing. Run tmux-codex.sh --review-complete first."
+    "permissionDecisionReason": "BLOCKED: --approve is forbidden. Codex approval flows through --review-complete, which reads the verdict from the findings file Codex wrote. Do not self-approve."
   }
 }
 EOF
-    exit 0
-  fi
-  echo '{}'
   exit 0
 fi
 

@@ -70,10 +70,11 @@ Message: `[CODEX] Review complete. Findings at: <path>`
    `tmux-codex.sh --review-complete <path>`
 4. Triage each finding: blocking / non-blocking / out-of-scope
 5. Update your issue ledger (reject re-raised closed findings, detect oscillation)
-6. Decide verdict:
-   - All non-blocking → `tmux-codex.sh --approve`
-   - Blocking findings → fix code, re-run critics, dispatch new `tmux-codex.sh --review`, then `--review-complete` → `--approve`
+6. The verdict comes from the `VERDICT:` line Codex wrote in the findings file — `--review-complete` reads it automatically:
+   - `VERDICT: APPROVED` in findings → approval evidence created
+   - `VERDICT: REQUEST_CHANGES` → only codex-ran evidence; fix code, re-run critics, dispatch new `--review` → `--review-complete`
    - Unresolvable → `tmux-codex.sh --needs-discussion "reason"`
+   - **Do NOT call `--approve` directly** — the gate blocks it.
 
 ### Question from Codex
 Message: `[CODEX] Question: <question>. Write response to: <response_file>`

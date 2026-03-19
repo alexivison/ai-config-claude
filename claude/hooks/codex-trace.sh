@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Codex Trace Hook
-# 1. Creates codex-ran evidence marker when tmux-codex.sh --review-complete emits CODEX_REVIEW_RAN
-# 2. Creates PR gate marker when tmux-codex.sh --approve emits CODEX APPROVED
-#    (only if codex-ran evidence exists — prevents self-declared approval)
+# 1. Creates codex-ran evidence when tmux-codex.sh --review-complete emits CODEX_REVIEW_RAN
+# 2. Creates codex APPROVED evidence when --review-complete also emits CODEX APPROVED
+#    (happens when findings file contains VERDICT: APPROVED from Codex)
+#    Only creates approval if codex-ran evidence exists at the same diff_hash.
 #
 # Triggered: PostToolUse on Bash tool
 # Fails open on errors
@@ -57,16 +58,18 @@ ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 log_evidence() { echo "$ts | codex-trace | $1 | $session_id" >> "$HOME/.claude/logs/evidence-trace.log"; }
 
 # --- Evidence: codex review actually completed ---
-# tmux-codex.sh --review-complete emits CODEX_REVIEW_RAN after verifying findings file exists
+# tmux-codex.sh --review-complete emits CODEX_REVIEW_RAN after verifying findings file exists.
+# It may ALSO emit CODEX APPROVED if the findings file contains a Codex approval verdict.
+# Do NOT exit early — both sentinels may appear in the same response.
 if echo "$response" | grep -qx "CODEX_REVIEW_RAN"; then
   append_evidence "$session_id" "codex-ran" "COMPLETED" "$cwd"
   log_evidence "CODEX_REVIEW_RAN"
-  exit 0
 fi
 
-# --- Evidence: tmux-codex.sh --approve ---
+# --- Evidence: Codex approval (via verdict in findings file) ---
+# --review-complete emits "CODEX APPROVED" when findings contain VERDICT: APPROVED.
 if echo "$response" | grep -qx "CODEX APPROVED"; then
-  # Gate: only create approval evidence if codex was actually run
+  # Gate: only create approval evidence if codex-ran was just recorded above
   if check_evidence "$session_id" "codex-ran" "$cwd"; then
     append_evidence "$session_id" "codex" "APPROVED" "$cwd"
     log_evidence "CODEX_APPROVED"
