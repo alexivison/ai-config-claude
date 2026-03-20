@@ -99,45 +99,6 @@ Message: `[CODEX] Plan review complete. Findings at: <path>`
 3. Triage findings same as code review (blocking / non-blocking / out-of-scope)
 4. Incorporate feedback into the plan
 
-## Dispute Resolution Protocol
+## Dispute Resolution
 
-When Codex or critics return findings you disagree with (out-of-scope, NEEDS_DISCUSSION), resolve between agents before escalating to the user.
-
-### Critic disputes
-
-Critics are your own sub-agents. When a critic flags out-of-scope code or returns NEEDS_DISCUSSION:
-
-1. Re-run the critic with updated prompt context: include which findings are out-of-scope and why
-2. The critic sees the rationale and either accepts (APPROVE) or raises new evidence
-3. Max 2 dispute rounds per critic — if still unresolved, escalate to user
-
-### Codex out-of-scope disputes
-
-When Codex raises findings you triage as out-of-scope:
-
-1. Write a dispute context file to `/tmp/` with dismissed findings:
-   ```
-   ## Dismissed Findings
-   ### F2
-   rationale: Out-of-scope — TASK excludes auth module changes
-   ### F3
-   rationale: Pre-existing code, not modified by this diff
-   ```
-2. Pass as 5th arg to `--review`:
-   `tmux-codex.sh --review <work_dir> <base> "<title>" /tmp/dispute-context.md`
-3. Codex reads the file, accepts valid dismissals (drops them), challenges invalid ones with file:line evidence
-4. If challenged: evaluate the evidence — concede if valid (fix the finding), counter-argue if not
-5. Max 2 dispute rounds — if unresolved, escalate to user
-
-### Codex NEEDS_DISCUSSION
-
-When Codex returns NEEDS_DISCUSSION:
-
-1. Formulate your position: concede, counter-argue, or propose compromise
-2. Send via `--prompt` with structured reasoning
-3. Codex responds with evidence-based reasoning
-4. Max 2 prompt exchanges — if unresolved, escalate to user
-
-### After successful dispute resolution
-
-If the dispute concludes that work should proceed, dispatch a fresh `--review` → `--review-complete` to satisfy gate evidence requirements. The debate itself does not mint approval evidence.
+When Codex or critics return out-of-scope findings or NEEDS_DISCUSSION, follow the dispute resolution protocol in [execution-core.md § Dispute Resolution](~/.claude/rules/execution-core.md#dispute-resolution). Key points: critic disputes re-run with context, Codex disputes use dispute context file as 5th arg to `--review`, NEEDS_DISCUSSION debates via `--prompt`. Max 2 dispute rounds before user escalation. After resolution, a fresh `--review` → `--review-complete` is still required for gate evidence.

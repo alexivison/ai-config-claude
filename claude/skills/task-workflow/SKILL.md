@@ -57,8 +57,7 @@ Use the canonical sequence in [execution-core.md](~/.claude/rules/execution-core
       - Reviewer findings are advisory (no gating markers).
 9. **Triage findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity. Triage the UNION of Codex + adversarial reviewer findings.
    - **Blocking in-scope findings:** fix code → commit → dispatch new `--review` → `--review-complete`. No critic re-run needed — phase 2 gate allows re-review after codex has run once.
-   - **Out-of-scope findings:** write dispute context file with dismissed finding IDs + rationales → pass as 5th arg to `--review`. Codex accepts valid dismissals or challenges with evidence. See tmux-handler skill for full dispute protocol.
-   - **NEEDS_DISCUSSION:** debate via `--prompt` (2 rounds max) before escalating to user. See tmux-handler skill for protocol.
+   - **Out-of-scope / NEEDS_DISCUSSION:** follow [execution-core.md § Dispute Resolution](~/.claude/rules/execution-core.md#dispute-resolution).
    - Non-blocking / approved: `--review-complete` reads the verdict from the findings file. Do NOT call `--approve` directly.
 10. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
    - **If you edit ANY implementation file after this step passes → re-run `/pre-pr-verification` before commit.** Even a JSDoc fix invalidates prior evidence.

@@ -90,25 +90,8 @@ Only critic types (`code-critic`, `minimizer`) can be overridden — codex and P
 
 **Blocking findings?** Fix the code, re-run critics, then dispatch a new `--review`. Editing code invalidates all evidence (diff_hash changes), so the full cascade re-runs naturally. There is no shortcut — the gates enforce it.
 
-### Dispute resolution (out-of-scope Codex findings)
-When Codex raises findings you triage as out-of-scope, write a dispute context file and pass it on re-review:
-```bash
-# Write dispute context
-cat > /tmp/dispute-context.md << 'EOF'
-## Dismissed Findings
-### F2
-rationale: Out-of-scope — TASK excludes auth module changes
-### F3
-rationale: Pre-existing code, not modified by this diff
-EOF
-
-# Re-review with dispute context
-~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review <work_dir> main "PR title" /tmp/dispute-context.md
-```
-
-Codex reads the file and either accepts dismissals (drops them) or challenges with file:line evidence. Max 2 dispute rounds before escalating to user. After successful resolution, a fresh `--review` → `--review-complete` is still needed for gate evidence.
-
-For NEEDS_DISCUSSION disputes, use `--prompt` to debate with Codex (2 rounds max). See `tmux-handler` skill for the full protocol.
+### Dispute resolution
+For out-of-scope Codex findings or NEEDS_DISCUSSION, see [execution-core.md § Dispute Resolution](~/.claude/rules/execution-core.md#dispute-resolution). The `--review` mode accepts an optional 5th arg (dispute context file path) for this flow.
 
 ## Important
 
