@@ -47,7 +47,8 @@ determines plan quality — invest here.
 Write the prompt to a temp file (prompts with quotes and backticks break inline shell):
 
 ```bash
-cat > /tmp/codex-plan-prompt.md << 'PROMPT_EOF'
+PROMPT_FILE=$(mktemp /tmp/codex-plan-prompt-XXXXXX.md)
+cat > "$PROMPT_FILE" << 'PROMPT_EOF'
 ## Task
 Create a PLAN.md for: <goal description>
 
@@ -56,21 +57,32 @@ Create a PLAN.md for: <goal description>
 existing architecture, constraints, user preferences>
 
 ## Requirements
-- The plan must be actionable — each step should be implementable via task-workflow
-- Include scope boundaries (In Scope / Out of Scope)
-- Break work into discrete, ordered tasks with checkboxes (`- [ ]`)
-- Identify risks, dependencies, and open questions
+- Create BOTH a PLAN.md AND individual TASK*.md files (e.g., tasks/TASK-01-setup.md, tasks/TASK-02-impl.md)
+- PLAN.md is the overall plan; TASK*.md files are the executable units that task-workflow consumes
+- Include scope boundaries (In Scope / Out of Scope) in PLAN.md
+- Break work into discrete, ordered tasks — each gets its own TASK*.md with checkboxes (`- [ ]`)
+- Identify risks, dependencies, and open questions in PLAN.md
 - Suggest a branch naming convention if multiple PRs are expected
 - Keep it concise — a plan is a map, not a novel
 
 ## Output
-Write the plan to: <plan_path>
-Use standard PLAN.md format with sections: Goal, Context, Scope, Tasks, Risks, Open Questions.
+Write the plan to: <plan_path> (e.g., PLAN.md)
+Write task files to: tasks/TASK-*.md (one per discrete task)
+PLAN.md format: Goal, Context, Scope, Tasks (with references to TASK files), Risks, Open Questions.
+TASK*.md format: Goal, In Scope, Out of Scope, Acceptance Criteria, checklist items.
 PROMPT_EOF
 
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh \
-  --prompt "$(cat /tmp/codex-plan-prompt.md)" <work_dir>
+  --prompt "$(cat "$PROMPT_FILE")" <work_dir>
 ```
+
+### Error Handling
+
+Check the script's stdout for sentinel strings:
+- `CODEX_TASK_REQUESTED` — success, proceed to wait
+- `CODEX_TASK_DROPPED` — Codex pane is busy. Wait briefly and retry, or inform the user.
+- `CODEX_NOT_AVAILABLE` — master session with no Codex pane. Inform the user that planning
+  requires a worker session with Codex access.
 
 ### Choosing the Right Mode
 
@@ -97,10 +109,13 @@ Do NOT poll Codex. Wait for the `[CODEX]` notification.
 
 When `[CODEX] Task complete. Response at: <path>` arrives:
 
-1. **Read the plan** — The response path points to the file Codex wrote. But the actual
-   plan lives at the path you specified in the prompt's `## Output` section (e.g.,
-   `PLAN.md`). Read that file — not the response metadata file.
-2. **Verify completeness:**
+1. **Read the response file first** — The `<path>` from the notification is Codex's
+   authoritative result channel. Read it to confirm success, check for errors or warnings,
+   and verify where Codex actually wrote the plan and task files.
+2. **Read the plan and task files** — Open PLAN.md and each TASK*.md at the paths Codex
+   confirmed. If the response indicates failure or a different output path, follow that
+   instead of assuming the paths from your prompt.
+3. **Verify completeness:**
    - Does it cover all requirements from the user's ask?
    - Are file paths real? (`Glob` or `Grep` to confirm)
    - Are scope boundaries clear (In Scope / Out of Scope)?
@@ -128,7 +143,8 @@ needs to make a decision.
 If the user has feedback, relay it to Codex:
 
 ```bash
-cat > /tmp/codex-plan-revision.md << 'PROMPT_EOF'
+REVISION_FILE=$(mktemp /tmp/codex-plan-revision-XXXXXX.md)
+cat > "$REVISION_FILE" << 'PROMPT_EOF'
 ## Plan Revision Request
 
 The user reviewed the plan at <plan_path> and has feedback:
@@ -143,7 +159,7 @@ The user reviewed the plan at <plan_path> and has feedback:
 PROMPT_EOF
 
 ~/.claude/skills/codex-transport/scripts/tmux-codex.sh \
-  --prompt "$(cat /tmp/codex-plan-revision.md)" <work_dir>
+  --prompt "$(cat "$REVISION_FILE")" <work_dir>
 ```
 
 Repeat Phase 3–5 until the user approves.
@@ -155,16 +171,17 @@ revision prompt alongside the user's feedback. You are a reviewer, not just a re
 
 Once the user approves:
 
-1. **Confirm plan location** — Ensure the plan is at the expected path (typically
-   `PLAN.md` in the repo root, or `plans/<feature>.md` for multi-plan repos)
-2. **Dispatch plan review** — If the plan is substantial, optionally send for formal
-   review:
+1. **Confirm plan location** — Ensure PLAN.md and TASK*.md files are at the expected
+   paths (typically `PLAN.md` in the repo root plus `tasks/TASK-*.md`)
+2. **Dispatch plan review (MANDATORY)** — Per CLAUDE.md contract, every created plan
+   must go through `--plan-review`. This is not optional:
    ```bash
    ~/.claude/skills/codex-transport/scripts/tmux-codex.sh \
      --plan-review "<plan_path>" <work_dir>
    ```
-   This returns TOON findings on architecture, feasibility, and risk. Present any
-   blocking findings to the user before proceeding.
+   When `[CODEX] Plan review complete. Findings at: <path>` arrives, triage findings
+   per tmux-handler (blocking / non-blocking / out-of-scope). Present any blocking
+   findings to the user and iterate if needed before proceeding.
 3. **Signal readiness** — Tell the user the plan is ready for execution. If appropriate,
    suggest: "Shall I begin with `/task-workflow`?"
 
@@ -173,11 +190,11 @@ Once the user approves:
 | Phase | Paladin's Job | Codex's Job |
 |-------|---------------|-------------|
 | Gather | Read code, fetch tickets, assemble context | — |
-| Dispatch | Compose prompt, send via tmux-codex.sh | Research, reason, write PLAN.md |
+| Dispatch | Compose prompt, send via tmux-codex.sh | Research, reason, write PLAN.md + TASK*.md |
 | Verify | Check paths, scope, completeness | — |
 | Present | Summarize plan, flag concerns | — |
 | Iterate | Relay feedback + own concerns | Revise plan |
-| Finalize | Confirm location, optional plan-review | Review (if requested) |
+| Finalize | Confirm location, mandatory plan-review | Formal plan review (always) |
 
 ## Anti-Patterns
 
@@ -189,7 +206,7 @@ Once the user approves:
 
 ## Integration with Other Workflows
 
-- **task-workflow** expects a PLAN.md with checkboxes. Plans from this skill are designed
-  to feed directly into task-workflow execution.
+- **task-workflow** executes TASK*.md files. This skill produces both PLAN.md (overall plan)
+  and TASK*.md files (executable tasks), so the output feeds directly into task-workflow.
 - **party-dispatch** can parallelize tasks from the plan across worker sessions.
 - **bugfix-workflow** may invoke this skill when investigation reveals the fix needs planning.
