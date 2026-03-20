@@ -57,7 +57,7 @@ Create a PLAN.md for: <goal description>
 existing architecture, constraints, user preferences>
 
 ## Requirements
-- Use the canonical planning templates at `codex/skills/planning/templates/` — do NOT
+- Use the canonical planning templates at `~/.codex/skills/planning/templates/` — do NOT
   invent a parallel schema. Specifically:
   - `plan.md` template for PLAN.md (includes checkbox-links, dependency graph, coverage matrix)
   - `task.md` template for each TASK*.md (includes scope boundary, reference, design refs,
@@ -161,7 +161,7 @@ The user reviewed the plan at <plan_path> and has feedback:
 - Read the current plan at <plan_path> and all TASK*.md files in tasks/
 - Apply the requested changes to BOTH PLAN.md and any affected TASK*.md files
 - If feedback changes task boundaries, ordering, or scope: regenerate affected TASK*.md files
-- Follow the canonical templates at codex/skills/planning/templates/
+- Follow the canonical templates at ~/.codex/skills/planning/templates/
 - Write the updated plan to the same path (overwrite)
 - Preserve parts the user didn't comment on
 - Keep PLAN.md checkbox-links and TASK*.md files in sync
