@@ -127,9 +127,9 @@ When `[CODEX] Task complete. Response at: <path>` arrives:
    - Are scope boundaries clear (In Scope / Out of Scope)?
    - Are tasks ordered correctly (dependencies respected)?
    - Is the scope reasonable — not too ambitious, not too narrow?
-3. **Cross-check against code** — If the plan references specific functions, classes,
+4. **Cross-check against code** — If the plan references specific functions, classes,
    or APIs, verify they exist and behave as the plan assumes
-4. **Flag concerns** — Note anything questionable but do NOT silently fix the plan.
+5. **Flag concerns** — Note anything questionable but do NOT silently fix the plan.
    Your concerns go to the user, not into the file.
 
 ## Phase 4 — Present to User
