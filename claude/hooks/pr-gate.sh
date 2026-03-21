@@ -39,7 +39,7 @@ if echo "$COMMAND" | grep -qE 'gh pr create'; then
       IMPL_FILES="unknown"
     elif [ -n "$_EVIDENCE_MERGE_BASE" ]; then
       IMPL_FILES=$(cd "$CWD" 2>/dev/null && git diff --name-only "$_EVIDENCE_MERGE_BASE" 2>/dev/null \
-        | grep -E '\.(sh|bash|go|py|ts|js|tsx|jsx|rs|rb|java|kt|swift|c|cpp|h|hpp|sql|proto|css|scss|html|vue|svelte|zig|hs|ex|exs|el|clj|lua)$' || true)
+        | grep -E '\.(sh|bash|go|py|ts|js|tsx|jsx|rs|rb|java|kt|swift|c|cpp|h|hpp|sql|proto|css|scss|html|vue|svelte|zig|hs|ex|exs|el|clj|lua|php|pl|pm|scala|groovy|tf|nix|cmake|gradle|xml)$|(^|/)(Makefile|Dockerfile|Jenkinsfile|Vagrantfile|Rakefile|Gemfile|Taskfile)$' || true)
     fi
   fi
 

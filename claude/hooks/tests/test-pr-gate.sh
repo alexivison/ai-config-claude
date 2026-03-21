@@ -109,6 +109,24 @@ OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
 assert "PR with .sh file requires evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
 
+echo "=== Docs-only bypass: Dockerfile requires evidence ==="
+setup_repo
+clean_evidence
+echo "FROM alpine" > Dockerfile
+git add Dockerfile && git commit -q -m "add Dockerfile"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "PR with Dockerfile requires evidence" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== Docs-only bypass: Makefile requires evidence ==="
+setup_repo
+clean_evidence
+echo "all:" > Makefile
+git add Makefile && git commit -q -m "add Makefile"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "PR with Makefile requires evidence" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
 # ═══ Full gate tests ════════════════════════════════════════════════════════
 
 echo "=== Full gate: blocks when evidence missing ==="
