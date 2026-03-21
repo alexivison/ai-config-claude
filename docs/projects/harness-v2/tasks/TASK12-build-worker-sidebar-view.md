@@ -1,0 +1,92 @@
+# Task 12 — Build Worker Sidebar View
+
+**Dependencies:** Task 7, Task 9, Task 11 | **Issue:** TBD
+
+---
+
+## Goal
+
+Finish the worker and standalone sidebar experience inside `party-cli`: Codex status, evidence summary, session information, offline handling, and a guarded peek popup. This task also defines the runtime bridge from retained shell Codex transport into the Go sidebar.
+
+## Scope Boundary (REQUIRED)
+
+**In scope:**
+- Implement the final worker/standalone sidebar rendering
+- Read `codex-status.json` written by BOTH transport legs: `tmux-codex.sh` (dispatch/in-progress state) and `tmux-claude.sh` (completion/idle state, last verdict, elapsed time)
+- Summarize recent evidence state and session metadata
+- Add guarded Codex peek popup behavior
+- Handle offline or stale companion states without crashing or lying
+
+**Out of scope (handled by other tasks):**
+- Master tracker interactions
+- Final shell-wrapper retirement
+- Codex transport migration away from `tmux-codex.sh`
+
+**Cross-task consistency check:**
+- The status-file contract introduced here must be written by retained shell transport and consumed by the Go sidebar
+- Sidebar actions should reuse tmux/message services from earlier tasks rather than spawning fresh shell calls
+
+## Reference
+
+Files to study before implementing:
+
+- `docs/projects/sidebar-tui/PLAN.md` — absorbed sidebar behaviors worth keeping
+- `claude/skills/codex-transport/scripts/tmux-codex.sh` — retained transport and status-writer location
+- `claude/hooks/lib/evidence.sh` — evidence source model
+- `tools/party-tracker/main.go` — existing narrow-width rendering patterns
+- `tools/party-tracker/workers.go` — capture and snippet precedent
+
+## Design References (REQUIRED for UI/component tasks)
+
+- `../diagrams/session-layouts.svg`
+- `../diagrams/data-flow.svg`
+
+## Data Transformation Checklist (REQUIRED for shape changes)
+
+- [ ] Proto definition (N/A unless a typed file contract is introduced)
+- [ ] Proto -> Domain converter (N/A unless a typed file contract is introduced)
+- [ ] Domain model struct
+- [ ] Params struct(s) — check ALL variants
+- [ ] Params conversion functions
+- [ ] Any adapters between param types
+
+## Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `tools/party-cli/internal/tui/sidebar.go` | Create |
+| `tools/party-cli/internal/tui/sidebar_status.go` | Create |
+| `tools/party-cli/internal/tui/sidebar_popup.go` | Create |
+| `tools/party-cli/internal/tui/*_test.go` | Modify or create |
+| `claude/skills/codex-transport/scripts/tmux-codex.sh` | Modify (write dispatch/in-progress status) |
+| `codex/skills/claude-transport/scripts/tmux-claude.sh` | Modify (write completion/idle status, last verdict) |
+
+## Requirements
+
+**Functionality:**
+- Sidebar shows Codex state, target, last verdict summary, and session context
+- Sidebar reads a structured runtime status file instead of scraping raw pane output alone
+- Sidebar can open a guarded read-only peek popup for Codex
+- Offline or stale companion/session states render safely and clearly
+- Evidence summaries remain faithful to the simplified evidence model
+
+**Key gotchas:**
+- Keep the status-file format small and explicit; this is a bridge contract, not a dumping ground
+- Do not let a missing status file or dead companion crash the TUI
+- **Two-script status contract (blocking):** `tmux-codex.sh` only owns Claude→Codex dispatch (`tmux-codex.sh:30-40`, `:97-104`). Completion notifications come back through `tmux-claude.sh` (`codex/skills/claude-transport/scripts/tmux-claude.sh:6-28`). Both scripts must write to the same status file: dispatch writes `{state: "working", target: "...", started_at: "..."}`, completion writes `{state: "idle", verdict: "...", finished_at: "..."}`.
+
+## Tests
+
+Test cases:
+- Status-file parse and render
+- Missing or stale status file renders offline state
+- Evidence summary render for recent approval/dispute states
+- Peek popup command construction and unavailable-Codex guard behavior
+
+## Acceptance Criteria
+
+- [ ] Worker/standalone sidebar view is fully rendered in `party-cli`
+- [ ] `tmux-codex.sh` writes dispatch/in-progress status to `codex-status.json`
+- [ ] `tmux-claude.sh` writes completion/idle status with last verdict to `codex-status.json`
+- [ ] Offline and unavailable Codex states are handled gracefully
+- [ ] Sidebar tests pass
