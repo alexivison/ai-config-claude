@@ -67,7 +67,8 @@ if [ -d "$worktree_path" ]; then
   worktree_path=$(cd "$worktree_path" && pwd)
 fi
 
-if [ -d "$worktree_path" ]; then
+# Guard: never write empty or whitespace-only paths to the override file
+if [ -n "$worktree_path" ] && [ -d "$worktree_path" ]; then
   echo "$worktree_path" > "/tmp/claude-worktree-${session_id}"
 fi
 

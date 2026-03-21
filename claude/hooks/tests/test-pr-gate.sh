@@ -31,8 +31,8 @@ setup_repo() {
   cd "$TMPDIR_BASE"
   git init -q
   git checkout -q -b main
-  echo "initial" > file.txt
-  git add file.txt
+  echo "#!/bin/bash" > file.sh
+  git add file.sh
   git commit -q -m "initial commit"
   git checkout -q -b feature
 }
@@ -77,13 +77,45 @@ OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
 assert "Docs-only PR allowed without evidence" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
+echo "=== Docs-only bypass: .md + .svg files ==="
+setup_repo
+clean_evidence
+echo "docs" > readme.md
+echo '<svg></svg>' > diagram.svg
+git add readme.md diagram.svg && git commit -q -m "add docs with svg"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "Docs PR with .svg allowed without evidence" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== Docs-only bypass: .png + .txt + .csv + .drawio files ==="
+setup_repo
+clean_evidence
+echo "img" > screenshot.png
+echo "notes" > notes.txt
+echo "a,b" > data.csv
+echo "<mxfile>" > arch.drawio
+git add screenshot.png notes.txt data.csv arch.drawio && git commit -q -m "add misc doc artifacts"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "Docs PR with .png/.txt/.csv/.drawio allowed without evidence" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== Docs-only bypass: .sh file still requires evidence ==="
+setup_repo
+clean_evidence
+echo "docs" > readme.md
+echo "#!/bin/bash" > script.sh
+git add readme.md script.sh && git commit -q -m "add docs and script"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "PR with .sh file requires evidence" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
 # ═══ Full gate tests ════════════════════════════════════════════════════════
 
 echo "=== Full gate: blocks when evidence missing ==="
 setup_repo
 clean_evidence
-echo "change" >> file.txt
-git add file.txt && git commit -q -m "code change"
+echo "change" >> file.sh
+git add file.sh && git commit -q -m "code change"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
 assert "Full gate blocks without evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
@@ -99,8 +131,8 @@ echo "=== Full gate: blocks on stale diff_hash ==="
 clean_evidence
 add_all_evidence
 cd "$TMPDIR_BASE"
-echo "stale" >> file.txt
-git add file.txt && git commit -q -m "stale edit"
+echo "stale" >> file.sh
+git add file.sh && git commit -q -m "stale edit"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
 assert "Full gate blocks stale evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
@@ -108,8 +140,8 @@ assert "Full gate blocks stale evidence" \
 echo "=== Full gate: small diff still requires full evidence ==="
 setup_repo
 clean_evidence
-echo "tiny fix" >> file.txt
-git add file.txt && git commit -q -m "tiny fix"
+echo "tiny fix" >> file.sh
+git add file.sh && git commit -q -m "tiny fix"
 # Only provide test-runner + check-runner (not full set)
 append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
@@ -122,8 +154,8 @@ assert "Small diff with partial evidence blocked" \
 echo "=== Quick tier: small diff + quick-tier evidence → passes with quick evidence ==="
 setup_repo
 clean_evidence
-echo "small edit" >> file.txt
-git add file.txt && git commit -q -m "small edit"
+echo "small edit" >> file.sh
+git add file.sh && git commit -q -m "small edit"
 append_evidence "$SESSION_ID" "quick-tier" "AUTHORIZED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
@@ -135,8 +167,8 @@ assert "Quick tier: small diff with quick-tier + critic + runners passes" \
 echo "=== Quick tier: size alone insufficient without quick-tier evidence ==="
 setup_repo
 clean_evidence
-echo "small edit" >> file.txt
-git add file.txt && git commit -q -m "small edit"
+echo "small edit" >> file.sh
+git add file.sh && git commit -q -m "small edit"
 # No quick-tier evidence — only critic + runners
 append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
@@ -148,8 +180,8 @@ assert "Quick tier: no quick-tier evidence → full gate → blocked" \
 echo "=== Quick tier: quick-tier evidence but large diff → full gate ==="
 setup_repo
 clean_evidence
-for i in $(seq 1 40); do echo "line $i" >> file.txt; done
-git add file.txt && git commit -q -m "big edit"
+for i in $(seq 1 40); do echo "line $i" >> file.sh; done
+git add file.sh && git commit -q -m "big edit"
 append_evidence "$SESSION_ID" "quick-tier" "AUTHORIZED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
