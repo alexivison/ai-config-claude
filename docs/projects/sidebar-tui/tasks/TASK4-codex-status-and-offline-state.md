@@ -36,7 +36,7 @@ Files to study before implementing:
 
 ## Design References (REQUIRED for UI/component tasks)
 
-- `../plans/sidebar-tui-v2-layout.svg`
+- `../layout.svg`
 
 ## Data Transformation Checklist (REQUIRED for shape changes)
 

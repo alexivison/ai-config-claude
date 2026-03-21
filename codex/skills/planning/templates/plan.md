@@ -95,6 +95,7 @@ Source reconciliation: [References or "None"]
 ## Notes
 
 - Target ~200 lines per task (standard) or 2-5 min steps (atomic)
-- Task files go in `tasks/` folder with naming: `TASK<N>-<kebab-case-title>.md`
+- All plan artifacts go in `docs/projects/<project-slug>/` (PLAN.md, SPEC.md, DESIGN.md, diagrams)
+- Task files go in `docs/projects/<project-slug>/tasks/` with naming: `TASK<N>-<kebab-case-title>.md`
 - Use ASCII for dependency graph (not Mermaid)
 - Each task = one PR, independently mergeable

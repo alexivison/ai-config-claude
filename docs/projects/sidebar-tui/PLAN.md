@@ -6,7 +6,7 @@
 >
 > **Tech Stack:** Bash, tmux 3.6a, jq-backed manifest helpers, Go 1.25.7, Bubble Tea, Bubbles, Lip Gloss
 >
-> **Specification:** [SPEC-sidebar-tui-v2.md](./SPEC-sidebar-tui-v2.md) | **Design:** [DESIGN-sidebar-tui-v2.md](./DESIGN-sidebar-tui-v2.md)
+> **Specification:** [SPEC.md](./SPEC.md) | **Design:** [DESIGN.md](./DESIGN.md)
 
 ## Scope
 
@@ -26,7 +26,7 @@ This plan covers standard and worker party sessions only. It includes launch-tim
 - [ ] [Task 5](./tasks/TASK5-codex-peek-popup.md) — Add snapshot-based Codex peek popup with periodic refresh and sidebar flash-message handling for unavailable companions (deps: Task 3, Task 4)
 - [ ] [Task 6](./tasks/TASK6-regression-tests-and-verification.md) — Add shell and Go regression coverage for launch, cleanup, routing, promotion, hidden-session filtering, status file, and sidebar parsing behavior (deps: Task 1, Task 2, Task 3, Task 4, Task 5)
 
-UI-bearing tasks include `Design References` sections that point at [plans/sidebar-tui-v2-layout.svg](./plans/sidebar-tui-v2-layout.svg).
+UI-bearing tasks include `Design References` sections that point at [layout.svg](./layout.svg).
 
 ## Coverage Matrix
 

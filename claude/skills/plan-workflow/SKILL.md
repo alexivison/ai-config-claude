@@ -62,14 +62,20 @@ existing architecture, constraints, user preferences>
   - `plan.md` template for PLAN.md (includes checkbox-links, dependency graph, coverage matrix)
   - `task.md` template for each TASK*.md (includes scope boundary, reference, design refs,
     data transformation checklist, files to create/modify, tests, acceptance criteria)
-- Create BOTH a PLAN.md AND individual TASK*.md files in `tasks/`
+- Create BOTH a PLAN.md AND individual TASK*.md files
+- All plan artifacts go in `docs/projects/<project-slug>/`:
+  - `docs/projects/<project-slug>/PLAN.md`
+  - `docs/projects/<project-slug>/SPEC.md`
+  - `docs/projects/<project-slug>/DESIGN.md`
+  - `docs/projects/<project-slug>/tasks/TASK<N>-<kebab-case-title>.md`
+  - Any diagrams/assets alongside PLAN.md
 - PLAN.md Tasks section MUST use checkbox-link form:
   `- [ ] [Task 1](./tasks/TASK1-short-title.md) — Description (deps: none)`
 - Keep it concise — a plan is a map, not a novel
 
 ## Output
-Write the plan to: <plan_path> (e.g., PLAN.md)
-Write task files to: tasks/TASK<N>-<kebab-case-title>.md (one per discrete task)
+Write the plan to: docs/projects/<project-slug>/PLAN.md
+Write task files to: docs/projects/<project-slug>/tasks/TASK<N>-<kebab-case-title>.md (one per discrete task)
 
 ## Response File Contract
 After writing all files, write a summary to the response file (<response_path>) containing:
@@ -158,7 +164,7 @@ The user reviewed the plan at <plan_path> and has feedback:
 <user's feedback, verbatim or faithfully paraphrased>
 
 ## Instructions
-- Read the current plan at <plan_path> and all TASK*.md files in tasks/
+- Read the current plan at <plan_path> and all TASK*.md files in the tasks/ subfolder
 - Apply the requested changes to BOTH PLAN.md and any affected TASK*.md files
 - If feedback changes task boundaries, ordering, or scope: regenerate affected TASK*.md files
 - Follow the canonical templates at ~/.codex/skills/planning/templates/

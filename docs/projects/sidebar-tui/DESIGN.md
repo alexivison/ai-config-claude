@@ -1,6 +1,6 @@
 # Party Sidebar TUI V2 Design
 
-> **Specification:** [SPEC-sidebar-tui-v2.md](./SPEC-sidebar-tui-v2.md)
+> **Specification:** [SPEC.md](./SPEC.md)
 
 ## Architecture Overview
 

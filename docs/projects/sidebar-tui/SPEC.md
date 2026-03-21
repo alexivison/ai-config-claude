@@ -43,4 +43,4 @@ Replace the visible Codex pane in standard and worker sessions with a narrow sid
 
 ## Technical Reference
 
-Implementation details and evidence live in [DESIGN-sidebar-tui-v2.md](./DESIGN-sidebar-tui-v2.md).
+Implementation details and evidence live in [DESIGN.md](./DESIGN.md).
