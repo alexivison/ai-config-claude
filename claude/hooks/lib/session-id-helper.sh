@@ -4,8 +4,10 @@
 # The session_id is a runtime UUID injected into hook JSON input. Claude (the agent)
 # cannot access it directly. This helper finds it from evidence artifacts.
 #
-# Strategy: look for the most recent worktree override or evidence file
-# associated with the current working directory's git repo.
+# Strategies (in priority order):
+# 1. Party state file (CLAUDE_PARTY_SESSION env var)
+# 2. Most recent worktree override matching cwd's git repo root
+# 3. Most recent evidence file with worktree override matching cwd's repo root
 #
 # Usage:
 #   source "$(dirname "$0")/lib/session-id-helper.sh"
@@ -30,10 +32,11 @@ discover_session_id() {
     fi
   fi
 
-  # Strategy 2: Find worktree override files whose repo root matches ours
+  # Strategy 2: Find the most recent worktree override whose repo root matches ours
   local cwd_repo_root
   cwd_repo_root=$(cd "$cwd" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || true
 
+  local newest_override_sid="" newest_override_ts=0
   if [ -n "$cwd_repo_root" ]; then
     for f in /tmp/claude-worktree-*; do
       [ -f "$f" ] || continue
@@ -43,12 +46,20 @@ discover_session_id() {
         local override_root
         override_root=$(cd "$override_path" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || continue
         if [ "$override_root" = "$cwd_repo_root" ]; then
-          local sid="${f#/tmp/claude-worktree-}"
-          echo "$sid"
-          return 0
+          local mtime
+          mtime=$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null || echo 0)
+          if [ "$mtime" -gt "$newest_override_ts" ]; then
+            newest_override_sid="${f#/tmp/claude-worktree-}"
+            newest_override_ts="$mtime"
+          fi
         fi
       fi
     done
+  fi
+
+  if [ -n "$newest_override_sid" ]; then
+    echo "$newest_override_sid"
+    return 0
   fi
 
   # Strategy 3: Find evidence files and match by repo

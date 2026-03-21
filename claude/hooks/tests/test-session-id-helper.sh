@@ -62,6 +62,18 @@ FOUND_SID=$(discover_session_id "$SUBDIR")
 assert "Discovers session ID from subdirectory of repo" \
   '[ "$FOUND_SID" = "$TEST_SID" ]'
 
+echo "=== Strategy 2: returns newest override when multiple match ==="
+OLD_SID="test-old-session-$$"
+NEW_SID="test-new-session-$$"
+# Write old override first, then new one (touch to ensure mtime difference)
+echo "$TMPDIR_BASE" > "/tmp/claude-worktree-${OLD_SID}"
+sleep 1
+echo "$TMPDIR_BASE" > "/tmp/claude-worktree-${NEW_SID}"
+FOUND_SID=$(discover_session_id "$TMPDIR_BASE")
+assert "Returns newest session when multiple overrides match same repo" \
+  '[ "$FOUND_SID" = "$NEW_SID" ]'
+rm -f "/tmp/claude-worktree-${OLD_SID}" "/tmp/claude-worktree-${NEW_SID}"
+
 echo "=== Strategy 2: ignores empty override files ==="
 echo "" > "/tmp/claude-worktree-${TEST_SID}"
 FOUND_SID=$(discover_session_id "$TMPDIR_BASE" 2>/dev/null || echo "")

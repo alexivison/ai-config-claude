@@ -145,6 +145,15 @@ OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
 assert "PR with package-lock.json requires evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
 
+echo "=== Docs-only bypass: requirements.txt requires evidence ==="
+setup_repo
+clean_evidence
+echo "flask==2.0" > requirements.txt
+git add requirements.txt && git commit -q -m "add requirements.txt"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "PR with requirements.txt requires evidence" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
 # ═══ Full gate tests ════════════════════════════════════════════════════════
 
 echo "=== Full gate: blocks when evidence missing ==="
