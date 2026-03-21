@@ -5,7 +5,7 @@
 # cannot access it directly. This helper finds it from evidence artifacts.
 #
 # Strategy: look for the most recent worktree override or evidence file
-# associated with the current working directory's git repo+branch.
+# associated with the current working directory's git repo.
 #
 # Usage:
 #   source "$(dirname "$0")/lib/session-id-helper.sh"
@@ -17,7 +17,7 @@ discover_session_id() {
   local cwd="${1:-$(pwd)}"
 
   # Strategy 1: Check party session manifest (most reliable in party sessions)
-  if [ -n "$CLAUDE_PARTY_SESSION" ]; then
+  if [ -n "${CLAUDE_PARTY_SESSION:-}" ]; then
     local manifest="/tmp/party-${CLAUDE_PARTY_SESSION}/manifest.json"
     if [ -f "$manifest" ]; then
       local sid
@@ -49,9 +49,8 @@ discover_session_id() {
     fi
   done
 
-  # Strategy 3: Find evidence files and match by repo+branch
-  local branch repo_root
-  branch=$(cd "$cwd" 2>/dev/null && git branch --show-current 2>/dev/null) || return 1
+  # Strategy 3: Find evidence files and match by repo
+  local repo_root
   repo_root=$(cd "$cwd" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || return 1
 
   local newest_sid="" newest_ts=0
