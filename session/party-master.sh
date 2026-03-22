@@ -98,9 +98,18 @@ party_promote() {
     return 1
   fi
 
+  # Sidebar promotion deferred to Task 10 — fail closed
+  if [[ "$(party_layout_mode)" == "sidebar" ]]; then
+    echo "Error: promotion in sidebar mode is not yet supported (deferred to Task 10)." >&2
+    return 1
+  fi
+
   local repo_root cli_cmd
   repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
-  cli_cmd="$(party_resolve_cli_cmd "$session" "$repo_root")"
+  cli_cmd="$(party_resolve_cli_cmd --strict "$session" "$repo_root")" || {
+    echo "Error: party-cli not found and Go not available." >&2
+    return 1
+  }
 
   local codex_pane
   codex_pane="$(party_role_pane_target "$session" "codex" 2>/dev/null)" || {

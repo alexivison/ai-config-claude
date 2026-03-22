@@ -491,8 +491,13 @@ party_codex_pane_target() {
 
 # Resolve the party-cli command string for launching in a pane.
 # Tries: installed binary on PATH > go run from source.
+# --strict: return 1 instead of fallback placeholder (for promotion)
 party_resolve_cli_cmd() {
-  local session="${1:?Usage: party_resolve_cli_cmd SESSION REPO_ROOT}"
+  local strict=0
+  if [[ "${1:-}" == "--strict" ]]; then
+    strict=1; shift
+  fi
+  local session="${1:?Usage: party_resolve_cli_cmd [--strict] SESSION REPO_ROOT}"
   local repo_root="${2:?Missing repo_root}"
   local cli_bin
 
@@ -507,6 +512,9 @@ party_resolve_cli_cmd() {
     return 0
   fi
 
+  if [[ "$strict" -eq 1 ]]; then
+    return 1
+  fi
   echo "Warning: party-cli not found and Go not available." >&2
   printf "echo 'party-cli: install Go or build the binary'; read\n"
 }
