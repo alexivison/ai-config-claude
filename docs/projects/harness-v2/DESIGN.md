@@ -19,6 +19,7 @@ The absorbed sidebar work is no longer a separate project track. Its surviving i
 - [Session Layouts](./diagrams/session-layouts.svg)
 - [Data Flow](./diagrams/data-flow.svg)
 - [Before / After](./diagrams/before-after.svg)
+- [Status Bar Design](./diagrams/status-bar.svg)
 
 ```mermaid
 flowchart LR
