@@ -83,8 +83,8 @@ Test cases:
 
 ## Acceptance Criteria
 
-- [ ] Shared tmux service exists with typed query, send, capture, and popup helpers
-- [ ] Role lookup is strict and explicit
-- [ ] Delivery results are no longer silent
-- [ ] Window-management helpers correctly target window 0 (Codex) and window 1 (workspace)
-- [ ] tmux package tests pass
+- [x] Shared tmux service exists with typed query, send, capture, and popup helpers
+- [x] Role lookup is strict and explicit
+- [x] Delivery results are no longer silent
+- [x] Window-management helpers correctly target window 0 (Codex) and window 1 (workspace)
+- [x] tmux package tests pass
