@@ -14,7 +14,7 @@ Put the unified binary into live sessions. Window 1 (pane `0`) should now run `p
 - Update shell launchers to create window 0 (Codex, hidden) and window 1 (workspace panes) in sidebar mode
 - Start `party-cli` in window 1 pane `0`
 - Direct master launches do NOT create window 0 (matching current behavior — masters have no Codex pane); promoted masters retain window 0 from their worker/standalone origin (handled by Task 10)
-- Change standard/worker default layout to sidebar | claude | shell (window 1) with Codex in hidden window 0
+- Support sidebar layout (opt-in via `PARTY_LAYOUT=sidebar`) as sidebar | claude | shell (window 1) with Codex in hidden window 0
 - Preserve `PARTY_LAYOUT=classic` as a first-class escape hatch (single window, no hidden Codex window)
 - Update shell routing helpers so retained Codex transport targets window 0 (`${session}:0`) when sidebar mode is active
 - Configure tmux status bar to visually distinguish agent windows (window 0 — dimmed/subtle, left side) from workspace windows (window 1+ — normal/bright, right side) via the existing theme in `tmux/tmux.conf`
@@ -59,7 +59,7 @@ Files to study before implementing:
 | File | Action |
 |------|--------|
 | `session/party.sh` | Modify — create window 0 (Codex) + window 1 (workspace) in sidebar mode |
-| `session/party-master.sh` | Modify — window 0 creation for master sessions |
+| `session/party-master.sh` | Modify — launch party-cli tracker in pane 0 (no window 0 for direct masters) |
 | `session/party-lib.sh` | Modify — window-based routing helpers |
 | `claude/skills/codex-transport/scripts/tmux-codex.sh` | Modify — target `${session}:0` in sidebar mode |
 | `tmux/tmux.conf` | Modify — add status bar styling to distinguish agent vs. workspace windows |
@@ -72,8 +72,8 @@ Files to study before implementing:
 **Functionality:**
 - New sessions create window 0 (Codex, hidden) and window 1 (party-cli | Claude | Shell) in sidebar mode
 - Window 1 is the active window on session launch
-- Worker and standalone sessions default to sidebar layout with Codex in hidden window 0
-- Master sessions default to tracker layout (window 0 exists but Codex is not active)
+- Worker and standalone sessions support sidebar layout (opt-in via `PARTY_LAYOUT=sidebar`) with Codex in hidden window 0; `PARTY_LAYOUT=classic` remains the default until Task 10 proves promotion parity
+- Direct master sessions use tracker layout with no window 0 (no Codex pane, matching current behavior); promoted masters retain window 0 from their worker/standalone origin
 - `PARTY_LAYOUT=classic` preserves the existing visible-Codex behavior (single window, no hidden window 0)
 - Retained Codex transport targets `${session}:0` in sidebar mode and the classic Codex pane in classic mode
 - tmux status bar visually distinguishes agent windows (window 0, dimmed/subtle) from workspace windows (window 1+, bright), configurable via `tmux/tmux.conf`

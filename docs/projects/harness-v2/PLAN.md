@@ -72,14 +72,19 @@ The former standalone sidebar evaluation phase is removed. `docs/projects/sideba
 ## Dependency Graph
 
 ```text
-Task 1 ───> Task 2 ───────┐
-                          ├───> Task 4 ───> Task 5 ───┬───> Task 7 ───┐
-Task 3 ───────────────────┘                           │               │
-                                                      └───> Task 6 ───┼───> Task 8 ───> Task 9 ───> Task 10 ───> Task 11 ───┬───> Task 12 ───┐
-                                                                                                  │                           │                 │
-                                                                                                  │                           ├───> Task 13 ───┼───> Task 15
-                                                                                                  │                           │                 │
-                                                                                                  └──────────────> Task 14 ──┘                 │
+                                                         ┌───> Task 7 ─────────────────────────────┐
+Task 1 ───> Task 2 ──┐                                  │                                          │
+                      ├───> Task 4 ───> Task 5 ───> Task 6                                         │
+Task 3 ───────────────┘                    │             │                                          │
+                                           └─────────────┴───> Task 8 ───> Task 9 ───> Task 10 ───>│───> Task 11 ───┬───> Task 12 ───┐
+                                                                             │           │          │                │                │
+                                                                             │           └──────────┼── Task 14 ─────┤                │
+                                                                             │                      │                ├───> Task 13 ───┼───> Task 15
+                                                                             │                      └────────────────┘                │
+                                                                             └────────────────────────────────────────────────────────┘
+
+Key cross-edges: Task 7 ──> {Task 9, Task 12, Task 13}; Task 8 ──> {Task 11, Task 14}
+Task 9 ──> Task 12; Task 10 ──> {Task 13, Task 14}
 ```
 
 ## Task Handoff State

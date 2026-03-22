@@ -193,7 +193,7 @@ Unified binary:
   party-cli picker
 
 Layout contract:
-  PARTY_LAYOUT=sidebar|classic             # default sidebar for standard/worker sessions
+  PARTY_LAYOUT=sidebar|classic             # classic default; sidebar opt-in until promotion parity proven
 
 Runtime artifacts:
   hidden Codex window: <session>:0 (window 0 within the party session)

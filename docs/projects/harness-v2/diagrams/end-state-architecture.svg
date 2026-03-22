@@ -59,10 +59,10 @@
   <text x="280" y="269" fill="#a5d6a7" font-size="11">pane.go (roles, capture)</text>
 
   <rect x="490" y="195" width="200" height="80" fill="#1b4332" stroke="#4caf50" stroke-width="1" rx="4"/>
-  <text x="590" y="215" fill="#81c784" font-weight="bold" text-anchor="middle">internal/app/</text>
-  <text x="500" y="235" fill="#a5d6a7" font-size="11">lifecycle.go (start/stop)</text>
-  <text x="500" y="252" fill="#a5d6a7" font-size="11">relay.go (messaging)</text>
-  <text x="500" y="269" fill="#a5d6a7" font-size="11">prune.go (cleanup)</text>
+  <text x="590" y="215" fill="#81c784" font-weight="bold" text-anchor="middle">session/ + message/</text>
+  <text x="500" y="235" fill="#a5d6a7" font-size="11">session/ (lifecycle)</text>
+  <text x="500" y="252" fill="#a5d6a7" font-size="11">message/ (relay)</text>
+  <text x="500" y="269" fill="#a5d6a7" font-size="11">picker/ (selection)</text>
 
   <!-- Retained (bash) -->
   <rect x="50" y="310" width="320" height="65" fill="#3e2723" stroke="#ff9800" stroke-width="1" rx="4"/>
