@@ -20,8 +20,12 @@ if party_is_master "$session"; then
   exit 0
 fi
 
-# Look up parent_session from manifest
-parent=$(party_state_get_field "$session" "parent_session" 2>/dev/null || true)
+# Look up parent_session from manifest via jq
+manifest="$(party_state_file "$session")"
+parent=""
+if [[ -f "$manifest" ]] && command -v jq >/dev/null 2>&1; then
+  parent="$(jq -r '.parent_session // empty' "$manifest" 2>/dev/null || true)"
+fi
 
 if [[ -z "$parent" ]]; then
   tmux display-message "No parent master session found"

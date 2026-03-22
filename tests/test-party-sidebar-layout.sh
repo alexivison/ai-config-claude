@@ -133,65 +133,8 @@ assert "codex_target: sidebar always returns 0.0 regardless of pane data" \
 
 unset PARTY_LAYOUT
 
-# ===========================================================================
-# party_resolve_cli_cmd — party-cli binary resolution
-# ===========================================================================
-
-echo ""
-echo "  === party_resolve_cli_cmd ==="
-
-# When party-cli is on PATH, uses it directly
-_orig_path="$PATH"
-MOCK_CLI_BIN="/tmp/test-party-cli-$$"
-echo '#!/bin/sh' > "$MOCK_CLI_BIN" && chmod +x "$MOCK_CLI_BIN"
-PATH="$(dirname "$MOCK_CLI_BIN"):$PATH"
-
-result=$(party_resolve_cli_cmd "party-test-session" "$REPO_ROOT")
-assert "resolve_cli: finds binary on PATH" \
-  '[[ "$result" == *"party-cli"* ]]'
-assert "resolve_cli: uses --session flag" \
-  '[[ "$result" == *"--session"* ]]'
-assert "resolve_cli: includes session arg" \
-  '[[ "$result" == *"party-test-session"* ]]'
-
-rm -f "$MOCK_CLI_BIN"
-PATH="$_orig_path"
-
-# When no binary but Go + source available, uses go run
-_go_bin="$(command -v go 2>/dev/null || true)"
-if [[ -n "$_go_bin" ]] && [[ -f "$REPO_ROOT/tools/party-cli/main.go" ]]; then
-  # Temporarily hide party-cli but keep Go accessible
-  PATH="$(dirname "$_go_bin"):/usr/bin:/bin"
-  result=$(party_resolve_cli_cmd "party-test-session" "$REPO_ROOT")
-  assert "resolve_cli: falls back to go run" \
-    '[[ "$result" == *"go run"* ]]'
-  assert "resolve_cli: go run changes to module dir" \
-    '[[ "$result" == *"cd "* && "$result" == *"tools/party-cli"* ]]'
-  assert "resolve_cli: go run uses --session flag" \
-    '[[ "$result" == *"--session"* ]]'
-  PATH="$_orig_path"
-fi
-
-# --strict mode returns 1 when no binary available
-PATH="/usr/bin:/bin"
-if party_resolve_cli_cmd --strict "party-test-session" "/nonexistent" 2>/dev/null; then
-  FAIL=$((FAIL + 1))
-  echo "  [FAIL] resolve_cli: --strict fails when no binary"
-else
-  PASS=$((PASS + 1))
-  echo "  [PASS] resolve_cli: --strict fails when no binary"
-fi
-PATH="$_orig_path"
-
-# Non-strict mode returns placeholder when no binary available
-PATH="/usr/bin:/bin"
-result=$(party_resolve_cli_cmd "party-test-session" "/nonexistent" 2>/dev/null)
-assert "resolve_cli: non-strict returns placeholder" \
-  '[[ "$result" == *"party-cli"* ]]'
-PATH="$_orig_path"
-
-# NOTE: party_promote tests removed — promote logic now lives in party-cli (Go).
-# See tools/party-cli/internal/session/promote.go and cmd/promote.go for tests.
+# NOTE: party_resolve_cli_cmd and party_promote tests removed —
+# both now live in party-cli (Go). See tools/party-cli/ for tests.
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

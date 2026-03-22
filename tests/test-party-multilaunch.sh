@@ -19,17 +19,11 @@ assert() {
   fi
 }
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo "jq not found; skipping test-party-multilaunch.sh"
-  exit 0
-fi
-
 SESSION="party-test-multilaunch-$$"
 export PARTY_SESSION="$SESSION"
-export PARTY_STATE_ROOT="/tmp/party-state-root-ml-$$"
 
 cleanup() {
-  rm -rf "/tmp/$SESSION" "$PARTY_STATE_ROOT"
+  rm -rf "/tmp/$SESSION"
 }
 trap cleanup EXIT
 
@@ -62,19 +56,8 @@ printf -v q '%q' 'echo $HOME && rm -rf /'
 assert "prompt quoting: shell metacharacters preserved" \
   '[ "$(eval echo "$q")" = "echo \$HOME && rm -rf /" ]'
 
-# === Prompt persistence to manifest ===
-
-ensure_party_state_dir "$SESSION" >/dev/null
-party_state_upsert_manifest "$SESSION" "Test" "/tmp/project" "work" "/bin/claude" "/bin/codex" "/usr/bin"
-party_state_set_field "$SESSION" "initial_prompt" "Work on TASK-42.md"
-
-assert "prompt persistence: initial_prompt stored in manifest" \
-  '[ "$(party_state_get_field "$SESSION" "initial_prompt")" = "Work on TASK-42.md" ]'
-
-# Prompt with special chars persists through JSON
-party_state_set_field "$SESSION" "initial_prompt" 'Fix the "auth" bug'
-assert "prompt persistence: special chars survive JSON roundtrip" \
-  '[ "$(party_state_get_field "$SESSION" "initial_prompt")" = "Fix the \"auth\" bug" ]'
+# NOTE: Prompt persistence to manifest tests removed —
+# manifest CRUD now lives in party-cli (Go). See internal/state/ for tests.
 
 # === party_attach tmux-awareness ===
 

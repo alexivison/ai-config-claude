@@ -84,19 +84,19 @@ err=$(party_role_pane_target "party-test" "codex" 2>&1 >/dev/null || true)
 assert "role resolver: duplicate role emits ROLE_AMBIGUOUS" \
   '[[ "$err" == *"ROLE_AMBIGUOUS"* ]]'
 
-# === party_role_pane_target_with_fallback (legacy fallback removed) ===
+# === party_role_pane_target (no-role rejection) ===
 
 # Role metadata present → resolves by role
 MOCK_PANE_DATA=$'0 codex\n1 claude\n2 shell'
 
-result=$(party_role_pane_target_with_fallback "party-test" "claude")
+result=$(party_role_pane_target "party-test" "claude")
 assert "wrapper: role present, resolves by role" \
   '[ "$result" = "party-test:0.1" ]'
 
 # 2-pane session without roles → now rejected (no legacy fallback)
 MOCK_PANE_DATA=$'0 \n1 '
 
-if party_role_pane_target_with_fallback "party-test" "claude" 2>/dev/null; then
+if party_role_pane_target "party-test" "claude" 2>/dev/null; then
   FAIL=$((FAIL + 1))
   echo "  [FAIL] wrapper: 2-pane without roles now rejected"
 else
@@ -104,14 +104,14 @@ else
   echo "  [PASS] wrapper: 2-pane without roles now rejected"
 fi
 
-err=$(party_role_pane_target_with_fallback "party-test" "codex" 2>&1 >/dev/null || true)
+err=$(party_role_pane_target "party-test" "codex" 2>&1 >/dev/null || true)
 assert "wrapper: 2-pane without roles emits ROLE_NOT_FOUND" \
   '[[ "$err" == *"ROLE_NOT_FOUND"* ]]'
 
 # 3-pane session without roles → rejected
 MOCK_PANE_DATA=$'0 \n1 \n2 '
 
-if party_role_pane_target_with_fallback "party-test" "claude" 2>/dev/null; then
+if party_role_pane_target "party-test" "claude" 2>/dev/null; then
   FAIL=$((FAIL + 1))
   echo "  [FAIL] wrapper: 3-pane without roles rejected"
 else
@@ -122,7 +122,7 @@ fi
 # Duplicate role through wrapper → ROLE_AMBIGUOUS propagated
 MOCK_PANE_DATA=$'0 codex\n1 codex\n2 shell'
 
-if party_role_pane_target_with_fallback "party-test" "codex" 2>/dev/null; then
+if party_role_pane_target "party-test" "codex" 2>/dev/null; then
   FAIL=$((FAIL + 1))
   echo "  [FAIL] wrapper: duplicate role returns error"
 else
@@ -130,7 +130,7 @@ else
   echo "  [PASS] wrapper: duplicate role returns error"
 fi
 
-err=$(party_role_pane_target_with_fallback "party-test" "codex" 2>&1 >/dev/null || true)
+err=$(party_role_pane_target "party-test" "codex" 2>&1 >/dev/null || true)
 assert "wrapper: duplicate role propagates ROLE_AMBIGUOUS" \
   '[[ "$err" == *"ROLE_AMBIGUOUS"* ]]'
 

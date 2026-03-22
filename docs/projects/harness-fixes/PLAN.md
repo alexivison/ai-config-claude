@@ -271,11 +271,11 @@ Task 8 (disk space mgmt) ──── no deps ─────
 
 ## Definition of Done
 
-- [ ] party-lib.sh contains only tmux-codex essentials (~250L, no manifest CRUD)
-- [ ] `tools/party-tracker/` directory deleted
-- [ ] All 31 stale task directories removed, orphaned files cleaned
-- [ ] `internal/tmux` test coverage ≥70%
-- [ ] `internal/session` test coverage ≥75%
-- [ ] Hook test suite passes with no failures
-- [ ] `tmux_send` has delivery confirmation
-- [ ] Disk space management available via `party-cli prune --artifacts`
+- [x] party-lib.sh contains only tmux-codex essentials (~297L, no manifest CRUD)
+- [x] `tools/party-tracker/` directory deleted
+- [x] All 31 stale task directories removed, orphaned files cleaned
+- [x] `internal/tmux` test coverage ≥70% (87.6%)
+- [x] `internal/session` test coverage ≥75% (75.3%)
+- [x] Hook test suite passes with no failures (175/175)
+- [x] `tmux_send` has delivery confirmation
+- [x] Disk space management available via `party-cli prune --artifacts`

@@ -13,10 +13,10 @@ discover_session
 if [[ -n "${CODEX_THREAD_ID:-}" && ! -s "$STATE_DIR/codex-thread-id" ]]; then
   printf '%s\n' "$CODEX_THREAD_ID" > "$STATE_DIR/codex-thread-id"
   tmux set-environment -t "$SESSION_NAME" CODEX_THREAD_ID "$CODEX_THREAD_ID" 2>/dev/null || true
-  party_state_set_field "$SESSION_NAME" "codex_thread_id" "$CODEX_THREAD_ID" >/dev/null 2>&1 || true
+  # Manifest write retired — codex_thread_id is in STATE_DIR file + tmux env
 fi
 
-CLAUDE_PANE=$(party_role_pane_target_with_fallback "$SESSION_NAME" "claude") || {
+CLAUDE_PANE=$(party_role_pane_target "$SESSION_NAME" "claude") || {
   echo "Error: Cannot resolve Claude pane in session '$SESSION_NAME'" >&2
   exit 1
 }
