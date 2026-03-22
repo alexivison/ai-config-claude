@@ -84,6 +84,9 @@ Test cases:
 ## Acceptance Criteria
 
 - [ ] `party-cli` owns relay, broadcast, read, report, and worker enumeration
-- [ ] Report-back remains compatible with current worker workflows
-- [ ] Messaging commands use delivery-confirmed tmux services
+- [ ] Delivery confirmation semantics match `tmux-codex.sh` contract: send returns success only after target pane receives content (not just after `tmux send-keys`)
+- [ ] Report-back (`--report`) remains compatible with current worker workflows documented in `claude/skills/party-dispatch/SKILL.md` and `claude/CLAUDE.md`
+- [ ] Large or multi-line messages route through temp-file indirection when payload exceeds tmux send-keys limits
+- [ ] Worker enumeration output matches current `party-relay.sh --list` format for backward compatibility during coexistence
+- [ ] Shell wrapper `party-relay.sh` delegates to `party-cli` without behavior drift
 - [ ] Messaging tests pass

@@ -227,6 +227,6 @@ Runtime artifacts:
 - **tmux 3.6a:** required for pane metadata, popup support, and the launch layouts already codified in `tmux/tmux.conf`.
 - **jq:** required for the surviving shell manifest helpers and now enforced early instead of silently skipped.
 - **Go 1.25.7:** matches the current tracker module and should remain the baseline for `party-cli`.
-- **Cobra and Viper:** provide the shared root command and configuration seam.
+- **Cobra:** provides the shared root command, flag parsing, and env binding. Viper is not used — `party-cli` has no config files or hierarchical config needs; `os.Getenv()` and Cobra flags cover all env/flag resolution.
 - **Bubble Tea, Bubbles, Lip Gloss:** reused from the existing tracker patterns.
 - **fzf:** optional convenience backend for picker parity; if absent, the binary must fail clearly or use a built-in fallback.

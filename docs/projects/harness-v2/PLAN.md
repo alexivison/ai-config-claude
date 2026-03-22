@@ -4,7 +4,7 @@
 >
 > **Architecture:** Phase 1 hardens the current shell and hook layer. Phase 2 introduces `tools/party-cli/` as the shared implementation surface for state, tmux, and TUI foundations, then launches it in pane `0` for sidebar and tracker layouts while preserving `PARTY_LAYOUT=classic`. Phase 3 ports lifecycle, messaging, worker/master TUI behavior, picker flows, and cutover, while explicitly retaining `session/party-lib.sh` as the routing dependency for `tmux-codex.sh`.
 >
-> **Tech Stack:** Bash, tmux 3.6a, jq, Go 1.25.7, Cobra, Viper, Bubble Tea, Lip Gloss, Markdown
+> **Tech Stack:** Bash, tmux 3.6a, jq, Go 1.25.7, Cobra, Bubble Tea, Lip Gloss, Markdown
 >
 > **Specification:** [SPEC.md](./SPEC.md) | **Design:** [DESIGN.md](./DESIGN.md)
 
@@ -109,7 +109,7 @@ Task 3 ───────────────────┘             
 | `jq` for Bash-era manifest access | Present today but inconsistently enforced | Tasks 1, 2 |
 | tmux 3.6a pane/session behavior and popup support | Existing harness contract | Tasks 2, 6, 9, 10, 11, 12, 13, 14, 15 |
 | Go 1.25.7 toolchain | Already required by `tools/party-tracker` | Tasks 4 through 15 |
-| Cobra and Viper | New dependency pair for command tree and config | Task 4 onward |
+| Cobra | Command tree and flag/env binding (Viper removed — no config files or hierarchical config to justify it; `os.Getenv()` + Cobra flags suffice) | Task 4 onward |
 | Bubble Tea, Lip Gloss, Bubbles | Already in the tracker module and reused here | Tasks 7, 12, 13 |
 | `fzf` or a clear built-in fallback | Existing picker dependency | Task 14 |
 
