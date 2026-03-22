@@ -14,6 +14,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/party-lib.sh"
 
+# Resolve party-cli binary for delegation (array form for paths with spaces).
+_PARTY_CLI=()
+if command -v party-cli &>/dev/null; then
+  _PARTY_CLI=(party-cli)
+elif [[ -n "${PARTY_REPO_ROOT:-}" ]] && command -v go &>/dev/null \
+     && [[ -f "$PARTY_REPO_ROOT/tools/party-cli/main.go" ]]; then
+  _PARTY_CLI=(go run "$PARTY_REPO_ROOT/tools/party-cli")
+fi
+
 relay_usage() {
   cat <<'EOF'
 Usage:
@@ -198,24 +207,39 @@ fi
 
 case "$1" in
   --broadcast)
+    if [[ ${#_PARTY_CLI[@]} -gt 0 ]]; then
+      relay_discover_master
+      exec "${_PARTY_CLI[@]}" broadcast "$SESSION_NAME" "${2:?--broadcast requires a message}"
+    fi
     relay_discover_master
     relay_broadcast "${2:?--broadcast requires a message}"
     ;;
   --read)
     shift
-    local _read_worker="${1:?--read requires a worker ID}"
-    local _read_lines=50
+    _read_worker="${1:?--read requires a worker ID}"
+    _read_lines=50
     shift
     if [[ "${1:-}" == "--lines" ]]; then
       _read_lines="${2:?--lines requires a number}"
       shift 2
     fi
+    if [[ ${#_PARTY_CLI[@]} -gt 0 ]]; then
+      exec "${_PARTY_CLI[@]}" read "$_read_worker" --lines "$_read_lines"
+    fi
     relay_read "$_read_worker" "$_read_lines"
     ;;
   --report)
+    if [[ ${#_PARTY_CLI[@]} -gt 0 ]]; then
+      discover_session || { echo "Error: must be run inside a party session." >&2; exit 1; }
+      exec "${_PARTY_CLI[@]}" report "$SESSION_NAME" "${2:?--report requires a message}"
+    fi
     relay_report "${2:?--report requires a message}"
     ;;
   --list)
+    if [[ ${#_PARTY_CLI[@]} -gt 0 ]]; then
+      relay_discover_master
+      exec "${_PARTY_CLI[@]}" workers "$SESSION_NAME"
+    fi
     relay_discover_master
     relay_list
     ;;
@@ -236,6 +260,9 @@ case "$1" in
       echo "Error: file '$_file_path' not found." >&2
       exit 1
     fi
+    # --file stays on the shell path: the pointer is already formed,
+    # and re-routing through party-cli relay would double-indirect if
+    # the pointer string exceeded LargeMessageThreshold.
     relay_to_worker "$_file_worker" "Read relay instructions at $_file_path"
     ;;
   --help|-h)
@@ -246,6 +273,9 @@ case "$1" in
     if [[ $# -lt 2 ]]; then
       relay_usage >&2
       exit 1
+    fi
+    if [[ ${#_PARTY_CLI[@]} -gt 0 ]]; then
+      exec "${_PARTY_CLI[@]}" relay "$1" "$2"
     fi
     relay_to_worker "$1" "$2"
     ;;
