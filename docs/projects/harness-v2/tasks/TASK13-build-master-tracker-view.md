@@ -80,13 +80,13 @@ Test cases:
 
 ## Acceptance Criteria
 
-- [ ] Master tracker view is implemented inside `party-cli`
-- [ ] Tracker actions call shared Go services, not Bash scripts
-- [ ] Attach action switches tmux client to the selected worker session
-- [ ] Relay action sends a message to the selected worker's Claude pane via delivery-confirmed tmux service
-- [ ] Spawn action creates a new worker session under the master using Go lifecycle service
-- [ ] Manifest inspect shows the selected worker's (or master's) manifest in a scrollable overlay
-- [ ] Worker list renders active/stopped states, titles, and pane snippets
-- [ ] Narrow-width rendering degrades gracefully (compact status, hidden snippets)
-- [ ] Core tracker interactions are covered by tests
-- [ ] Legacy `tools/party-tracker/` is no longer the primary implementation
+- [x] Master tracker view is implemented inside `party-cli`
+- [x] Tracker actions call shared Go services, not Bash scripts
+- [x] Attach action switches tmux client to the selected worker session
+- [x] Relay action sends a message to the selected worker's Claude pane via delivery-confirmed tmux service
+- [x] Spawn action creates a new worker session under the master using Go lifecycle service
+- [x] Manifest inspect shows the selected worker's (or master's) manifest in a scrollable overlay
+- [x] Worker list renders active/stopped states, titles, and pane snippets
+- [x] Narrow-width rendering degrades gracefully (compact status, hidden snippets)
+- [x] Core tracker interactions are covered by tests
+- [x] Legacy `tools/party-tracker/` is no longer the primary implementation
