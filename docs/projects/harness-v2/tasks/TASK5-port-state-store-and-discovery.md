@@ -77,7 +77,7 @@ Test cases:
 
 ## Acceptance Criteria
 
-- [ ] Typed Go state store preserves existing manifest schema
-- [ ] Flock-based locking replaces directory-lock behavior
-- [ ] Session discovery is implemented (no companion filtering needed — hidden-window model)
-- [ ] State package tests pass
+- [x] Typed Go state store preserves existing manifest schema
+- [x] Flock-based locking replaces directory-lock behavior
+- [x] Session discovery is implemented (no companion filtering needed — hidden-window model)
+- [x] State package tests pass
