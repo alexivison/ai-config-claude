@@ -336,6 +336,9 @@ func TestStore_TimestampsAutoManaged(t *testing.T) {
 	if got.CreatedAt != createdAt {
 		t.Errorf("CreatedAt changed: got %q, want %q", got.CreatedAt, createdAt)
 	}
+	if got.UpdatedAt == "" {
+		t.Error("UpdatedAt should be non-empty after update")
+	}
 }
 
 func TestStore_UnknownFieldsSurviveUpdate(t *testing.T) {

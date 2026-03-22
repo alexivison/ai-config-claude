@@ -93,8 +93,11 @@ func (s *Store) Delete(partyID string) error {
 	}
 	return s.withLock(partyID, func() error {
 		path := s.manifestPath(partyID)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			return fmt.Errorf("manifest not found: %s", partyID)
+		if _, err := os.Stat(path); err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("manifest not found: %s", partyID)
+			}
+			return fmt.Errorf("check manifest: %w", err)
 		}
 		return os.Remove(path)
 	})
