@@ -79,7 +79,7 @@ Test cases:
 
 ## Acceptance Criteria
 
-- [ ] `party-cli picker` exists and is backed by shared services
-- [ ] Picker shows all sessions (no companion filtering needed) and preserves preview usefulness
-- [ ] Selection actions call Go lifecycle services
-- [ ] Picker tests pass
+- [x] `party-cli picker` exists and is backed by shared services
+- [x] Picker shows all sessions (no companion filtering needed) and preserves preview usefulness
+- [x] Selection actions call Go lifecycle services
+- [x] Picker tests pass

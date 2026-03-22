@@ -97,6 +97,7 @@ When invoked with a subcommand, it runs in CLI mode.`,
 	root.AddCommand(newReadCmd(o.store, o.client))
 	root.AddCommand(newReportCmd(o.store, o.client))
 	root.AddCommand(newWorkersCmd(o.store, o.client))
+	root.AddCommand(newPickerCmd(o.store, o.client, o.repoRoot))
 
 	return root
 }
