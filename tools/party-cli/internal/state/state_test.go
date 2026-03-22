@@ -105,18 +105,36 @@ func TestManifest_OlderManifestMissingOptionalFields(t *testing.T) {
 	}
 }
 
-func TestManifest_ExtraFieldsIgnored(t *testing.T) {
+func TestManifest_ExtraFieldsPreserved(t *testing.T) {
 	t.Parallel()
 
-	future := `{"party_id":"party-f","cwd":"/f","new_field":"surprise"}`
+	// Manifest with unknown fields (from bash helpers)
+	input := `{"party_id":"party-f","cwd":"/f","parent_session":"party-master","initial_prompt":"hello","claude_session_id":"abc123"}`
 
 	var m Manifest
-	if err := json.Unmarshal([]byte(future), &m); err != nil {
-		t.Fatalf("unmarshal future manifest: %v", err)
+	if err := json.Unmarshal([]byte(input), &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
 	}
 
 	if m.PartyID != "party-f" {
 		t.Errorf("party_id: got %q, want %q", m.PartyID, "party-f")
+	}
+
+	// Re-marshal and verify unknown fields survive
+	data, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("unmarshal raw: %v", err)
+	}
+
+	for _, key := range []string{"parent_session", "initial_prompt", "claude_session_id"} {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("unknown field %q lost during round-trip", key)
+		}
 	}
 }
 
@@ -278,6 +296,85 @@ func TestStore_DeleteNotFound(t *testing.T) {
 	err := s.Delete("party-nope")
 	if err == nil {
 		t.Fatal("expected error on Delete of nonexistent manifest, got nil")
+	}
+}
+
+func TestStore_TimestampsAutoManaged(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+
+	// Create without timestamps — they should be auto-set
+	m := Manifest{PartyID: "party-ts", Cwd: "/tmp"}
+	if err := s.Create(m); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	got, err := s.Read("party-ts")
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if got.CreatedAt == "" {
+		t.Error("CreatedAt should be auto-set on create")
+	}
+	if got.UpdatedAt == "" {
+		t.Error("UpdatedAt should be auto-set on create")
+	}
+
+	createdAt := got.CreatedAt
+
+	// Update — UpdatedAt should change but CreatedAt preserved
+	if err := s.Update("party-ts", func(m *Manifest) {
+		m.Title = "updated"
+	}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	got, err = s.Read("party-ts")
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if got.CreatedAt != createdAt {
+		t.Errorf("CreatedAt changed: got %q, want %q", got.CreatedAt, createdAt)
+	}
+}
+
+func TestStore_UnknownFieldsSurviveUpdate(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+
+	// Write a manifest with extra fields directly
+	path := filepath.Join(s.root, "party-extra.json")
+	raw := `{"party_id":"party-extra","cwd":"/tmp","parent_session":"party-m","initial_prompt":"test","created_at":"2026-01-01T00:00:00Z"}`
+	if err := os.WriteFile(path, []byte(raw), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Update via Store
+	if err := s.Update("party-extra", func(m *Manifest) {
+		m.Title = "modified"
+	}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	// Read back raw JSON and verify extra fields survived
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	var check map[string]any
+	if err := json.Unmarshal(data, &check); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if check["parent_session"] != "party-m" {
+		t.Errorf("parent_session lost: got %v", check["parent_session"])
+	}
+	if check["initial_prompt"] != "test" {
+		t.Errorf("initial_prompt lost: got %v", check["initial_prompt"])
+	}
+	if check["title"] != "modified" {
+		t.Errorf("title not updated: got %v", check["title"])
 	}
 }
 
