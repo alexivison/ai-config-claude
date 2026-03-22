@@ -268,18 +268,19 @@ func (s *Service) setResumeEnv(ctx context.Context, sessionID, claudeID, codexID
 // Mirrors party.sh:party_set_cleanup_hook which sources party-lib.sh for
 // lock-safe worker deregistration.
 func (s *Service) setCleanupHook(ctx context.Context, sessionID string) error {
-	stateRoot := s.Store.Root()
+	qStateRoot := config.ShellQuote(s.Store.Root())
+	qRepoRoot := config.ShellQuote(s.RepoRoot)
 	// Reuse the existing shell helper for parent deregistration to preserve the
 	// coexistence-safe locking protocol (party-lib.sh uses mkdir-based locks).
 	// The hook sources party-lib.sh and calls party_state_remove_worker under lock.
 	hookCmd := fmt.Sprintf(
 		`run-shell "source %s/session/party-lib.sh 2>/dev/null && { p=$(party_state_get_field %s parent_session 2>/dev/null); [ -n \"$p\" ] && party_state_remove_worker \"$p\" %s 2>/dev/null; }; rm -rf /tmp/%s; t=$(jq -r '.session_type // empty' %s/%s.json 2>/dev/null); [ \"$t\" != master ] && rm -f %s/%s.json; true"`,
-		config.ShellQuote(s.RepoRoot),
+		qRepoRoot,
 		sessionID,
 		sessionID,
 		sessionID,
-		stateRoot, sessionID,
-		stateRoot, sessionID,
+		qStateRoot, sessionID,
+		qStateRoot, sessionID,
 	)
 	return s.Client.SetHook(ctx, sessionID, "session-closed", hookCmd)
 }
