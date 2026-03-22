@@ -98,7 +98,7 @@ Only critic types (`code-critic`, `minimizer`) can be overridden — codex and P
 **Blocking findings?** Fix the code, re-run critics, then dispatch a new `--review`. Editing code invalidates all evidence (diff_hash changes), so the full cascade re-runs naturally. There is no shortcut — the gates enforce it.
 
 ### Dispute resolution
-For out-of-scope Codex findings or NEEDS_DISCUSSION, see [execution-core.md § Dispute Resolution](~/.claude/rules/execution-core.md#dispute-resolution). The `--review` mode accepts an optional 5th arg (dispute context file path) for this flow.
+For out-of-scope Codex findings or NEEDS_DISCUSSION, see [execution-core.md § Dispute Resolution](~/.claude/rules/execution-core.md#dispute-resolution). The `--review` mode accepts an optional `--dispute <file>` flag for this flow.
 
 ## Important
 

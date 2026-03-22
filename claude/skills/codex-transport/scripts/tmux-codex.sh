@@ -61,10 +61,6 @@ case "$MODE" in
     WORK_DIR="${_review_positional[0]:?Missing work_dir — pass the worktree/repo path}"
     BASE="${_review_positional[1]:-main}"
     TITLE="${_review_positional[2]:-Code review}"
-    # Backward compat: 4th positional arg is treated as --dispute (old 5th-arg form)
-    if [[ -z "$_review_dispute" && -n "${_review_positional[3]:-}" ]]; then
-      _review_dispute="${_review_positional[3]}"
-    fi
     FINDINGS_FILE="$STATE_DIR/codex-findings-$(date +%s%N).toon"
 
     NOTIFY_SCRIPT="$(cd "$SCRIPT_DIR/../../../../codex/skills/claude-transport/scripts" && pwd)/tmux-claude.sh"

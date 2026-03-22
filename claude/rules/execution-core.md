@@ -109,7 +109,7 @@ When critics or Codex return NEEDS_DISCUSSION or raise out-of-scope findings, ag
 
 **Critic disputes:** Re-run the critic with updated prompt context explaining which findings are out-of-scope and why. The critic sees the rationale and either accepts (APPROVE) or raises new evidence. Max 2 dispute rounds per critic.
 
-**Codex out-of-scope disputes:** Write a dispute context file listing dismissed finding IDs and rationales. Pass as 5th arg to `--review`. Codex reads the file, accepts valid dismissals, challenges invalid ones with file:line evidence. Max 2 dispute rounds.
+**Codex out-of-scope disputes:** Write a dispute context file listing dismissed finding IDs and rationales. Pass via `--dispute <file>` to `--review`. Codex reads the file, accepts valid dismissals, challenges invalid ones with file:line evidence. Max 2 dispute rounds.
 
 **Codex NEEDS_DISCUSSION:** Formulate a position (concede, counter-argue, or propose compromise) and send via `--prompt`. Codex responds with evidence-based reasoning. Max 2 prompt exchanges.
 

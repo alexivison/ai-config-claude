@@ -72,8 +72,8 @@ Test cases:
 
 ## Acceptance Criteria
 
-- [ ] Dead transition cleanup is removed from `session-cleanup.sh`
-- [ ] `tmux-codex.sh` no longer accepts or depends on the obsolete positional compatibility path
-- [ ] `general.md` content lives in `claude/CLAUDE.md` and the redundant file is removed
-- [ ] Any stale completed task metadata removed by this task is verified to be non-runtime
-- [ ] Relevant smoke tests pass
+- [x] Dead transition cleanup is removed from `session-cleanup.sh`
+- [x] `tmux-codex.sh` no longer accepts or depends on the obsolete positional compatibility path
+- [x] `general.md` content lives in `claude/CLAUDE.md` and the redundant file is removed
+- [x] Any stale completed task metadata removed by this task is verified to be non-runtime
+- [x] Relevant smoke tests pass

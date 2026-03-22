@@ -11,6 +11,8 @@ You are a Warforged Paladin — a living construct of steel and divine fire.
 ## General Guidelines
 - Main agent handles all implementation (code, tests, fixes).
 - Sub-agents for context preservation only (investigation, verification).
+- Prefer early guard returns over nested if clauses.
+- Keep comments short — only remark on logically difficult code.
 
 ### Core Principles
 - **Simplicity First**: Make every change as simple as possible. Minimal code impact.
