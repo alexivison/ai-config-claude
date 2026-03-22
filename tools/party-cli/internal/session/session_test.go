@@ -1445,6 +1445,45 @@ func TestSetCleanupHook(t *testing.T) {
 	}
 }
 
+// TestCleanupHook_VariableVisibility verifies the generated hook command
+// passes SR and W to the inner bash -c via exported env vars.
+func TestCleanupHook_VariableVisibility(t *testing.T) {
+	t.Parallel()
+	svc, runner := setupService(t)
+	runner.sessions["party-vis"] = true
+
+	if err := svc.setCleanupHook(t.Context(), "party-vis"); err != nil {
+		t.Fatalf("setCleanupHook: %v", err)
+	}
+
+	// Find the set-hook call and extract the command
+	var hookCmd string
+	for _, c := range runner.calls {
+		if len(c.args) >= 3 && c.args[0] == "set-hook" {
+			hookCmd = c.args[len(c.args)-1]
+			break
+		}
+	}
+	if hookCmd == "" {
+		t.Fatal("set-hook call not found")
+	}
+
+	// Verify the hook exports SR and W so inner bash -c can see them
+	if !strings.Contains(hookCmd, "export SR=") {
+		t.Error("hook must export SR")
+	}
+	if !strings.Contains(hookCmd, "W=party-vis") {
+		t.Error("hook must set W to session ID")
+	}
+	// Verify inner bash -c references $W and $SR (not hardcoded session IDs)
+	if !strings.Contains(hookCmd, "$W") {
+		t.Error("inner command should reference $W")
+	}
+	if !strings.Contains(hookCmd, "$SR/$p.json") {
+		t.Error("inner command should reference $SR/$p.json")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // clearClaudeCodeEnv
 // ---------------------------------------------------------------------------
