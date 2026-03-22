@@ -42,6 +42,7 @@ relay_discover_master() {
 
 # Spawn a worker (routes through party.sh for attach handling).
 relay_spawn() {
+  local spawn_args=("$SESSION_NAME")
   local prompt=""
   local title=""
 
@@ -52,11 +53,10 @@ relay_spawn() {
     esac
   done
 
-  local args=("$SCRIPT_DIR/party.sh" "--detached" "--master-id" "$SESSION_NAME")
-  [[ -n "$prompt" ]] && args+=("--prompt" "$prompt")
-  [[ -n "$title" ]] && args+=("$title")
+  [[ -n "$title" ]] && spawn_args+=("$title")
+  [[ -n "$prompt" ]] && spawn_args+=(--prompt "$prompt")
 
-  bash "${args[@]}"
+  "${PARTY_CLI_CMD[@]}" spawn "${spawn_args[@]}"
 }
 
 # --- Main ---

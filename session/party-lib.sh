@@ -541,17 +541,8 @@ party_resolve_cli_bin() {
   local _repo_root
   _repo_root="${PARTY_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)}"
   if command -v go &>/dev/null && [[ -f "$_repo_root/tools/party-cli/main.go" ]]; then
-    # go run requires the module directory. Build a temp wrapper script so
-    # callers can use exec "${PARTY_CLI_CMD[@]}" with external-command semantics.
-    local _wrapper="/tmp/party-cli-go-run-$$"
-    if [[ ! -x "$_wrapper" ]]; then
-      cat > "$_wrapper" << GOWRAP
-#!/usr/bin/env bash
-cd "$_repo_root/tools/party-cli" && PARTY_REPO_ROOT="$_repo_root" exec go run . "\$@"
-GOWRAP
-      chmod +x "$_wrapper"
-    fi
-    PARTY_CLI_CMD=("$_wrapper")
+    # go -C changes to the module directory before running (Go 1.21+).
+    PARTY_CLI_CMD=(env "PARTY_REPO_ROOT=$_repo_root" go -C "$_repo_root/tools/party-cli" run .)
     return 0
   fi
 
