@@ -217,7 +217,7 @@ func newAutoResolver(store *state.Store, tc *tmux.Client) SessionResolver {
 
 		m, err := store.Read(sessionID)
 		if err != nil {
-			return sessionID, ViewWorker, nil
+			return "", ViewWorker, fmt.Errorf("cannot read manifest for %s: %w", sessionID, err)
 		}
 
 		if m.SessionType == "master" {
