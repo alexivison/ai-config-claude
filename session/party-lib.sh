@@ -503,12 +503,12 @@ party_resolve_cli_cmd() {
 
   cli_bin="$(command -v party-cli 2>/dev/null || true)"
   if [[ -n "$cli_bin" ]]; then
-    printf 'PARTY_REPO_ROOT=%q %q %q\n' "$repo_root" "$cli_bin" "$session"
+    printf 'PARTY_REPO_ROOT=%q %q --session %q\n' "$repo_root" "$cli_bin" "$session"
     return 0
   fi
 
   if command -v go &>/dev/null && [[ -f "$repo_root/tools/party-cli/main.go" ]]; then
-    printf 'PARTY_REPO_ROOT=%q go run %q/tools/party-cli %q\n' "$repo_root" "$repo_root" "$session"
+    printf 'cd %q/tools/party-cli && PARTY_REPO_ROOT=%q go run . --session %q\n' "$repo_root" "$repo_root" "$session"
     return 0
   fi
 

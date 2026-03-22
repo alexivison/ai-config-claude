@@ -150,6 +150,8 @@ PATH="$(dirname "$MOCK_CLI_BIN"):$PATH"
 result=$(party_resolve_cli_cmd "party-test-session" "$REPO_ROOT")
 assert "resolve_cli: finds binary on PATH" \
   '[[ "$result" == *"party-cli"* ]]'
+assert "resolve_cli: uses --session flag" \
+  '[[ "$result" == *"--session"* ]]'
 assert "resolve_cli: includes session arg" \
   '[[ "$result" == *"party-test-session"* ]]'
 
@@ -164,8 +166,10 @@ if [[ -n "$_go_bin" ]] && [[ -f "$REPO_ROOT/tools/party-cli/main.go" ]]; then
   result=$(party_resolve_cli_cmd "party-test-session" "$REPO_ROOT")
   assert "resolve_cli: falls back to go run" \
     '[[ "$result" == *"go run"* ]]'
-  assert "resolve_cli: go run targets tools/party-cli" \
-    '[[ "$result" == *"tools/party-cli"* ]]'
+  assert "resolve_cli: go run changes to module dir" \
+    '[[ "$result" == *"cd "* && "$result" == *"tools/party-cli"* ]]'
+  assert "resolve_cli: go run uses --session flag" \
+    '[[ "$result" == *"--session"* ]]'
   PATH="$_orig_path"
 fi
 
