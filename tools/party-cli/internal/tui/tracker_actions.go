@@ -75,7 +75,7 @@ func (a *liveTrackerActions) Stop(ctx context.Context, masterID, workerID string
 	// Check manifest before cleanup — if already missing, this is a ghost entry
 	// and deregisterFromParent (called inside Stop/Deregister) won't be able
 	// to find the parent. We'll need the direct fallback below.
-	_, isGhost := a.store.Read(workerID)
+	_, readErr := a.store.Read(workerID)
 
 	// Kill via run-shell (tmux server context) to avoid socket issues from go run.
 	cmd := fmt.Sprintf("tmux kill-session -t %s 2>/dev/null; true", workerID)
@@ -88,7 +88,7 @@ func (a *liveTrackerActions) Stop(ctx context.Context, masterID, workerID string
 
 	// Ghost fallback: manifest was already missing so deregisterFromParent
 	// couldn't discover the parent. Remove directly from master's Workers list.
-	if isGhost != nil {
+	if readErr != nil {
 		_ = a.store.RemoveWorker(masterID, workerID)
 	}
 	return nil
@@ -96,12 +96,12 @@ func (a *liveTrackerActions) Stop(ctx context.Context, masterID, workerID string
 
 func (a *liveTrackerActions) Delete(ctx context.Context, masterID, workerID string) error {
 	// Check manifest before cleanup — ghost entries need direct removal.
-	_, isGhost := a.store.Read(workerID)
+	_, readErr := a.store.Read(workerID)
 
 	err := a.sessionSvc.Delete(ctx, workerID)
 
 	// Ghost fallback: only if manifest was already missing.
-	if isGhost != nil {
+	if readErr != nil {
 		_ = a.store.RemoveWorker(masterID, workerID)
 	}
 	return err
