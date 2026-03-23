@@ -109,6 +109,9 @@ For file-based items:
 Run /task-workflow on the task file at: <absolute-path>
 
 Read the file first to understand the scope, then execute the workflow.
+
+When done, report completion to the master:
+~/Code/ai-config/session/party-relay.sh --report "done: <one-line summary of what was completed>"
 ```
 
 Spawn workers **sequentially** (one Bash call at a time, not parallel).

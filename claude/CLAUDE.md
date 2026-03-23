@@ -94,6 +94,13 @@ When running in a master session (`session_type == "master"` in manifest):
 - `party-relay.sh --list` — show all workers and their status
 - Workers report back via `[WORKER:<session-id>]` prefixed messages to your pane
 
+**CRITICAL — Worker report-back:** Every worker prompt you write MUST end with:
+```
+When done, report completion to the master:
+~/Code/ai-config/session/party-relay.sh --report "done: <one-line summary>"
+```
+Workers that don't receive this instruction will silently finish without notifying the master.
+
 ## Verification Principle
 
 Evidence before claims. No assertions without proof. Code edits invalidate prior results.
