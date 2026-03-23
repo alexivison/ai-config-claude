@@ -264,14 +264,15 @@ func (m Model) View() string {
 		body.WriteString(sidebarValueStyle.Render("(tracker pending)") + "\n")
 	}
 
-	// Transient peek message: status bar on tall panes, body fallback on short.
+	// Transient peek message: status bar on tall panes, footer on short.
 	_, showStatus := chromeLayout(h, m.PeekMsg != "")
-	if m.PeekMsg != "" && !showStatus {
-		body.WriteString(warnTextStyle.Render(m.PeekMsg) + "\n")
-	}
 
 	// Build pane footer.
 	var footerParts []string
+	if m.PeekMsg != "" && !showStatus {
+		// Short pane: fold transient error into footer so it can't be clipped.
+		footerParts = append(footerParts, warnTextStyle.Render(truncate(m.PeekMsg, 30)))
+	}
 	if len(m.Evidence) > 0 {
 		footerParts = append(footerParts, fmt.Sprintf("%d evidence", len(m.Evidence)))
 	}
