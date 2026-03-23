@@ -92,10 +92,10 @@ Test cases:
 
 ## Acceptance Criteria
 
-- [ ] Tracker shell uses bordered pane chrome and footer-first steady-state hints
-- [ ] Selected row uses full-row reverse highlight while retaining `▸`
-- [ ] Tracker tests assert reverse-selected row styling beyond cursor presence
-- [ ] Inactive worker titles use a readable tier above muted/faint snippets and footer text
-- [ ] Manifest view uses bordered chrome and scroll indicator
-- [ ] Input mode uses bordered composer chrome with compact fallback and height-aware status/footer behavior
-- [ ] Tracker tests cover wide, compact, short-height, manifest, and composer chrome behavior
+- [x] Tracker shell uses bordered pane chrome and footer-first steady-state hints
+- [x] Selected row uses full-row reverse highlight while retaining `▸`
+- [x] Tracker tests assert reverse-selected row styling beyond cursor presence
+- [x] Inactive worker titles use a readable tier above muted/faint snippets and footer text
+- [x] Manifest view uses bordered chrome and scroll indicator
+- [x] Input mode uses bordered composer chrome with compact fallback and height-aware status/footer behavior
+- [x] Tracker tests cover wide, compact, short-height, manifest, and composer chrome behavior
