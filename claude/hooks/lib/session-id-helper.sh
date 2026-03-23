@@ -47,7 +47,7 @@ discover_session_id() {
         override_root=$(cd "$override_path" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || continue
         if [ "$override_root" = "$cwd_repo_root" ]; then
           local mtime
-          mtime=$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null || echo 0)
+          mtime=$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0)
           if [ "$mtime" -gt "$newest_override_ts" ]; then
             newest_override_sid="${f#/tmp/claude-worktree-}"
             newest_override_ts="$mtime"
@@ -82,7 +82,7 @@ discover_session_id() {
         op_root=$(cd "$op" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || continue
         if [ "$op_root" = "$repo_root" ]; then
           local mtime
-          mtime=$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null || echo 0)
+          mtime=$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0)
           if [ "$mtime" -gt "$newest_ts" ]; then
             newest_sid="$sid"
             newest_ts="$mtime"
