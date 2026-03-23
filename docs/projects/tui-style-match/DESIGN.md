@@ -13,7 +13,8 @@ The least foolish path is not to "look inspired by scry." It is to make the rend
 - the same full-row reverse selection model
 - the same bordered-pane chrome vocabulary
 - a footer-first steady-state layout so narrow or short tmux panes do not collapse under extra chrome
-- a three-tier worker sidebar hierarchy: bright labels, muted or semantic values, dimmest help text
+- a flat-list worker sidebar interior that matches the tracker's rhythm instead of creating a faux inner form
+- a three-tier worker sidebar hierarchy: bright section headers, muted or semantic detail lines, dimmest help text
 - the same faint and italic treatment for low-priority text
 - a readable inactive-title tier in the tracker so non-selected workers do not dissolve into the same gray as snippets and footer text
 - picker ANSI colors that inherit the terminal theme instead of fighting it with bespoke RGB escapes
@@ -65,7 +66,7 @@ tools/party-cli/internal/tui/
 ├── pane.go               # New: local bordered pane, border line, content dimensions, chrome-layout helpers
 ├── pane_test.go          # New: bordered pane, ANSI title, truncation, and status/helper tests
 ├── model.go              # Modify: worker shell + error shell adopt bordered pane and height-aware footer/status behavior
-├── sidebar.go            # Modify: worker Codex/evidence rows adopt new typography and label/value hierarchy
+├── sidebar.go            # Modify: worker body adopts flat-list layout, section/detail hierarchy, and evidence sub-list styling
 ├── tracker.go            # Modify: tracker pane chrome, reverse selection, manifest pane, composer chrome
 ├── model_test.go         # Modify: wide/compact/short-height worker chrome assertions
 ├── sidebar_test.go       # Modify: compact sidebar and typography assertions
@@ -124,8 +125,8 @@ docs/projects/tui-style-match/
 | `DividerFg` | ANSI `240` | `~/Code/scry/internal/ui/theme/theme.go:24` | Optional separators inside the status bar and dim picker section separators |
 | `BrightText` | ANSI `15` | `~/Code/scry/internal/ui/theme/theme.go:25` | Key badge foreground and scroll indicator |
 | `InactiveTitle` | Alias of `StatusFg` (ANSI `252`) | Derived from `~/Code/scry/internal/ui/theme/theme.go:23` | Inactive tracker worker titles that must remain readable above snippets/footer |
-| `SidebarLabel` | Alias of `StatusFg` (ANSI `252`) | Derived from `~/Code/scry/internal/ui/theme/theme.go:23` | Worker/sidebar section labels such as `Codex`, `Evidence`, `title`, `cwd` |
-| `SidebarValue` | Alias of `Muted` (ANSI `8`) | Derived from `~/Code/scry/internal/ui/theme/theme.go:21` | Default worker/sidebar metadata values when no semantic status color applies |
+| `SidebarLabel` | Alias of `StatusFg` (ANSI `252`) | Derived from `~/Code/scry/internal/ui/theme/theme.go:23` | Worker/sidebar section headers such as `Codex` and `Evidence` |
+| `SidebarValue` | Alias of `Muted` (ANSI `8`) | Derived from `~/Code/scry/internal/ui/theme/theme.go:21` | Plain worker value lines such as title/cwd plus indented worker detail lines when no semantic status color applies |
 | `gold` | Hex `#ffd700` | `tools/party-cli/internal/tui/style.go:13` | Master label text only |
 
 ## Style Mapping (Source Of Truth Reconciliation)
@@ -138,7 +139,7 @@ docs/projects/tui-style-match/
 | Scroll indicator | `~/Code/scry/internal/ui/panes/border.go:19-67`, `~/Code/scry/internal/ui/model.go:1639-1655` | No scroll indicator in manifest viewer | Add right-edge scroll indicator for manifest overflow; leave worker and tracker list bodies without bespoke scroll chrome for now |
 | Reverse selection | `~/Code/scry/internal/ui/panes/filelist.go:17`, `~/Code/scry/internal/ui/panes/dashboard.go:18` | Blue bold name plus `▸` only in `tools/party-cli/internal/tui/tracker.go:278-316` | Keep `▸`, but reverse the entire selected row and status cell |
 | Footer vs status-bar roles | `~/Code/scry/internal/ui/panes/border.go:39-45`, `~/Code/scry/internal/ui/statusbar.go:48-95`, `~/Code/scry/internal/ui/idle.go:126-133` | Plain dim footer text in `tools/party-cli/internal/tui/model.go:270-273` and `tools/party-cli/internal/tui/tracker.go:354-358` | Use pane footers for passive metadata and steady-state hints; reserve a separate status bar for transient errors or active input when height allows |
-| Worker sidebar label/value/help hierarchy | `~/Code/scry/internal/ui/theme/theme.go:20-25`, `~/Code/scry/internal/ui/idle.go:45-46` | `tools/party-cli/internal/tui/sidebar.go:19-96` renders most non-semantic lines with the same dim tier | Use `sidebarLabelStyle = StatusFg`, default metadata values on `Muted`, semantic statuses on `Clean` / `Dirty` / `Error`, and help/footer text on `Muted` + `Faint` |
+| Worker sidebar flat-list hierarchy | `~/Code/scry/internal/ui/panes/filelist.go:148-181`, `~/Code/scry/internal/ui/panes/dashboard.go:67-94`, `~/Code/scry/internal/ui/theme/theme.go:20-25` | `tools/party-cli/internal/tui/sidebar.go:19-96` reads like a rigid key-value form inside the pane | Render title/cwd as direct value lines, `Codex` and `Evidence` as section headers, and details as indented muted or semantic sub-lines so the worker pane flows like the tracker rather than a form |
 | Typography hierarchy | `~/Code/scry/internal/ui/panes/filelist.go:18`, `~/Code/scry/internal/ui/panes/filelist.go:35`, `~/Code/scry/internal/ui/panes/patch.go:443-448` | Mostly plain foreground colors | Use readable inactive worker titles (`StatusFg`), then dim/faint snippets and footer text, with bold only for active/selected emphasis |
 | Picker ANSI color alignment | `~/Code/scry/internal/ui/theme/theme.go:20-25` | Hardcoded RGB in `tools/party-cli/internal/picker/fzf.go:17-22`, `tools/party-cli/internal/picker/fzf.go:33-69` | Keep raw ANSI strings for `fzf`, but replace RGB values with ANSI 4/2/8/240 mappings that inherit terminal theme |
 | Split/layout precedent | `~/Code/scry/internal/ui/dashboard.go:531-543` | Single-column worker and tracker views; raw `fzf` picker | Do not force a new split layout into narrow tmux panes or rewrite the picker around Lip Gloss; adopt the chrome and token contract, not the dashboard IA |
@@ -281,8 +282,8 @@ sequenceDiagram
 | Layer Boundary | Code Path | Function | Input -> Output | Location |
 |----------------|-----------|----------|-----------------|----------|
 | Session resolution -> worker shell title/footer | Worker | `Model.View()` | `SessionInfo + ViewMode + Width/Height` -> bordered worker pane + footer-only steady state or pane+status transient state | Current seam: `tools/party-cli/internal/tui/model.go:219-276` |
-| Codex domain state -> worker status lines | Worker | `RenderSidebar()` | `CodexStatus` -> styled text lines with bright labels and muted/semantic values | Current seam: `tools/party-cli/internal/tui/sidebar.go:11-67` |
-| Evidence domain state -> worker summary lines | Worker | `RenderEvidence()` | `[]EvidenceEntry` -> styled summary lines with bright labels and semantic result values | Current seam: `tools/party-cli/internal/tui/sidebar.go:70-96` |
+| Codex domain state -> worker status lines | Worker | `RenderSidebar()` | `CodexStatus` -> flat-list worker lines: section header plus indented muted/semantic detail line | Current seam: `tools/party-cli/internal/tui/sidebar.go:11-67` |
+| Evidence domain state -> worker summary lines | Worker | `RenderEvidence()` | `[]EvidenceEntry` -> section header plus indented summary lines with semantic result values | Current seam: `tools/party-cli/internal/tui/sidebar.go:70-96` |
 | Worker rows -> tracker list rows | Tracker | `TrackerModel.viewWorkers()` | `[]WorkerRow + cursor + width` -> bordered worker-list pane rows with reverse-selected row, readable inactive titles, and dim snippets | Current seam: `tools/party-cli/internal/tui/tracker.go:257-361` |
 | Tracker mode/input -> composer chrome | Tracker | `TrackerModel.viewWorkers()` | `trackerMode + input.Value() + height` -> bordered composer or compact inline fallback, with status bar only when height allows | Current seam: `tools/party-cli/internal/tui/tracker.go:343-359` |
 | Manifest JSON + scroll -> manifest viewport | Tracker manifest | `TrackerModel.viewManifest()` | `manifestJSON + manifestScrl + height` -> bordered manifest pane + footer or optional status bar + scroll indicator | Current seam: `tools/party-cli/internal/tui/tracker.go:364-392` |
@@ -299,7 +300,7 @@ No persisted fields or transport adapters change shape in this project. The tran
 | Theme definitions | `tools/party-cli/internal/tui/style.go:7-27` | Replace the ad hoc palette with scry token names and add sidebar label/value/help, inactive-title, footer, border, and status styles |
 | Worker shell | `tools/party-cli/internal/tui/model.go:219-276` | Swap flat headers/footers for a bordered pane with footer-first steady-state hints and explicit short-height fallback |
 | Error shell | `tools/party-cli/internal/tui/model.go:279-290` | Re-render as a bordered error pane; use a separate status bar only when height >= `compactHeightThreshold`, otherwise fold the message into the footer |
-| Worker sidebar body | `tools/party-cli/internal/tui/sidebar.go:11-96` | Remove hard-coded left gutters and apply bright labels, muted/semantic values, and dim/faint help text |
+| Worker sidebar body | `tools/party-cli/internal/tui/sidebar.go:11-96` | Remove hard-coded left gutters and render a flat list body with direct value lines, bright section headers, muted/semantic detail lines, and dim/faint help text |
 | Tracker list shell | `tools/party-cli/internal/tui/tracker.go:257-361` | Apply bordered pane chrome, reverse-row selection, readable inactive-title styling, and footer-first hint treatment |
 | Manifest viewer | `tools/party-cli/internal/tui/tracker.go:364-392` | Convert to bordered pane with scroll indicator and explicit height budgeting for footer-only vs pane+status states |
 | Picker list formatting | `tools/party-cli/internal/picker/fzf.go:13-26` | Replace hardcoded RGB escape strings with ANSI 8/240-aligned separators while preserving fixed-width layout |
@@ -316,9 +317,15 @@ Worker view:
   [embedded footer with passive metadata + steady-state hints]
   [optional status bar only for transient errors when height >= 14]
 
+Worker body layout rule:
+  title/cwd = plain value lines
+  section headers = StatusFg
+  codex details = indented line with muted/semantic segments
+  evidence details = indented sub-list
+
 Worker typography rule:
-  labels = StatusFg
-  metadata values = Muted
+  section headers = StatusFg
+  direct value lines and detail lines = Muted unless semantic status applies
   semantic values = Clean / Dirty / Error / Muted as appropriate
   help/footer text = Muted + Faint
 
@@ -362,7 +369,7 @@ Tracker typography rule:
 |----------|-----------|-------------------------|
 | Create a local `party-cli` border helper that ports scry's pane semantics | Directly importing `scry` is needless cross-repo coupling. A local helper keeps `party-cli` independent while preserving the exact visual behavior from `~/Code/scry/internal/ui/panes/border.go:11-119` | Keep open-coded rules (rejected: too much duplication), import scry package directly (rejected: cross-repo dependency) |
 | Keep `compactThreshold` at `50` and add `compactHeightThreshold = 14` | Current worker/tracker views already subtract four columns for gutters via `innerWidth()` (`tools/party-cli/internal/tui/model.go:293-300`, `tools/party-cli/internal/tui/tracker.go:249-255`), so horizontal space is recoverable, but current views do not budget vertical chrome at all (`tools/party-cli/internal/tui/model.go:219-276`, `tools/party-cli/internal/tui/tracker.go:257-361`). The added height threshold makes the row cost explicit before the new chrome lands | Increase width threshold only (rejected: misses the real vertical risk), ignore height entirely (rejected: review already proved that is unsound) |
-| Give the worker sidebar explicit label/value/help tiers | The present worker sidebar renders too much information on the same dim tier (`tools/party-cli/internal/tui/sidebar.go:19-96`). Bright labels and muted/semantic values make scanning faster without making the view louder overall | Keep one mostly-dim tier (rejected: poor scanability), make all values bright (rejected: no hierarchy) |
+| Give the worker sidebar a flat-list interior plus explicit section/detail/help tiers | The present worker sidebar renders too much information on the same dim tier and compounds the problem with a rigid inner form layout (`tools/party-cli/internal/tui/sidebar.go:19-96`). Direct value lines plus section headers and indented detail lines make it feel like the tracker instead of a separate component family | Keep the rigid form layout and only recolor it (rejected: still feels structurally wrong), keep one mostly-dim tier (rejected: poor scanability), make all values bright (rejected: no hierarchy) |
 | Give the manifest viewer bordered treatment | The manifest view is the only current tracker subview that truly scrolls, so it benefits most from the bordered title/footer and right-edge scroll indicator from `scry` | Leave manifest as plain JSON with rules (rejected: visually inconsistent and wastes the scroll-indicator affordance) |
 | Use embedded pane footers for steady-state metadata and hints; reserve a full-width status bar for transient errors or active input only | This preserves the scry family resemblance while reducing layout churn and row loss in short panes. It also matches the fact that `party-cli` needs constant key hints but not a permanently separate status line on every surface | Full-width status bar everywhere (rejected: too expensive vertically), footer-only for all states including active input/errors (rejected: tall panes can afford clearer transient affordances) |
 | Use a bordered composer in standard widths, compact inline fallback only when space is genuinely scarce | This matches scry's use of bordered sub-panels for focused interaction while avoiding absurdly expensive chrome in very tight panes | Keep the current inline `r> input` prompt everywhere (rejected: visually weakest surface in the tracker), force bordered composer at all sizes (rejected: too costly below ~40 columns / 14 rows) |
@@ -393,21 +400,19 @@ Tracker typography rule:
 
 Reference image: `./mockups/sidebar-wide.svg`
 
-Visual hierarchy: labels = `StatusFg`; metadata values = `Muted`; semantic status values use `Accent`, `Clean`, `Dirty`, or `Error`; footer/help text = `Muted` + `Faint`.
+Visual hierarchy: title/cwd render as plain `Muted` value lines; `Codex` and `Evidence` headers use `StatusFg`; indented details use `Muted` or semantic colors; footer/help text = `Muted` + `Faint`.
 
 ```text
 ╭─ Worker: party-worker-17 ────────────────────────────────────────────╮
-│ title    tui style match                                             │
-│ cwd      ~/Code/ai-config                                            │
+│ tui style match                                                      │
+│ ~/Code/ai-config                                                     │
 │                                                                      │
-│ Codex    ⠋ working                                                   │
-│ mode     review                                                      │
-│ target   docs/projects/tui-style-match/DESIGN.md                     │
-│ elapsed  00:02:14                                                    │
+│ Codex ⠋ working                                                      │
+│   review · DESIGN.md · 00:02:14                                      │
 │                                                                      │
 │ Evidence                                                             │
-│ review   REQUEST_CHANGES                                             │
-│ tests    APPROVED                                                    │
+│   review  REQUEST_CHANGES                                            │
+│   tests   APPROVED                                                   │
 ╰─ 2 evidence items · q quit · p peek codex ───────────────────────────╯
 ```
 
@@ -415,14 +420,16 @@ Visual hierarchy: labels = `StatusFg`; metadata values = `Muted`; semantic statu
 
 Reference image: `./mockups/sidebar-compact.svg`
 
-Height-aware behavior: this example assumes `< 14` rows, so there is no separate status bar; hints stay in the pane footer and body rows are budgeted as `outerHeight - 2`. The same label/value/help hierarchy still applies, merely compressed.
+Height-aware behavior: this example assumes `< 14` rows, so there is no separate status bar; hints stay in the pane footer and body rows are budgeted as `outerHeight - 2`. The same flat-list interior still applies, merely compressed.
 
 ```text
 ╭─ party-worker-17 / worker ─────────────────╮
-│ title    tui style match                   │
-│ Codex    idle                              │
-│ verdict  APPROVE                           │
-│ ago      12s                               │
+│ tui style match                            │
+│ ~/Code/ai-config                           │
+│ Codex idle                                 │
+│   APPROVE · 12s ago                        │
+│ Evidence                                   │
+│   review REQUEST_CHANGES                   │
 ╰─ 2 evidence · q quit · p peek ─────────────╯
 ```
 
