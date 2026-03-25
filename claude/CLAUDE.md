@@ -52,6 +52,7 @@ Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 The Wizard runs in a tmux pane alongside you. Communicate via `tmux-codex.sh`. All dispatches are non-blocking — keep working while The Wizard thinks.
 
 - ALWAYS use `tmux-codex.sh`, NEVER Task sub-agents for The Wizard.
+- **NEVER interact with the Wizard directly via tmux commands** (`tmux capture-pane`, `tmux list-panes`, `tmux send-keys`, etc.). The Wizard may run as a pane or a window depending on layout — `tmux-codex.sh` handles resolution. Direct tmux commands will be blocked by hook.
 - **Dispatch The Wizard FIRST**, then launch sub-agents while The Wizard works.
 - `[CODEX]` messages are from The Wizard. Handle per `tmux-handler` skill.
 - You decide verdicts. The Wizard produces findings, you triage.
