@@ -99,7 +99,7 @@ Classify every finding before acting:
 | codex | REQUEST_CHANGES with out-of-scope findings | Dismiss with rationale in dispute context file → re-review (2 dispute rounds) → escalate if unresolved | NO (until dispute cap) |
 | codex | NEEDS_DISCUSSION | Debate via `--prompt` (2 rounds) → escalate to user if unresolved | NO (until dispute cap) |
 | sentinel | APPROVE | Proceed to /pre-pr-verification | NO |
-| sentinel | REQUEST_CHANGES ([must]/[clean]) | Fix in one batch + re-run sentinel | NO |
+| sentinel | REQUEST_CHANGES ([must]) | Fix in one batch + re-run sentinel | NO |
 | sentinel | REQUEST_CHANGES ([should] only) | Note findings, proceed (non-blocking) | NO |
 | sentinel | Timeout | Proceed with Codex findings only | NO |
 | /pre-pr-verification | Pass/Fail | PR / fix | NO |
