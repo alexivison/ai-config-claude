@@ -10,7 +10,7 @@ This section is the single source of truth for execution order across workflow d
 /write-tests → implement → checkboxes → [code-critic + minimizer] → codex [+ sentinel] → /pre-pr-verification → commit → PR
 ```
 
-Workflow skills enforce the critic-before-Codex ordering. Hooks only record evidence and block self-approval — they do not gate sequencing. Sentinel runs after critics pass. `[must]` and `[clean]` findings are gating — Paladin must fix before proceeding.
+Workflow skills enforce the critic-before-Codex ordering. Hooks only record evidence and block self-approval — they do not gate sequencing. Sentinel runs after critics pass. `[must]` findings are gating — Paladin must fix before proceeding.
 
 ## RED Evidence Gate
 
