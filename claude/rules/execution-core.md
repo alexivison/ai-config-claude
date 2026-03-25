@@ -7,10 +7,10 @@ Shared rules for all workflow skills. Bugfix-workflow omits checkboxes (no PLAN.
 This section is the single source of truth for execution order across workflow docs.
 
 ```
-/write-tests → implement → checkboxes → [code-critic + minimizer] → codex [+ adversarial reviewer] → /pre-pr-verification → commit → PR
+/write-tests → implement → checkboxes → [code-critic + minimizer] → codex [+ sentinel] → /pre-pr-verification → commit → PR
 ```
 
-Workflow skills enforce the critic-before-Codex ordering. Hooks only record evidence and block self-approval — they do not gate sequencing. Adversarial reviewer runs after critics pass. Advisory only — no gating markers.
+Workflow skills enforce the critic-before-Codex ordering. Hooks only record evidence and block self-approval — they do not gate sequencing. Sentinel runs after critics pass. `[must]` and `[clean]` findings are gating — Paladin must fix before proceeding.
 
 ## RED Evidence Gate
 
@@ -98,8 +98,10 @@ Classify every finding before acting:
 | codex | REQUEST_CHANGES (non-blocking) | Record and proceed to /pre-pr-verification | NO |
 | codex | REQUEST_CHANGES with out-of-scope findings | Dismiss with rationale in dispute context file → re-review (2 dispute rounds) → escalate if unresolved | NO (until dispute cap) |
 | codex | NEEDS_DISCUSSION | Debate via `--prompt` (2 rounds) → escalate to user if unresolved | NO (until dispute cap) |
-| adversarial reviewer | Any findings | Paladin triages (advisory, no gating markers) | NO |
-| adversarial reviewer | Timeout | Proceed with Codex findings only | NO |
+| sentinel | APPROVE | Proceed to /pre-pr-verification | NO |
+| sentinel | REQUEST_CHANGES ([must]/[clean]) | Fix in one batch + re-run sentinel | NO |
+| sentinel | REQUEST_CHANGES ([should] only) | Note findings, proceed (non-blocking) | NO |
+| sentinel | Timeout | Proceed with Codex findings only | NO |
 | /pre-pr-verification | Pass/Fail | PR / fix | NO |
 | Edit/Write (impl) | Evidence stale (diff_hash changed) | Re-run cascade | NO |
 

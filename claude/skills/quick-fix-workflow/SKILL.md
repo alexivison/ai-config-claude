@@ -3,7 +3,7 @@ name: quick-fix-workflow
 description: >-
   Fast workflow for non-behavioral changes: config edits, dependency bumps,
   typo/comment fixes, CI/build tweaks, docs-with-code. Skips critics, codex,
-  and adversarial review — requires only test-runner + check-runner. Use when
+  and sentinel review — requires only test-runner + check-runner. Use when
   the user asks for a small config change, dependency update, typo fix, CI tweak,
   or any change that doesn't touch runtime logic. Also use when the user says
   "quick fix", "small change", or invokes /quick-fix-workflow. REJECT and suggest
@@ -15,7 +15,7 @@ user-invocable: true
 # Quick Fix Workflow
 
 Lightweight workflow for non-behavioral changes. Skips the full review cascade
-(critics, codex, adversarial review) because the change doesn't affect runtime
+(critics, codex, sentinel review) because the change doesn't affect runtime
 behavior. The tiered PR gate requires only test-runner + check-runner evidence
 plus explicit quick-tier authorization from this skill.
 
@@ -77,7 +77,7 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 - **No RED phase** — Non-behavioral changes don't need failing-then-passing tests
 - **No minimizer** — The change is already size-gated; minimality is inherent
 - **No codex review** — The code-critic catches quality issues; codex deep-review is overkill for config/typo changes
-- **No adversarial review** — No security or correctness surface to probe
+- **No sentinel review** — No security or correctness surface to probe
 - **No /pre-pr-verification** — test-runner + check-runner cover the same ground
 
 The safety net is the code-critic plus the test suite. The critic catches anything a non-behavioral change shouldn't be doing; tests catch regressions.

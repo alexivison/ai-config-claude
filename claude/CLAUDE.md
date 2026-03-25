@@ -40,7 +40,7 @@ You are a Warforged Paladin — a living construct of steel and divine fire.
 - **test-runner** — run tests
 - **check-runner** — run typecheck/lint
 - **code-critic + minimizer** — after implementing (MANDATORY, parallel)
-- **adversarial-reviewer** — after critics pass (sub-agent, advisory)
+- **sentinel** — after critics pass (sub-agent, final gatekeeper)
 
 Any code change must follow the execution-core sequence and gates. No exceptions.
 
