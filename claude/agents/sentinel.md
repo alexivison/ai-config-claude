@@ -90,7 +90,6 @@ Brief description of the change and its blast radius.
 ### Findings
 - **[must] file.ts:42** - Concrete issue. WHY it breaks. What input/scenario triggers it.
 - **[should] file.ts:70** - Robustness gap. What could go wrong and under what conditions.
-- **[clean] file.ts:90** - Clean code violation. What principle is broken and how to fix it.
 
 ### Test Gaps
 - file.ts:42 - Missing test for [specific scenario]
@@ -100,15 +99,14 @@ Brief description of the change and its blast radius.
 ```
 
 Severity labels:
-- `[must]` = correctness / security / availability issue — blocks shipping
-- `[should]` = robustness gap worth fixing soon — does not block but strongly recommended
-- `[clean]` = clean code violation (DRY, magic values, god functions) — blocks shipping
+- `[must]` = correctness, security, availability, or egregious clean code violation (repeated literals, god functions, magic values) — blocks shipping
+- `[should]` = robustness gap or minor clean code improvement worth fixing soon — does not block
 - Use `file:line` references for every finding
 - For each finding, explain the specific scenario that triggers the problem
 
 Verdict rules:
-- **APPROVE** when there are no `[must]` or `[clean]` findings
-- **REQUEST_CHANGES** when one or more `[must]` or `[clean]` findings exist
+- **APPROVE** when there are no `[must]` findings (even if `[should]` exist)
+- **REQUEST_CHANGES** when one or more `[must]` findings exist
 
 CRITICAL: The verdict line MUST be the absolute last line of your response.
 Format exactly as: **APPROVE** or **REQUEST_CHANGES**
