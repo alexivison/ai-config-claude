@@ -59,10 +59,8 @@ func (s *Service) Continue(ctx context.Context, sessionID string) (ContinueResul
 	} else if m.ExtraString("parent_session") != "" {
 		role = roleWorker
 	}
-	winName := m.WindowName
-	if winName == "" {
-		winName = windowName(m.Title, role)
-	}
+	// Always recompute — legacy manifests may have stale names without role suffixes.
+	winName := windowName(m.Title, role)
 
 	claudeBin := fallback(m.ClaudeBin, resolveBinary("CLAUDE_BIN", "claude", os.Getenv("HOME")+"/.local/bin/claude"))
 	codexBin := fallback(m.CodexBin, resolveBinary("CODEX_BIN", "codex", "/opt/homebrew/bin/codex"))
