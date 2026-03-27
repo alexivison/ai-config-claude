@@ -91,6 +91,17 @@ record_findings_summary() {
   local timestamp
   timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
+  # Auto-compute iteration number: count prior findings_summary events for this source
+  local iteration=1
+  local file
+  file=$(metrics_file "$session_id")
+  if [ -f "$file" ]; then
+    local prior
+    prior=$(jq -s --arg src "$source" \
+      '[.[] | select(.event == "findings_summary" and .source == $src)] | length' "$file" 2>/dev/null || echo 0)
+    iteration=$((prior + 1))
+  fi
+
   local entry
   entry=$(jq -cn \
     --arg ts "$timestamp" \
@@ -102,10 +113,12 @@ record_findings_summary() {
     --argjson total "${total:-0}" \
     --argjson blocking "${blocking:-0}" \
     --argjson non_blocking "${non_blocking:-0}" \
+    --argjson iteration "$iteration" \
     --arg excerpt "$excerpt" \
     '{timestamp: $ts, session: $session, event: $event, source: $source,
       diff_hash: $hash, verdict: $verdict, total_findings: $total,
-      blocking: $blocking, non_blocking: $non_blocking, excerpt: $excerpt}')
+      blocking: $blocking, non_blocking: $non_blocking, iteration: $iteration,
+      excerpt: $excerpt}')
 
   _metrics_append "$session_id" "$entry"
 }
@@ -266,10 +279,32 @@ generate_report() {
   local summary_count
   summary_count=$(jq -s '[.[] | select(.event == "findings_summary")] | length' "$file" 2>/dev/null || echo 0)
   if [ "$summary_count" -gt 0 ]; then
-    echo "── Review Summaries ──"
+    echo "── Review Pass Log ──"
     echo ""
     jq -r 'select(.event == "findings_summary") |
-      "  \(.source) | verdict: \(.verdict) | total: \(.total_findings) | blocking: \(.blocking) | non-blocking: \(.non_blocking)"' "$file" 2>/dev/null
+      "  \(.source) pass \(.iteration // "?") | verdict: \(.verdict) | total: \(.total_findings) | blocking: \(.blocking) | non-blocking: \(.non_blocking)"' "$file" 2>/dev/null
+    echo ""
+
+    # ── Iterations to approval ──
+    echo "── Iterations to Approval ──"
+    echo ""
+    local summary_sources
+    summary_sources=$(jq -r 'select(.event == "findings_summary") | .source' "$file" 2>/dev/null | sort -u)
+    for src in $summary_sources; do
+      local passes final_verdict approved_at
+      passes=$(jq -s --arg src "$src" \
+        '[.[] | select(.event == "findings_summary" and .source == $src)] | length' "$file" 2>/dev/null || echo 0)
+      final_verdict=$(jq -s --arg src "$src" \
+        '[.[] | select(.event == "findings_summary" and .source == $src)] | last | .verdict' "$file" 2>/dev/null | tr -d '"')
+      # Find the iteration number where first APPROVED (or equivalent) occurred
+      approved_at=$(jq -s --arg src "$src" \
+        '[.[] | select(.event == "findings_summary" and .source == $src and (.verdict == "APPROVED" or .verdict == "PASS" or .verdict == "CLEAN" or .verdict == "SKIP"))] | first | .iteration // empty' "$file" 2>/dev/null || true)
+      if [ -n "$approved_at" ]; then
+        echo "  $src: $approved_at pass(es) to approve ($passes total)"
+      else
+        echo "  $src: NOT approved after $passes pass(es) (last: $final_verdict)"
+      fi
+    done
     echo ""
   fi
 

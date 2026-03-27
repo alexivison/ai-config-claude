@@ -103,6 +103,44 @@ assert "Total findings is 5" '[ "$(jq -r .total_findings "$MFILE")" = "5" ]'
 assert "Blocking is 2" '[ "$(jq -r .blocking "$MFILE")" = "2" ]'
 assert "Non-blocking is 3" '[ "$(jq -r .non_blocking "$MFILE")" = "3" ]'
 assert "Excerpt recorded" '[ "$(jq -r .excerpt "$MFILE")" = "Found issues..." ]'
+assert "Iteration is 1 (first pass)" '[ "$(jq -r .iteration "$MFILE")" = "1" ]'
+
+echo "=== record_findings_summary: iteration auto-increments ==="
+record_findings_summary "$SESSION" "code-critic" "$HASH" "APPROVED" "0" "0" "0"
+ITER=$(jq -s 'last | .iteration' "$MFILE")
+assert "Second pass iteration is 2" '[ "$ITER" = "2" ]'
+# Different source starts at 1
+record_findings_summary "$SESSION" "minimizer" "$HASH" "APPROVED" "0" "0" "0"
+MIN_ITER=$(jq -s '[.[] | select(.source == "minimizer")] | last | .iteration' "$MFILE")
+assert "Different source starts at iteration 1" '[ "$MIN_ITER" = "1" ]'
+
+echo "=== record_findings_summary: multi-pass iteration tracking ==="
+cleanup
+setup_repo
+HASH=$(compute_diff_hash "$TMPDIR_BASE")
+record_findings_summary "$SESSION" "code-critic" "$HASH" "REQUEST_CHANGES" "3" "2" "1"
+record_findings_summary "$SESSION" "code-critic" "$HASH" "REQUEST_CHANGES" "1" "1" "0"
+record_findings_summary "$SESSION" "code-critic" "$HASH" "APPROVED" "0" "0" "0"
+MFILE=$(metrics_file "$SESSION")
+ITERS=$(jq -sc '[.[] | select(.event == "findings_summary" and .source == "code-critic")] | map(.iteration)' "$MFILE")
+assert "Three passes produce iterations [1,2,3]" '[ "$ITERS" = "[1,2,3]" ]'
+
+# ═══ generate_report: iterations to approval ═════════════════════════════════
+
+echo "=== generate_report: iterations to approval section ==="
+# Uses data from multi-pass test above (3 passes, approved on 3rd)
+REPORT=$(generate_report "$SESSION")
+assert "Report contains Iterations to Approval" 'echo "$REPORT" | grep -q "Iterations to Approval"'
+assert "Report shows code-critic approved on pass 3" 'echo "$REPORT" | grep -q "code-critic: 3 pass(es) to approve"'
+
+echo "=== generate_report: not-yet-approved source ==="
+cleanup
+setup_repo
+HASH=$(compute_diff_hash "$TMPDIR_BASE")
+record_findings_summary "$SESSION" "minimizer" "$HASH" "REQUEST_CHANGES" "2" "2" "0"
+record_findings_summary "$SESSION" "minimizer" "$HASH" "REQUEST_CHANGES" "1" "1" "0"
+REPORT=$(generate_report "$SESSION")
+assert "Report shows minimizer NOT approved" 'echo "$REPORT" | grep -q "minimizer: NOT approved after 2 pass(es)"'
 
 # ═══ record_triage ═══════════════════════════════════════════════════════════
 
