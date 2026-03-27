@@ -16,21 +16,19 @@ Review the current changes for quality, bugs, and best practices. Identify issue
 
 ## Reference Documentation
 
-- **General**: `~/.claude/skills/code-review/reference/general.md` — Six core principles (SRP, DI, YAGNI, SoC, DRY, KISS), quality standards, thresholds
+- **General**: `~/.claude/skills/code-review/reference/general.md` — Four core principles (SRP, YAGNI, DRY, KISS), quality standards, thresholds
 - **Frontend**: `~/.claude/skills/code-review/reference/frontend.md` — React, TypeScript, CSS, testing patterns
 
 Load relevant reference docs based on what's being reviewed.
 
 ## Core Principles
 
-Every review evaluates changes against six architectural principles. See `reference/general.md` for detection patterns, feedback templates, and severity mappings.
+Every review evaluates changes against four architectural principles. See `reference/general.md` for detection patterns, feedback templates, and severity mappings.
 
 1. **SRP** — Single Responsibility: one reason to change per unit
-2. **DI** — Dependency Inversion: depend on abstractions, inject dependencies
-3. **YAGNI** — You Ain't Gonna Need It: no code for hypothetical futures
-4. **SoC** — Separation of Concerns: distinct layers for logic, data, UI, infrastructure
-5. **DRY** — Don't Repeat Yourself: single source of truth for every piece of knowledge
-6. **KISS** — Keep It Simple: readable beats clever
+2. **YAGNI** — You Ain't Gonna Need It: no code for hypothetical futures
+3. **DRY** — Don't Repeat Yourself: single source of truth for every piece of knowledge
+4. **KISS** — Keep It Simple: readable beats clever
 
 ## Severity Levels
 
@@ -41,7 +39,7 @@ Every review evaluates changes against six architectural principles. See `refere
 ## Process
 
 1. Use `git diff` to see staged/unstaged changes
-2. Systematically check each of the six principles against the diff
+2. Systematically check each of the four principles against the diff
 3. Review against language-specific guidelines in reference documentation
 4. Be specific with file:line references
 5. Tag each finding with the violated principle (e.g., `[SRP]`, `[DRY]`)
@@ -82,7 +80,7 @@ The changes improve error handling and logging. File organization is clean. Need
 
 ### Must Fix
 - **api.ts:34-45** - [SRP] Missing null check on response.data before accessing properties
-- **logger.ts:12** - [DI] Hardcoded log level should be injected via config interface
+- **logger.ts:12** - [KISS] Hardcoded log level should be configurable
 
 ### Questions
 - **auth.ts:78** - [DRY] Why duplicate validation here instead of reusing middleware?

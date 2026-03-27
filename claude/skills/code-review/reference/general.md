@@ -16,7 +16,7 @@ Rules for reviewing code changes. Use `[must]`, `[q]`, `[nit]` labels.
 
 ## Core Principles
 
-Six architectural principles form the backbone of every review. Each violation maps to a severity level and a standard feedback template.
+Four architectural principles form the backbone of every review. Each violation maps to a severity level and a standard feedback template.
 
 ### 1. SRP — Single Responsibility Principle
 
@@ -29,25 +29,10 @@ Six architectural principles form the backbone of every review. Each violation m
 | Violation | Severity |
 |-----------|----------|
 | Function does multiple unrelated things | `[must]` |
-| Class mixes business logic and infrastructure | `[must]` |
 | Function >50 lines | `[must]` |
 | Function >25 lines doing 2+ things | `[q]` |
 
-### 2. DI — Dependency Inversion
-
-> High-level modules should not depend on low-level modules. Both should depend on abstractions (interfaces). Dependencies should be injected rather than hardcoded.
-
-**Detection:** `new` keyword inside a class constructor or function body for infrastructure services (DB clients, APIs, loggers). Hardcoded global config access inside business logic.
-
-**Feedback template:** "The code is tightly coupled to [Specific Tool]. Inject this dependency via the constructor or as a function argument using an interface. This allows us to pass mocks during testing."
-
-| Violation | Severity |
-|-----------|----------|
-| Hardcoded infrastructure dependency in business logic | `[must]` |
-| Global config access inside core domain code | `[q]` |
-| Missing interface for injected dependency | `[q]` |
-
-### 3. YAGNI — You Ain't Gonna Need It
+### 2. YAGNI — You Ain't Gonna Need It
 
 > Do not add functionality or complexity until it is actually necessary. Avoid building "generic" solutions for single-use cases.
 
@@ -58,25 +43,11 @@ Six architectural principles form the backbone of every review. Each violation m
 | Violation | Severity |
 |-----------|----------|
 | Code for hypothetical future needs | `[q]` |
-| Abstraction with only one implementation (no DI/testing justification) | `[q]` |
+| Abstraction with only one implementation (no testing justification) | `[q]` |
 | Unused parameters, imports, or variables | `[must]` |
 | "Plugin" architecture for single-use case | `[q]` |
 
-### 4. SoC — Separation of Concerns
-
-> The program should be divided into distinct sections, each addressing a separate concern (Logic, Data, UI, Infrastructure).
-
-**Detection:** SQL/database queries inside UI components, HTTP status codes or API logic inside core business services, business rules embedded in infrastructure code.
-
-**Feedback template:** "Infrastructure details ([e.g., SQL/API calls]) are leaking into the [Domain/UI] layer. Move this logic to a dedicated [Repository/Service] layer."
-
-| Violation | Severity |
-|-----------|----------|
-| Infrastructure logic in domain/UI layer | `[must]` |
-| Business rules in infrastructure code | `[must]` |
-| Transport concerns (HTTP codes, headers) in business services | `[q]` |
-
-### 5. DRY — Don't Repeat Yourself
+### 3. DRY — Don't Repeat Yourself
 
 > Every piece of knowledge or logic must have a single, unambiguous representation within the system.
 
@@ -91,7 +62,7 @@ Six architectural principles form the backbone of every review. Each violation m
 | Duplicated validation logic across files | `[must]` |
 | Copy-pasted tests that should use parameterization | `[q]` |
 
-### 6. KISS — Keep It Simple, Stupid
+### 4. KISS — Keep It Simple, Stupid
 
 > Simple code is easier to read, maintain, and test than "clever" code.
 
@@ -157,8 +128,6 @@ Regressions block even if absolute values are acceptable.
 | DRY: repeated code/string/number patterns | DRY | `[must]` |
 | Magic values: unexplained literals | DRY | `[q]` |
 | God function: does multiple unrelated things | SRP | `[must]` |
-| Hardcoded infrastructure dependency | DI | `[must]` |
-| Infrastructure logic in wrong layer | SoC | `[must]` |
 | Style guide violation | — | `[nit]` |
 
 ---
