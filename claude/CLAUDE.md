@@ -86,8 +86,7 @@ When running in a master session (`session_type == "master"` in manifest):
 - **HARD RULE:** Never use Edit or Write on production code. Investigation (Read, Grep, Glob, read-only Bash) is fine — all code changes go to a worker. No exceptions: not for "quick fixes", not for bugs found during testing, not for "obvious" one-liners.
 - There is **no Wizard pane** — `tmux-codex.sh` will return `CODEX_NOT_AVAILABLE`.
 - Skip codex review/plan-review/prompt steps entirely.
-- Use `/party-spawn` to send a single freeform task to a new worker.
-- Use `/party-dispatch` to batch-dispatch multiple tickets/tasks to parallel workers.
+- Use `/party-dispatch` to dispatch any number of tasks to workers (single freeform, batch tickets, or mixed).
 - Monitor workers via the tracker pane (left pane).
 
 **Communication with workers:**
