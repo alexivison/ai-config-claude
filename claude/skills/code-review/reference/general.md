@@ -40,7 +40,7 @@ Five architectural principles form the backbone of every review. **LoB is the pr
 
 > A function, class, or module should have one, and only one, reason to change. It should do one thing and do it well.
 
-**Detection:** Functions with "and" in the name, functions >25 lines doing multiple things, classes handling both business logic and infrastructure (e.g., validation + database saving).
+**Detection:** Functions with "and" in the name, functions >30 lines doing multiple things, classes handling both business logic and infrastructure (e.g., validation + database saving).
 
 **Feedback template:** "This [function/class] is handling multiple concerns: [Concern A] and [Concern B]. Split [Concern B] into a separate function within this file to improve testability and focus."
 
@@ -48,7 +48,7 @@ Five architectural principles form the backbone of every review. **LoB is the pr
 |-----------|----------|
 | Function does multiple unrelated things | `[must]` |
 | Function >50 lines | `[must]` |
-| Function >25 lines doing 2+ things | `[q]` |
+| Function >30 lines doing 2+ things | `[q]` |
 
 ### 3. YAGNI — You Ain't Gonna Need It
 
@@ -76,9 +76,10 @@ Five architectural principles form the backbone of every review. **LoB is the pr
 | Violation | Severity |
 |-----------|----------|
 | Duplicate code >5 lines (or >3 lines repeated 3+ times) | `[must]` |
-| Same string/number literal used 2+ times without named constant | `[must]` |
-| Duplicated validation logic across files | `[must]` |
+| Magic number/string literal used without named constant | `[must]` |
+| Duplicated validation logic across files (3+ use sites) | `[must]` |
 | Copy-pasted tests that should use parameterization | `[q]` |
+| Same string literal used 2+ times in a file without constant | `[q]` |
 
 > **DRY is subordinate to LoB.** Cross-file extraction for <3 use sites is a LoB violation. Prefer same-file helpers or tolerate minor duplication to preserve locality.
 
@@ -100,61 +101,34 @@ Five architectural principles form the backbone of every review. **LoB is the pr
 
 ---
 
-## Maintainability Thresholds
+## Additional Thresholds
 
-### Blocking `[must]`
-
-| Issue | Threshold |
-|-------|-----------|
-| Function length | >50 lines |
-| Nesting depth | >4 levels |
-| Parameters | >5 |
-| Duplicate code | >5 lines repeated (or >3 lines repeated 3+ times) |
-| Magic numbers/strings | Literals used 2+ times without a named constant |
-| Inline complex conditionals | Compound boolean expressions (3+ clauses) not extracted to a named variable |
-| Behavior locality | Understanding requires reading 3+ files |
-
-### Warning `[q]`
-
-| Issue | Threshold |
-|-------|-----------|
-| Function length | >30 lines |
-| Nesting depth | >3 levels |
-| Parameters | >4 |
-| Unnamed numeric literals | Any non-obvious number (not 0, 1, -1) without a named constant |
-| String literal reuse | Same string literal used 2+ times in a file |
-| Cross-file DRY extraction | Shared utility with <3 use sites |
+| Issue | `[must]` | `[q]` |
+|-------|----------|-------|
+| Function length | >50 lines | >30 lines |
+| Nesting depth | >4 levels | >3 levels |
+| Parameters | >5 | >4 |
 
 ### Complexity Delta Rule
 
 Any change that **degrades** maintainability is `[must]`:
 - Readable function becomes hard to follow
 - Nesting increases significantly
-- New code smell introduced
 - Behavior that was local becomes scattered across files
 
 Regressions block even if absolute values are acceptable.
 
 ---
 
-## Quality Checklist
+## Quality Checklist (items not covered above)
 
-| Check | Principle | Severity if violated |
-|-------|-----------|---------------------|
-| Behavior scattered across 3+ files | LoB | `[must]` |
-| Single-use abstraction in separate file | LoB | `[must]` |
-| Hidden side effects behind indirection | LoB | `[q]` |
-| Naming: unclear or misleading | KISS | `[q]` |
-| Naming: single letters (except loop index) | KISS | `[q]` |
-| Tests missing for new code | SRP | `[must]` |
-| Tests missing for bug fix | SRP | `[must]` |
-| Comments: outdated or misleading | — | `[must]` |
-| Comments: missing on non-obvious logic | KISS | `[q]` |
-| YAGNI: unnecessary features/complexity | YAGNI | `[q]` |
-| DRY: repeated code/string/number patterns | DRY | `[must]` |
-| Magic values: unexplained literals | DRY | `[q]` |
-| God function: does multiple unrelated things | SRP | `[must]` |
-| Style guide violation | — | `[nit]` |
+| Check | Severity |
+|-------|----------|
+| Naming: unclear, misleading, or single-letter (except loop index) | `[q]` |
+| Tests missing for new code or bug fix | `[must]` |
+| Comments: outdated or misleading | `[must]` |
+| Comments: missing on non-obvious logic | `[q]` |
+| Style guide violation | `[nit]` |
 
 ---
 
