@@ -85,32 +85,72 @@ if echo "$response" | grep -qx "CODEX_REVIEW_RAN" && [ -n "$codex_verdict" ]; th
   diff_hash=$(compute_diff_hash "$cwd")
 
   if [ -n "$findings_file" ] && [ -f "$findings_file" ]; then
-    # Parse TOON findings format: findings[N]{...}: lines
-    total_findings=$(grep -cE '^findings\[[0-9]+\]' "$findings_file" 2>/dev/null || echo 0)
-    blocking_findings=$(grep -ciE 'severity:\s*(blocking|critical|high)' "$findings_file" 2>/dev/null || echo 0)
-    non_blocking_findings=$((total_findings - blocking_findings))
-    [ "$non_blocking_findings" -lt 0 ] && non_blocking_findings=0
+    # Parse canonical TOON format: header "findings[N]{fields}:" + indented CSV rows
+    # Extract field order from the header line
+    header=$(grep -E '^findings\[[0-9]+\]' "$findings_file" 2>/dev/null | head -1 || true)
+    # Count data rows (indented lines after header, before summary/stats)
+    total_findings=$(sed -n '/^findings\[/,/^[^ ]/{ /^  /p; }' "$findings_file" 2>/dev/null | wc -l | tr -d ' ')
+    total_findings=${total_findings:-0}
 
-    # Record individual findings if parseable
+    # Parse field positions from header: findings[N]{id,file,line,severity,...}:
+    field_list=""
+    if [ -n "$header" ]; then
+      field_list=$(echo "$header" | sed 's/^findings\[[0-9]*\]{\(.*\)}:$/\1/')
+    fi
+
+    # Find severity field position (1-indexed)
+    sev_pos=0
+    if [ -n "$field_list" ]; then
+      idx=0
+      IFS=',' read -ra hfields <<< "$field_list"
+      for f in "${hfields[@]}"; do
+        idx=$((idx + 1))
+        if [ "$f" = "severity" ]; then sev_pos=$idx; break; fi
+      done
+    fi
+
+    # Parse individual finding rows
+    blocking_findings=0
     finding_idx=0
-    while IFS= read -r line; do
+    while IFS= read -r row; do
+      row=$(echo "$row" | sed 's/^  *//')  # strip leading indent
+      [ -z "$row" ] && continue
       finding_idx=$((finding_idx + 1))
       fid="codex-${finding_idx}"
-      # Extract fields from TOON format: findings[N]{id:X,file:Y,line:Z,severity:S,category:C,description:D}:
-      f_severity=$(echo "$line" | grep -oE 'severity:[^,}]+' | head -1 | sed 's/severity://')
-      f_category=$(echo "$line" | grep -oE 'category:[^,}]+' | head -1 | sed 's/category://')
-      f_file=$(echo "$line" | grep -oE 'file:[^,}]+' | head -1 | sed 's/file://')
-      f_line=$(echo "$line" | grep -oE 'line:[^,}]+' | head -1 | sed 's/line://')
-      f_desc=$(echo "$line" | grep -oE 'description:[^}]+' | head -1 | sed 's/description://')
+
+      # Extract fields by position using CSV-aware parsing
+      # Fields may be quoted: F1,src/app.ts,10,blocking,correctness,"desc with, commas","suggestion"
+      IFS=',' read -ra parts <<< "$row"
+      f_file="" ; f_line="" ; f_severity="" ; f_category="" ; f_desc=""
+      if [ -n "$field_list" ]; then
+        fidx=0
+        IFS=',' read -ra hfields <<< "$field_list"
+        for fn in "${hfields[@]}"; do
+          fidx=$((fidx + 1))
+          val="${parts[$((fidx - 1))]:-}"
+          val=$(echo "$val" | sed 's/^"//;s/"$//')  # strip quotes
+          case "$fn" in
+            file) f_file="$val" ;;
+            line) f_line="$val" ;;
+            severity) f_severity="$val" ;;
+            category) f_category="$val" ;;
+            description) f_desc="$val" ;;
+          esac
+        done
+      fi
+
       # Normalize severity
       case "$f_severity" in
-        critical|high|blocking) f_severity="blocking" ;;
+        critical|high|blocking) f_severity="blocking"; blocking_findings=$((blocking_findings + 1)) ;;
         medium|low|"") f_severity="non-blocking" ;;
         *) f_severity="advisory" ;;
       esac
       record_finding_raised "$session_id" "codex" "$fid" "$f_severity" \
         "${f_category:-other}" "${f_file:-}" "${f_line:-}" "${f_desc:-}" "$diff_hash"
-    done < <(grep -E '^findings\[[0-9]+\]' "$findings_file" 2>/dev/null || true)
+    done < <(sed -n '/^findings\[/,/^[^ ]/{ /^  /p; }' "$findings_file" 2>/dev/null || true)
+
+    non_blocking_findings=$((total_findings - blocking_findings))
+    [ "$non_blocking_findings" -lt 0 ] && non_blocking_findings=0
 
     # Always record a summary even if individual parsing got nothing
     record_findings_summary "$session_id" "codex" "$diff_hash" "$codex_verdict" \

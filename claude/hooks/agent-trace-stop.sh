@@ -137,12 +137,15 @@ case "$agent_type" in
       #   - [must] / [should] / [nit] tags
       #   - Numbered findings (1. / 2. / - **Finding**)
       #   - **BLOCKING** / **NON-BLOCKING** markers
-      blocking_count=$(echo "$response" | grep -ciE '\[must\]|\*\*blocking\*\*|\bblocking:' || echo 0)
-      non_blocking_count=$(echo "$response" | grep -ciE '\[should\]|\[nit\]|\*\*non-blocking\*\*|\bnon-blocking:' || echo 0)
+      blocking_count=$(echo "$response" | grep -ciE '\[must\]|\*\*blocking\*\*|\bblocking:' || true)
+      blocking_count=${blocking_count:-0}
+      non_blocking_count=$(echo "$response" | grep -ciE '\[should\]|\[nit\]|\*\*non-blocking\*\*|\bnon-blocking:' || true)
+      non_blocking_count=${non_blocking_count:-0}
       total_count=$((blocking_count + non_blocking_count))
       # If no structured tags found, estimate from numbered list items in REQUEST_CHANGES
       if [ "$total_count" -eq 0 ] && [ "$verdict" = "REQUEST_CHANGES" ]; then
-        total_count=$(echo "$response" | grep -cE '^\s*[0-9]+\.\s' || echo 0)
+        total_count=$(echo "$response" | grep -cE '^\s*[0-9]+\.\s' || true)
+        total_count=${total_count:-0}
         blocking_count="$total_count"
       fi
       # Capture a short excerpt (first 200 chars of the response tail) for context
