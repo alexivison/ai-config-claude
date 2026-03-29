@@ -46,7 +46,7 @@ Use the canonical sequence in [execution-core.md](~/.claude/rules/execution-core
    - **scribe** gets the TASK file path, diff command, and test file paths. It verifies every requirement is implemented and tested.
    - Round 1: collect findings from all three, fix only `[must]` in one batch.
    - **After fixing blocking items → re-run all three (one pass).** Do NOT proceed to codex without this re-run. Only when all return APPROVE (or only non-blocking findings remain) may you proceed.
-   - Stop critic loop at 2 rounds. If blocking findings still remain, escalate `NEEDS_DISCUSSION`.
+   - Stop critic loop at 3 rounds. If blocking findings still remain, enter dispute resolution (2 rounds) per execution-core, then escalate to user if unresolved.
    - `[q]`/`[nit]` are opt-in only (explicit polish request) and should not trigger another critic round.
 7. **Dispatch Codex review** (non-blocking):
       ```bash
