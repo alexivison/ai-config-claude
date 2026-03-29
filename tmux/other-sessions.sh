@@ -14,22 +14,15 @@ state_root="${PARTY_STATE_ROOT:-$HOME/.party-state}"
 parts=()
 while IFS= read -r sid; do
     [[ -z "$sid" ]] && continue
-    label=""
+    # Default: short ID with long timestamps truncated to last 6 chars
+    label="${sid##party-}"
+    [[ ${#label} -gt 6 ]] && label="${label: -6}"
+
     manifest="$state_root/$sid.json"
     if [[ -f "$manifest" ]] && command -v jq >/dev/null 2>&1; then
-        title=$(jq -r '.title // empty' "$manifest" 2>/dev/null)
-        stype=$(jq -r '.session_type // empty' "$manifest" 2>/dev/null)
-        if [[ -n "$title" ]]; then
-            label="$title"
-        else
-            label="${sid##party-}"
-            # Truncate long timestamps to last 6 chars
-            [[ ${#label} -gt 6 ]] && label="${label: -6}"
-        fi
+        read -r title stype < <(jq -r '[(.title // ""), (.session_type // "")] | @tsv' "$manifest" 2>/dev/null)
+        [[ -n "$title" ]] && label="$title"
         [[ "$stype" == "master" ]] && label="$label*"
-    else
-        label="${sid##party-}"
-        [[ ${#label} -gt 6 ]] && label="${label: -6}"
     fi
     parts+=("$label")
 done <<< "$others"
