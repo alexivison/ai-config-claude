@@ -68,7 +68,6 @@ Simple code is easier to read, maintain, and test than "clever" code.
 ### General Bloat
 
 - Production files >500 lines (`[must]`)
-- Copy-pasted code blocks (even 3-5 lines) that should be extracted to a same-file helper (`[q]`)
 
 ## What NOT to Flag
 

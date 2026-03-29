@@ -44,7 +44,7 @@ Report as `[must]` when violated:
 2. Functions doing multiple unrelated things (SRP)
 3. Function >50 lines (SRP)
 4. Same literal used 2+ times without a named constant (DRY)
-5. Code blocks repeated in 3+ places without extraction (DRY)
+5. Duplicate code >5 lines, or >3 lines repeated 3+ times, without extraction (DRY)
 6. Magic number/string literal used without named constant (DRY)
 7. Out-of-scope file modifications without explicit rationale
 8. Obvious regression paths introduced by the change
