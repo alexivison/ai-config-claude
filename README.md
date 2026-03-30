@@ -6,7 +6,7 @@
 
 <p align="center"><em>"Evidence before claims. Tests before implementation."</em></p>
 
-Shared configuration and orchestration for an adventuring party of AI coding assistants. Each member brings unique strengths; this repo equips them through symlink-based installation and launches them side by side in a tmux party session.
+Shared configuration and orchestration for an adventuring party of AI coding assistants. Each member brings unique strengths; this repo equips them through symlink-based installation and launches them side by side in a tmux party session. The harness is a **planning-agnostic implementation governance engine** — it enforces how code gets built, reviewed, and shipped, regardless of where the work was planned. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the execution contract.
 
 ## The Party
 
