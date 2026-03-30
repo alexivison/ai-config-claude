@@ -149,7 +149,13 @@ func (s *Service) claimSessionID(ctx context.Context, template state.Manifest) (
 		}
 
 		// Guard against orphan tmux sessions that have no manifest.
-		if exists, _ := s.Client.HasSession(ctx, id); exists {
+		// Propagate real transport errors; benign "no server" returns (false, nil).
+		exists, hsErr := s.Client.HasSession(ctx, id)
+		if hsErr != nil {
+			_ = s.Store.Delete(id)
+			return "", fmt.Errorf("check tmux session %s: %w", id, hsErr)
+		}
+		if exists {
 			_ = s.Store.Delete(id)
 			continue
 		}

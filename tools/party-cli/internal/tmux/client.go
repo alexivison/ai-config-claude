@@ -66,12 +66,21 @@ func (e *ExitError) Error() string {
 	return fmt.Sprintf("tmux exited with status %d", e.Code)
 }
 
-// IsConnectionError returns true if the error indicates a tmux server
-// transport failure rather than a command-level error (e.g. "session not found").
+// IsConnectionError returns true if the error indicates an active tmux
+// transport failure (permission denied, server crash) rather than the
+// benign "no tmux server exists yet" case. The distinction matters because
+// "no server" is functionally equivalent to "session not found", while a
+// real transport failure (e.g. socket with wrong permissions) should not be
+// silently treated as "session stopped".
 func (e *ExitError) IsConnectionError() bool {
-	return strings.Contains(e.Stderr, "error connecting") ||
-		strings.Contains(e.Stderr, "no server running") ||
-		strings.Contains(e.Stderr, "lost server")
+	s := e.Stderr
+	if strings.Contains(s, "lost server") {
+		return true
+	}
+	if strings.Contains(s, "error connecting") && !strings.Contains(s, "No such file or directory") {
+		return true
+	}
+	return false
 }
 
 // Run executes a tmux command and returns its trimmed stdout.

@@ -573,7 +573,7 @@ func TestWorkers_TmuxErrorNotMaskedAsStopped(t *testing.T) {
 	// matching real tmux behavior (e.g. dead socket).
 	runner := &mockRunner{fn: func(_ context.Context, args ...string) (string, error) {
 		if len(args) >= 1 && args[0] == "has-session" {
-			return "", &tmux.ExitError{Code: 1, Stderr: "error connecting to /tmp/tmux-501/default (No such file or directory)"}
+			return "", &tmux.ExitError{Code: 1, Stderr: "error connecting to /tmp/tmux-501/default (Permission denied)"}
 		}
 		return "", nil
 	}}
@@ -607,7 +607,7 @@ func TestBroadcast_TmuxTransportError(t *testing.T) {
 
 	runner := &mockRunner{fn: func(_ context.Context, args ...string) (string, error) {
 		if len(args) >= 1 && args[0] == "has-session" {
-			return "", &tmux.ExitError{Code: 1, Stderr: "error connecting to /tmp/tmux-501/default (No such file or directory)"}
+			return "", &tmux.ExitError{Code: 1, Stderr: "error connecting to /tmp/tmux-501/default (Permission denied)"}
 		}
 		return "", nil
 	}}

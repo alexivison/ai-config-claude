@@ -62,13 +62,34 @@ func TestHasSession_Error(t *testing.T) {
 	}
 }
 
+func TestHasSession_NoServerIsBenign(t *testing.T) {
+	t.Parallel()
+
+	// "No such file or directory" means no tmux server exists yet.
+	// This is functionally "session not found", not a transport error.
+	m := newMock(func(_ context.Context, _ ...string) (string, error) {
+		return "", &ExitError{Code: 1, Stderr: "error connecting to /tmp/tmux-501/default (No such file or directory)"}
+	})
+	c := NewClient(m)
+
+	ok, err := c.HasSession(t.Context(), "party-x")
+	if err != nil {
+		t.Fatalf("expected nil error for benign no-server case, got: %v", err)
+	}
+	if ok {
+		t.Error("expected false for no-server case")
+	}
+}
+
 func TestHasSession_ConnectionError(t *testing.T) {
 	t.Parallel()
 
-	// ExitError with connection-error stderr should propagate as error,
-	// NOT be treated as "session not found".
+	// ExitError with real transport-error stderr should propagate as error,
+	// NOT be treated as "session not found". "Permission denied" is a real
+	// transport error, unlike "No such file or directory" which just means
+	// no tmux server exists yet (benign).
 	m := newMock(func(_ context.Context, _ ...string) (string, error) {
-		return "", &ExitError{Code: 1, Stderr: "error connecting to /tmp/tmux-501/default (No such file or directory)"}
+		return "", &ExitError{Code: 1, Stderr: "error connecting to /tmp/tmux-501/default (Permission denied)"}
 	})
 	c := NewClient(m)
 
