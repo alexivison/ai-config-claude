@@ -1,17 +1,17 @@
-# Task 5 — Update settings.json and install.sh
+# Task 5 — Update settings.json and Install
 
 **Dependencies:** Task 2, Task 3
 
 ## Goal
 
-Wire the renamed hooks and transport scripts into `settings.json` (permissions + hook paths) and make `install.sh` / `uninstall.sh` companion-aware.
+Wire the renamed hooks into `settings.json` and make `party-cli install` companion-aware. Remove redirect stubs from Task 3 once settings point to new paths.
 
 ## Scope Boundary
 
 **In scope:**
-- `claude/settings.json`: Update hook command paths from `codex-*` to `companion-*`; update Bash permissions for `tmux-companion.sh`
-- `install.sh`: Replace `setup_codex()` with a companion-aware loop that reads the registry (or defaults to Codex)
-- `uninstall.sh`: Remove companion symlinks generically
+- `claude/settings.json`: Update hook command paths from `codex-*` to `companion-*`
+- `tools/party-cli/cmd/install.go`: Make companion-aware (iterate registry for CLI checks and auth prompts)
+- Remove redirect stubs at old hook paths (now safe since settings.json points to new names)
 
 **Out of scope:**
 - Hook logic changes (already done in Task 3)
@@ -20,42 +20,44 @@ Wire the renamed hooks and transport scripts into `settings.json` (permissions +
 
 **Design References:** N/A (non-UI task)
 
+## Reference
+
+- `claude/settings.json` — Current hook paths reference `codex-gate.sh`, `wizard-guard.sh`, `codex-trace.sh`
+- `tools/party-cli/cmd/install.go` — Current install command with hardcoded Codex setup
+- `claude/hooks/codex-gate.sh` — Redirect stub (from Task 3) to remove
+
 ## Files to Create/Modify
 
 | File | Action |
 |------|--------|
-| `claude/settings.json` | Modify — hook paths, permissions |
-| `install.sh` | Modify — companion-aware setup |
-| `uninstall.sh` | Modify — companion-aware cleanup |
+| `claude/settings.json` | Modify — hook paths |
+| `tools/party-cli/cmd/install.go` | Modify — companion-aware install |
+| `claude/hooks/codex-gate.sh` | Delete (redirect stub, no longer needed) |
+| `claude/hooks/wizard-guard.sh` | Delete (redirect stub, no longer needed) |
+| `claude/hooks/codex-trace.sh` | Delete (redirect stub, no longer needed) |
 
 ## Requirements
 
 **Functionality:**
-- `settings.json` hooks section: Replace all `codex-gate.sh` → `companion-gate.sh`, `wizard-guard.sh` → `companion-guard.sh`, `codex-trace.sh` → `companion-trace.sh` in command paths
-- `settings.json` permissions: Replace `tmux-codex.sh` path with `tmux-companion.sh` path in the allow list
-- `install.sh`: The `setup_codex()` function becomes `setup_companions()` which:
-  - Always sets up the `codex/` symlink (it's still the default companion config directory)
-  - Reads `.party.toml` if present for additional companions
-  - Prompts for each companion CLI installation and auth
-  - Keeps the same interactive prompt UX
-- `uninstall.sh`: Remove `~/.codex` and any other companion config symlinks
+- `settings.json` hooks: Replace `codex-gate.sh` → `companion-gate.sh`, `wizard-guard.sh` → `companion-guard.sh`, `codex-trace.sh` → `companion-trace.sh` in all command paths
+- `settings.json` permissions: No change needed — `Bash(party-cli:*)` already covers `party-cli transport --to ...`
+- `party-cli install`: Load registry. For each companion in `registry.List()`: check if CLI binary exists, prompt user to install if not, prompt for auth if needed. Keep the same interactive UX as current Codex-specific install.
+- Codex config directory (`~/.codex`) symlink still created — it's Codex's own config, not ours to rename
 
 **Key gotchas:**
-- The transition stubs from Task 3 (old hook names → new) can be removed once settings.json points to new names
-- `settings.json` is the file that actually wires hooks to Claude Code — this task is what makes the renames "live"
-- Codex config directory (`~/.codex`) stays as a symlink regardless — it's Codex's own config, not ours to rename
+- Deleting the redirect stubs is safe ONLY after settings.json points to the new names. These must happen atomically (same commit).
+- `party-cli install` must still work with no `.party.toml` (defaults to Codex install flow)
 
 ## Tests
 
 - `settings.json` contains no references to `codex-gate.sh`, `wizard-guard.sh`, or `codex-trace.sh`
-- `settings.json` permissions reference `tmux-companion.sh`
-- `install.sh --symlinks-only` creates companion symlinks
-- `uninstall.sh` removes companion symlinks
+- `party-cli install` with default registry prompts for Codex
+- `party-cli install` with two-companion `.party.toml` prompts for both
+- Redirect stubs are deleted
 
 ## Acceptance Criteria
 
 - [ ] `settings.json` hook paths all point to `companion-*` named hooks
-- [ ] `settings.json` permissions allow `tmux-companion.sh`
-- [ ] `install.sh` sets up companions from registry/defaults
-- [ ] `uninstall.sh` cleans up companion symlinks
-- [ ] Codex config symlink (`~/.codex`) still created (backward compatible)
+- [ ] `party-cli install` iterates companions from registry
+- [ ] Redirect stubs at old hook paths deleted
+- [ ] Codex config symlink still created in default flow
