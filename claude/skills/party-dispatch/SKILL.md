@@ -249,7 +249,7 @@ If a worker appears stuck or reports an error:
 
 1. Read scrollback: `party-cli read <worker-id> --lines 200`
 2. Diagnose the issue from the output
-3. Relay fix instructions with context: `party-relay.sh <worker-id> "..."`
+3. Relay fix instructions with context: `party-cli relay <worker-id> "..."`
 4. If the worker is unrecoverable, note it in the task list and consider
    spawning a replacement worker
 

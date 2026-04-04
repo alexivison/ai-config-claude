@@ -3,7 +3,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TRANSPORT_SCRIPT="$SCRIPT_DIR/../scripts/tmux-codex.sh"
 TEMPLATE_DIR="$SCRIPT_DIR/../templates"
 TMPDIR_TEST=$(mktemp -d)
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
@@ -176,7 +175,7 @@ assert_grep "plan-review: no unreplaced placeholders" "$TMPDIR_TEST/plan-review.
 
 echo "=== Multiline conditional sections ==="
 
-# Build a scope section using printf (same as tmux-codex.sh does)
+# Build a scope section using printf (same as party-cli transport does)
 MULTILINE_SCOPE=$(printf '## Scope\n\nOnly review auth module changes.\nFindings outside this scope should be omitted.')
 _render_template "$TEMPLATE_DIR/review.md" \
   "WORK_DIR=/tmp/test-repo" \
@@ -192,14 +191,6 @@ _render_template "$TEMPLATE_DIR/review.md" \
 assert_grep "multiline: scope header on own line" "$TMPDIR_TEST/review-multiline.txt" "^## Scope$"
 assert_grep "multiline: scope body on separate line" "$TMPDIR_TEST/review-multiline.txt" "^Only review auth module"
 assert_grep "multiline: no literal backslash-n" "$TMPDIR_TEST/review-multiline.txt" '\\n' "!"
-
-# ── Error handling ───────────────────────────────────────────────────
-
-echo "=== Error handling ==="
-
-# --approve should error
-bash "$TRANSPORT_SCRIPT" --approve 2>"$TMPDIR_TEST/approve-err.txt" || true
-assert_grep "--approve: still errors (deprecated)" "$TMPDIR_TEST/approve-err.txt" "deprecated"
 
 # ── Summary ──────────────────────────────────────────────────────────
 

@@ -12,7 +12,7 @@ if [[ -z "$session_id" ]]; then
   exit 0
 fi
 
-# Delegate to party-cli if available (no dependency on party-lib.sh).
+# Delegate to party-cli if available.
 if command -v party-cli &>/dev/null; then
   party-cli register --claude-session-id "$session_id" 2>/dev/null || true
   echo '{}'

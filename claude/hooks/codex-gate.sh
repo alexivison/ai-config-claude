@@ -22,15 +22,15 @@ if [ -z "$SESSION_ID" ] || [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-# Only gate party-cli transport and legacy tmux-codex.sh invocations
-if ! echo "$COMMAND" | grep -qE '(^|[;&|] *)(([^ ]*/)?tmux-codex\.sh|party-cli +transport)'; then
+# Only gate party-cli transport invocations
+if ! echo "$COMMAND" | grep -qE '(^|[;&|] *)party-cli +transport'; then
   echo '{}'
   exit 0
 fi
 
 # --approve is BLOCKED — only The Wizard can approve (via verdict in findings file)
 # Workers must use review-complete <findings_file>, which reads the verdict The Wizard wrote.
-if echo "$COMMAND" | grep -qE '(tmux-codex\.sh +--approve|party-cli +transport +approve)'; then
+if echo "$COMMAND" | grep -qE 'party-cli +transport +approve'; then
   hook_log "codex-gate" "$SESSION_ID" "deny" "--approve blocked"
   cat << EOF
 {

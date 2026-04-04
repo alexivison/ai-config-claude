@@ -38,8 +38,8 @@ fi
 cwd=$(echo "$hook_input" | jq -r '.cwd // ""' 2>/dev/null)
 cwd=$(_resolve_cwd "$session_id" "$cwd")
 
-# Only trace party-cli transport and legacy tmux-codex.sh invocations
-if ! echo "$command" | grep -qE '(^|[;&|] *)(([^ ]*/)?tmux-codex\.sh|party-cli +transport)'; then
+# Only trace party-cli transport invocations
+if ! echo "$command" | grep -qE '(^|[;&|] *)party-cli +transport'; then
   exit 0
 fi
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # wizard-guard.sh — Block direct tmux interaction with the Wizard.
-# Forces Claude to use tmux-codex.sh for all Wizard communication.
+# Forces Claude to use party-cli transport for all Wizard communication.
 set -euo pipefail
 
 INPUT=$(cat)
