@@ -64,56 +64,56 @@ setup_repo
 
 echo "--- test-codex-gate.sh ---"
 
-# Test: gate allows non-tmux-codex commands
+# Test: gate allows non-transport commands
 OUTPUT=$(echo "$(gate_input 'ls -la')" | bash "$GATE")
-assert "gate allows non-tmux-codex commands" \
+assert "gate allows non-transport commands" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-# Test: --review without any evidence is allowed (no phase gate)
+# Test: review without any evidence is allowed (no phase gate)
 clean_evidence
-OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --review main "test"')" | bash "$GATE")
-assert "--review without evidence is allowed" \
+OUTPUT=$(echo "$(gate_input 'party-cli transport review main "test"')" | bash "$GATE")
+assert "transport review without evidence is allowed" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-# Test: --review with critic evidence is also allowed
+# Test: review with critic evidence is also allowed
 clean_evidence
 append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "minimizer" "APPROVED" "$TMPDIR_BASE"
-OUTPUT=$(echo "$(gate_input '~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "test"')" | bash "$GATE")
-assert "--review with critic evidence is allowed" \
+OUTPUT=$(echo "$(gate_input 'party-cli transport review main "test"')" | bash "$GATE")
+assert "transport review with critic evidence is allowed" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-# Test: gate always blocks --approve (workers cannot self-approve)
+# Test: gate always blocks approve (workers cannot self-approve)
 clean_evidence
-OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --approve')" | bash "$GATE")
-assert "--approve blocked without evidence" \
+OUTPUT=$(echo "$(gate_input 'party-cli transport approve')" | bash "$GATE")
+assert "transport approve blocked without evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
 
-# Test: --approve blocked even with all possible evidence
+# Test: approve blocked even with all possible evidence
 clean_evidence
 append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "minimizer" "APPROVED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "codex" "APPROVED" "$TMPDIR_BASE"
-OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --approve')" | bash "$GATE")
-assert "--approve blocked even with full evidence" \
+OUTPUT=$(echo "$(gate_input 'party-cli transport approve')" | bash "$GATE")
+assert "transport approve blocked even with full evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
 
-# Test: --prompt passes through without evidence
+# Test: prompt passes through without evidence
 clean_evidence
-OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --prompt "debug this"')" | bash "$GATE")
-assert "--prompt allowed without evidence" \
+OUTPUT=$(echo "$(gate_input 'party-cli transport prompt "debug this"')" | bash "$GATE")
+assert "transport prompt allowed without evidence" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-# Test: --plan-review passes through without evidence
+# Test: plan-review passes through without evidence
 clean_evidence
-OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --plan-review PLAN.md /tmp/work')" | bash "$GATE")
-assert "--plan-review allowed without evidence" \
+OUTPUT=$(echo "$(gate_input 'party-cli transport plan-review PLAN.md /tmp/work')" | bash "$GATE")
+assert "transport plan-review allowed without evidence" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-# Test: --review-complete passes through
+# Test: review-complete passes through
 clean_evidence
-OUTPUT=$(echo "$(gate_input 'tmux-codex.sh --review-complete /tmp/findings.toon')" | bash "$GATE")
-assert "--review-complete allowed" \
+OUTPUT=$(echo "$(gate_input 'party-cli transport review-complete /tmp/findings.toon')" | bash "$GATE")
+assert "transport review-complete allowed" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
 echo ""

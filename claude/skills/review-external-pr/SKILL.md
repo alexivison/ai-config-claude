@@ -52,9 +52,9 @@ Launch all four reviewers in the **same message** so they run concurrently:
 
 ### The Wizard
 
-Dispatch via tmux-codex.sh:
+Dispatch via party-cli:
 ```bash
-~/.claude/skills/codex-transport/scripts/tmux-codex.sh --prompt "<prompt>" <work_dir>
+party-cli transport prompt "<prompt>" <work_dir>
 ```
 
 The Wizard prompt should include the diff path, PR title, summary of changes, and ask for severity-labeled findings (`[must]`, `[q]`, `[nit]`) with file:line references. The Wizard excels at deep reasoning — ask it to focus on correctness bugs, architectural concerns, subtle edge cases, and design-doc compliance.

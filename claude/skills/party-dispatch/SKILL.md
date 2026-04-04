@@ -69,22 +69,16 @@ remaining arguments are work items. Classify each item:
 
 ### Step 3 — Promote to master
 
-Discover the current tmux session name:
+Check if already a master:
 
 ```bash
-tmux display-message -p '#{session_name}'
-```
-
-Check if already a master by reading the manifest:
-
-```bash
-cat ~/Code/ai-config/session/manifests/<session-name>.json | jq -r '.session_type'
+party-cli status <session-name>
 ```
 
 If not already a master, promote:
 
 ```bash
-~/Code/ai-config/session/party.sh --promote <session-name>
+party-cli promote <session-name>
 ```
 
 This replaces the Codex pane with the tracker and sets `session_type=master`.
@@ -95,8 +89,7 @@ If already a master, this is a no-op.
 Spawn each item as a **detached worker session** registered with the master:
 
 ```bash
-~/Code/ai-config/session/party.sh --detached --master-id <session-name> \
-  --prompt "<prompt>" "<title>"
+party-cli spawn --master-id <session-name> --prompt "<prompt>" "<title>"
 ```
 
 The `<title>` becomes the worker session's window name.
@@ -124,7 +117,7 @@ Run /<skill> on this issue.
 Work in the repo at <absolute-cwd>.
 
 When done, report completion to the master:
-~/Code/ai-config/session/party-relay.sh --report "done: <one-line summary> | PR: <url or 'none'>"
+party-cli report "done: <one-line summary> | PR: <url or 'none'>"
 ```
 
 **For file-based items:**
@@ -135,7 +128,7 @@ Run /task-workflow on the task file at: <absolute-path>
 Read the file first to understand the scope, then execute the workflow.
 
 When done, report completion to the master:
-~/Code/ai-config/session/party-relay.sh --report "done: <one-line summary> | PR: <url or 'none'>"
+party-cli report "done: <one-line summary> | PR: <url or 'none'>"
 ```
 
 **For freeform tasks:**
@@ -148,7 +141,7 @@ references files, use absolute paths.
 
 ```
 When done, report completion to the master:
-~/Code/ai-config/session/party-relay.sh --report "done: <one-line summary> | PR: <url or 'none'>"
+party-cli report "done: <one-line summary> | PR: <url or 'none'>"
 ```
 
 Workers that don't receive this instruction will silently finish without
@@ -164,8 +157,7 @@ cat > /tmp/party-prompt-N.md <<'PROMPT_EOF'
 <full prompt text>
 PROMPT_EOF
 
-~/Code/ai-config/session/party.sh --detached --master-id <session-name> \
-  --prompt "$(cat /tmp/party-prompt-N.md)" "<title>"
+party-cli spawn --master-id <session-name> --prompt "$(cat /tmp/party-prompt-N.md)" "<title>"
 ```
 
 ### Step 5 — Create tracker and report
@@ -182,8 +174,8 @@ and current status:
 Then report to the user:
 
 - All dispatched workers (session names and items)
-- How to check on workers: `party-relay.sh --read <worker-id>`
-- How to switch between them: `party.sh --switch` or `prefix + s` (tmux session picker)
+- How to check on workers: `party-cli read <worker-id>`
+- How to switch between them: `party-cli picker` or `prefix + s` (tmux session picker)
 - Point to the task list for live tracking
 
 Do not wait for workers — proceed to orchestration immediately.
@@ -195,9 +187,9 @@ their entire lifecycle. The master is an orchestrator, never an implementor.
 
 ### Monitoring workers
 
-- **Check status**: `party-relay.sh --list` to see all workers and their state
-- **Read scrollback**: `party-relay.sh --read <worker-id>` (default 50 lines)
-  or `--read <worker-id> --lines 200` for deeper history
+- **Check status**: `party-cli workers` to see all workers and their state
+- **Read scrollback**: `party-cli read <worker-id>` (default 50 lines)
+  or `party-cli read <worker-id> --lines 200` for deeper history
 - **Watch tracker pane**: the left pane shows real-time worker status
 
 ### Handling worker reports
@@ -216,7 +208,7 @@ report arrives:
 When a worker needs guidance or additional work:
 
 ```bash
-~/Code/ai-config/session/party-relay.sh <worker-id> "instruction text"
+party-cli relay <worker-id> "instruction text"
 ```
 
 Always include investigation context (file paths, line numbers, root cause
@@ -225,7 +217,7 @@ analysis) so the worker can act immediately without re-investigating.
 For broadcasts to all workers:
 
 ```bash
-~/Code/ai-config/session/party-relay.sh --broadcast "message"
+party-cli broadcast "message"
 ```
 
 ### Reviewing worker PRs (MANDATORY)
@@ -239,7 +231,7 @@ When a worker completes and opens a PR:
 1. **Read the PR**: `gh pr view <number>` and `gh pr diff <number>`
 2. **Check CI status**: `gh pr checks <number>`
 3. **If CI fails**: read the failure logs, diagnose the issue, and relay fix
-   instructions to the worker via `party-relay.sh` with file paths, line
+   instructions to the worker via `party-cli relay` with file paths, line
    numbers, and root cause analysis
 4. **Run `/code-review`** on the PR diff for a structured quality review
 5. **If blocking issues found**: relay the findings to the worker with file
@@ -255,9 +247,9 @@ is unconditional.
 
 If a worker appears stuck or reports an error:
 
-1. Read scrollback: `party-relay.sh --read <worker-id> --lines 200`
+1. Read scrollback: `party-cli read <worker-id> --lines 200`
 2. Diagnose the issue from the output
-3. Relay fix instructions with context: `party-relay.sh <worker-id> "..."`
+3. Relay fix instructions with context: `party-cli relay <worker-id> "..."`
 4. If the worker is unrecoverable, note it in the task list and consider
    spawning a replacement worker
 
@@ -275,7 +267,7 @@ When all workers have reported back (all tasks completed):
   MCP queries are all fine. Gathering context to relay to workers is core
   orchestration work.
 - **Never edit production code** — Do not use Edit or Write on source files.
-  All code changes must be delegated to a worker via `party-relay.sh`.
+  All code changes must be delegated to a worker via `party-cli relay`.
   This applies in every scenario: new bugs found during testing, quick
   one-line fixes, "obvious" changes — no exceptions.
 - **Relay with context** — When relaying new work to a worker, include your

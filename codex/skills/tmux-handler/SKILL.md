@@ -56,8 +56,8 @@ Preferred emission flow:
 
 | Agent calling | Script to use | Direction |
 |---|---|---|
-| Claude | `tmux-codex.sh` | Claude → Codex |
-| Codex | `tmux-claude.sh` | Codex → Claude |
+| Claude | `party-cli transport` | Claude → Codex |
+| Codex | `party-cli notify` | Codex → Claude |
 
 ## Message types
 
@@ -81,7 +81,7 @@ Default priority for review findings (highest first):
 5. **Do NOT include a "verdict" field.** You produce findings — the verdict is Claude's decision.
 6. **Notify Claude** when done:
    ```bash
-   ~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
+   party-cli notify "Review complete. Findings at: <findings_file>"
    ```
 
 ### Re-review request
@@ -97,9 +97,9 @@ Claude asks you to investigate or work on something.
 
 1. Perform the requested task
 2. Write results to the file path specified (if given)
-3. Notify Claude: `tmux-claude.sh "Task complete. Response at: <path>"`
+3. Notify Claude: `party-cli notify "Task complete. Response at: <path>"`
 
-### NEEDS_DISCUSSION debate (via --prompt)
+### NEEDS_DISCUSSION debate (via transport prompt)
 Claude sends a structured position on a disputed finding — either from your review or a critic's.
 
 1. Read Claude's position: it will state concede, counter-argue, or propose compromise, with evidence
@@ -110,7 +110,7 @@ Claude sends a structured position on a disputed finding — either from your re
 3. Responses must be evidence-based — "I still think this is wrong" without a file:line reference is not a valid counter
 4. **No fixed exchange cap.** Continue the discussion — each round should make progress (concede valid points, counter with new evidence, or propose concrete compromises). If the discussion becomes genuinely circular (same arguments repeated 3+ times with no new evidence from either side), state your final position clearly so Claude can escalate to the user with both sides summarized
 5. Write response to the specified path
-6. Notify Claude: `tmux-claude.sh "Task complete. Response at: <path>"`
+6. Notify Claude: `party-cli notify "Task complete. Response at: <path>"`
 
 ### Plan review request
 Claude shares a plan and asks for your assessment.
@@ -118,7 +118,7 @@ Claude shares a plan and asks for your assessment.
 1. Read the plan
 2. Evaluate feasibility, risks, missing steps
 3. Write feedback to the specified file using the TOON findings schema above (categories may include `architecture`, `feasibility`, `missing-step`). Prefer the helper workflow above over hand-typing TOON.
-4. Notify Claude: `tmux-claude.sh "Plan review complete. Findings at: <path>"`
+4. Notify Claude: `party-cli notify "Plan review complete. Findings at: <path>"`
 
 ### Question from Claude
 Claude asks for information or your opinion.
@@ -128,4 +128,4 @@ Claude asks for information or your opinion.
 3. **Structured findings response**: When Claude requests structured findings and provides a `.toon` response path, emit canonical TOON with the helper workflow above — not markdown.
 4. **Narrative Q&A**: When the request is conversational, write concise text. A `.toon` extension alone does not mean the payload must be structured TOON.
 5. Write response to the exact path Claude specified (do not change the extension).
-6. Notify Claude: `tmux-claude.sh "Response ready at: <path>"`
+6. Notify Claude: `party-cli notify "Response ready at: <path>"`

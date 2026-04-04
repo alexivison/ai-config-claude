@@ -59,16 +59,16 @@ Use the canonical sequence in [execution-core.md](~/.claude/rules/execution-core
    - `[q]`/`[nit]` are opt-in only (explicit polish request) and should not trigger another critic round.
 7. **Dispatch Codex review** (non-blocking):
       ```bash
-      ~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review main "{PR title}" "$(pwd)"
+      party-cli transport review "$(pwd)" main "{PR title}"
       ```
       `work_dir` is required — pass the worktree/repo path. Codex notifies via `[CODEX]` message when done.
 8. **Sentinel review** — Immediately after dispatching Codex, launch the `sentinel` sub-agent in the background. Pass the merge-base diff, scope boundaries, and a short PR goal context.
       - **BARRIER:** no code edits until both Codex AND Sentinel return.
       - Sentinel findings are advisory (no gating markers). Paladin triages.
 9. **Triage findings** — When `[CODEX] Review complete` arrives: read findings, triage by severity. Triage the UNION of Codex + Sentinel findings.
-   - **Blocking in-scope findings:** fix code → commit → re-run critics → dispatch new `--review` → `--review-complete`.
+   - **Blocking in-scope findings:** fix code → commit → re-run critics → dispatch new `review` → `review-complete`.
    - **Out-of-scope / NEEDS_DISCUSSION:** follow [execution-core.md § Dispute Resolution](~/.claude/rules/execution-core.md#dispute-resolution).
-   - Non-blocking / approved: `--review-complete` reads the verdict from the findings file. Do NOT call `--approve` directly.
+   - Non-blocking / approved: `review-complete` reads the verdict from the findings file. Do NOT call `approve` directly.
 10. **Commit** — Create the commit first. The PR gate checks evidence against the committed diff_hash, so all evidence must be recorded after the commit exists.
 11. **PR Verification** — Invoke `/pre-pr-verification` (runs test-runner + check-runner internally)
    - **If you edit ANY implementation file after this step passes → re-run `/pre-pr-verification` before PR.** Even a JSDoc fix invalidates prior evidence.
@@ -102,14 +102,14 @@ If task execution reveals the need to reorder or add tasks, update the tracking 
 
 ## Codex Step
 
-See the `codex-transport` skill for full invocation details (`--review`, `--plan-review`, `--prompt`, `--review-complete`, `--needs-discussion`).
+See the `codex-transport` skill for full invocation details (`review`, `plan-review`, `prompt`, `review-complete`, `needs-discussion`).
 
 Key points for task workflow:
 - Invoke after critics have no remaining blocking findings
 - Non-blocking — continue with non-edit work while Codex reviews
-- **Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — discard it, re-run critics, and dispatch a fresh `--review`.
+- **Timing constraint:** Do not dispatch Codex review while critic fixes are still pending. If you edit implementation files after dispatching Codex but before Codex returns, the review is stale — discard it, re-run critics, and dispatch a fresh `review`.
 - **No iteration cap for Codex** — keep fixing and re-reviewing until `VERDICT: APPROVED`. Dispute with evidence if you disagree, but never bypass.
-- Approval flows through `--review-complete`, which reads the `VERDICT:` line Codex wrote in the findings file. Do NOT call `--approve` directly.
+- Approval flows through `review-complete`, which reads the `VERDICT:` line Codex wrote in the findings file. Do NOT call `approve` directly.
 
 ## Core Reference
 

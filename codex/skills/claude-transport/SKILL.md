@@ -14,16 +14,16 @@ description: Communicate with Claude via tmux for codebase investigation, review
 
 ## How to contact Claude
 
-Use the transport script:
+Use the party-cli notify subcommand:
 ```bash
-~/.codex/skills/claude-transport/scripts/tmux-claude.sh "<message>"
+party-cli notify "<message>"
 ```
 
-This sends a `[CODEX]` prefixed message to Claude's tmux pane. The script returns immediately — you are NOT blocked.
+This sends a `[CODEX]` prefixed message to Claude's tmux pane. The command returns immediately — you are NOT blocked.
 
 ## Visibility rule (required)
 
-After every outbound `tmux-claude.sh` message, immediately post a short digest in the local chat.
+After every outbound `party-cli notify` message, immediately post a short digest in the local chat.
 
 Digest format:
 - what you sent (one sentence)
@@ -41,28 +41,28 @@ Do not skip this. The user must be able to follow Codex-Paladin coordination wit
 ### Notify review complete
 After writing findings to the specified file:
 ```bash
-~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
+party-cli notify "Review complete. Findings at: <findings_file>"
 ```
 
 ### Ask a question
 When you need information from Claude:
 ```bash
 RESPONSE_FILE="$STATE_DIR/response-$(date +%s%N).toon"
-~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Question: <your question>. Write response to: $RESPONSE_FILE"
+party-cli notify "Question: <your question>. Write response to: $RESPONSE_FILE"
 ```
 
-If you need structured findings rather than narrative prose, say so explicitly and have Claude emit canonical TOON via `~/.claude/skills/codex-transport/scripts/toon-transport.sh`. A `.toon` response path alone does not guarantee a structured payload.
+If you need structured findings rather than narrative prose, say so explicitly and have Claude emit canonical TOON. A `.toon` response path alone does not guarantee a structured payload.
 
 ### Notify plan review complete
 After writing plan-review findings to the specified `.toon` file:
 ```bash
-~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Plan review complete. Findings at: <findings_file>"
+party-cli notify "Plan review complete. Findings at: <findings_file>"
 ```
 
 ### Report task completion
 After completing a delegated task:
 ```bash
-~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Task complete. Response at: <response_file>"
+party-cli notify "Task complete. Response at: <response_file>"
 ```
 
 ## Handling Claude's responses

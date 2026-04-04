@@ -100,6 +100,11 @@ When invoked with a subcommand, it runs in CLI mode.`,
 	root.AddCommand(newPickerCmd(o.store, o.client, o.repoRoot))
 	root.AddCommand(newResizeCmd(o.store, o.client, o.repoRoot))
 	root.AddCommand(newJumpMasterCmd(o.store, o.client))
+	root.AddCommand(newTransportCmd(o.store, o.client, o.repoRoot))
+	root.AddCommand(newNotifyCmd(o.store, o.client, o.repoRoot))
+	root.AddCommand(newRegisterCmd(o.store, o.client))
+	root.AddCommand(newInstallCmd(o.repoRoot))
+	root.AddCommand(newUninstallCmd(o.repoRoot))
 
 	return root
 }

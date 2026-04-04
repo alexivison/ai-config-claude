@@ -26,20 +26,9 @@ ai-config/
 ├── docs/            # Project documentation
 ├── nvim/            # Neovim (LazyVim) configuration
 ├── shared/          # Skills shared by both platforms
-├── session/         # Shell wrappers and retained routing library
-│   ├── party.sh              # Thin wrapper — delegates to party-cli
-│   ├── party-lib.sh          # State helpers, locking, routing (retained for tmux-codex.sh)
-│   ├── party-relay.sh        # Thin wrapper — delegates to party-cli
-│   ├── party-picker.sh       # Thin wrapper — delegates to party-cli picker
-│   ├── party-preview.sh      # Thin wrapper — delegates to party-cli picker preview
-│   └── party-master-jump.sh  # tmux keybinding: jump from worker to master
 ├── tools/
-│   ├── party-cli/         # Unified Go binary: TUI + CLI (primary implementation)
-│   └── (party-tracker removed — functionality absorbed into party-cli)
-├── tmux/            # tmux configuration
-├── tests/           # Test suite
-├── install.sh       # Install CLIs, create symlinks
-├── uninstall.sh     # Remove symlinks
+│   └── party-cli/   # Unified Go binary: TUI + CLI (all session operations)
+├── tmux/            # tmux configuration and status scripts
 └── README.md
 ```
 
@@ -49,12 +38,15 @@ ai-config/
 # Clone the repo
 git clone git@github.com:alexivison/ai-config.git ~/Code/ai-config
 
+# Build and install party-cli
+cd ~/Code/ai-config/tools/party-cli
+go install .
+
 # Full install (symlinks + CLI installation + auth)
-cd ~/Code/ai-config
-./install.sh
+party-cli install
 
 # Or symlinks only (install CLIs yourself)
-./install.sh --symlinks-only
+party-cli install --symlinks-only
 ```
 
 The installer will:
@@ -77,8 +69,7 @@ The installer will:
 ## Uninstallation
 
 ```bash
-cd ~/Code/ai-config
-./uninstall.sh
+party-cli uninstall
 ```
 
 Removes symlinks but keeps the repository.
@@ -88,7 +79,7 @@ Removes symlinks but keeps the repository.
 Launch a party session to run Claude and The Wizard side by side in a three-pane tmux layout:
 
 ```bash
-./session/party.sh "my task"
+party-cli start "my task"
 ```
 
 ### Standard Session
@@ -106,7 +97,7 @@ Each party is a standalone tmux session with three panes:
 A master session replaces the Wizard pane with an interactive tracker TUI. The master Claude acts as an orchestrator, dispatching work to worker sessions instead of implementing directly.
 
 ```bash
-./session/party.sh --master "Project Alpha"
+party-cli start --master "Project Alpha"
 ```
 
 | Pane | Role | Agent |
@@ -118,7 +109,7 @@ A master session replaces the Wizard pane with an interactive tracker TUI. The m
 Workers are separate sessions registered under the master:
 
 ```bash
-./session/party.sh --detached --master-id <master-id> "ENG-456 fix auth"
+party-cli spawn --master-id <master-id> "ENG-456 fix auth"
 ```
 
 The tracker shows live status of all workers with vim-style navigation. Press `Enter` to jump to a worker, `r` to relay a message, `b` to broadcast, `s` to spawn, `x` to stop.
@@ -126,24 +117,29 @@ The tracker shows live status of all workers with vim-style navigation. Press `E
 Any standalone session can be promoted to master mid-flight:
 
 ```bash
-./session/party.sh --promote
+party-cli promote
 ```
 
-### Flags
+### Commands
 
-| Flag | Description |
-|------|-------------|
-| *(none)* | Start a new party session |
-| `--master` | Start a master session (tracker + orchestrator) |
-| `--master-id <id>` | Start a worker session registered under a master |
-| `--promote [party-id]` | Promote a standalone session to master |
-| `--switch` | Interactive session switcher |
-| `--continue [party-id]` | Resume a session; opens interactive fzf picker if no ID given |
-| `--list` | List active and resumable party sessions |
-| `--stop [name]` | Stop one or all party sessions |
-| `--detached` | Launch without attaching |
-| `--prompt "text"` | Send an initial prompt to Claude |
-| `--install-tpm` | Install tmux Plugin Manager |
+| Command | Description |
+|---------|-------------|
+| `party-cli start [title]` | Start a new party session |
+| `party-cli start --master [title]` | Start a master session (tracker + orchestrator) |
+| `party-cli spawn [title]` | Spawn a worker under the current master |
+| `party-cli promote [party-id]` | Promote a standalone session to master |
+| `party-cli picker` | Interactive session switcher |
+| `party-cli continue [party-id]` | Resume a session; opens picker if no ID given |
+| `party-cli list` | List active and resumable party sessions |
+| `party-cli stop [name]` | Stop one or all party sessions |
+| `party-cli transport review <dir>` | Dispatch code review to the Wizard |
+| `party-cli transport prompt <text> <dir>` | Dispatch a task to the Wizard |
+| `party-cli notify <message>` | Send message from Wizard to Claude |
+| `party-cli relay <worker-id> <msg>` | Send message to a worker |
+| `party-cli broadcast <msg>` | Send message to all workers |
+| `party-cli workers` | List workers and their status |
+| `party-cli install` | Install config symlinks and CLI tools |
+| `party-cli uninstall` | Remove config symlinks |
 
 ### Session Picker
 
@@ -164,7 +160,7 @@ Supports **Enter** to switch/resume, **Ctrl-D** to delete, and **Esc** to cancel
 
 Party metadata is persisted under `~/.party-state/<party-id>.json`. Runtime handoff files in `/tmp/<party-id>/` are rebuilt on demand. Manifests older than 7 days are auto-pruned on start (configurable via `PARTY_PRUNE_DAYS`).
 
-Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) route messages by `@party_role` metadata and scan all windows in a session, so routing works regardless of pane layout.
+The transport layer (`party-cli transport`, `party-cli notify`) routes messages by `@party_role` metadata and scans all windows in a session, so routing works regardless of pane layout.
 
 ## Documentation
 

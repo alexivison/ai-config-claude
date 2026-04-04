@@ -37,7 +37,7 @@ When reading a TOON findings file:
 1. Validate header line matches `findings[N]{id,file,line,severity,category,description,suggestion}:`
 2. Verify `[N]` equals the actual row count
 3. Read `summary` and `stats` sections
-4. If malformed: record validation issue, request re-emit from Codex via `--prompt`, OR triage manually as plain text if urgent
+4. If malformed: record validation issue, request re-emit from Codex via `transport prompt`, OR triage manually as plain text if urgent
 
 ### Helper workflow
 
@@ -56,8 +56,8 @@ Use `~/.claude/skills/codex-transport/scripts/toon-transport.sh`:
 
 | Agent calling | Script to use | Direction |
 |---|---|---|
-| Claude | `tmux-codex.sh` | Claude → Codex |
-| Codex | `tmux-claude.sh` | Codex → Claude |
+| Claude | `party-cli transport` | Claude → Codex |
+| Codex | `party-cli notify` | Codex → Claude |
 
 ## Message types
 
@@ -67,14 +67,14 @@ Message: `[CODEX] Review complete. Findings at: <path>`
 1. Read the FULL findings file (TOON format) with your Read tool or decode it via the helper workflow above
 2. Validate per the triage checklist above (or via `validate-findings`)
 3. Mark review evidence as complete:
-   `tmux-codex.sh --review-complete <path>`
+   `party-cli transport review-complete <path>`
 4. Triage each finding: blocking / non-blocking / out-of-scope
 5. Update your issue ledger (reject re-raised closed findings, detect oscillation)
-6. The verdict comes from the `VERDICT:` line Codex wrote in the findings file — `--review-complete` reads it automatically:
+6. The verdict comes from the `VERDICT:` line Codex wrote in the findings file — `review-complete` reads it automatically:
    - `VERDICT: APPROVED` in findings → approval evidence created
-   - `VERDICT: REQUEST_CHANGES` → no approval evidence; fix code, re-run critics, dispatch new `--review` → `--review-complete`
-   - Unresolvable → `tmux-codex.sh --needs-discussion "reason"`
-   - **Do NOT call `--approve` directly** — the gate blocks it.
+   - `VERDICT: REQUEST_CHANGES` → no approval evidence; fix code, re-run critics, dispatch new `review` → `review-complete`
+   - Unresolvable → `party-cli transport needs-discussion "reason"`
+   - **Do NOT call `approve` directly** — the gate blocks it.
 
 ### Question from Codex
 Message: `[CODEX] Question: <question>. Write response to: <response_file>`
@@ -83,7 +83,7 @@ Message: `[CODEX] Question: <question>. Write response to: <response_file>`
 2. Investigate the codebase to answer the question
 3. **Structured findings response**: When Codex requests structured findings and provides a `.toon` response path, emit canonical TOON with the helper workflow above — not markdown tables. Codex (the requester) controls the extension; write to the exact path provided.
 4. **Narrative Q&A**: When the request is conversational, write concise text to the provided path. A `.toon` extension alone does not force a structured TOON payload.
-5. Notify Codex: `tmux-codex.sh --prompt "Response ready at: <response_file>" "$(pwd)"`
+5. Notify Codex: `party-cli transport prompt "Response ready at: <response_file>" "$(pwd)"`
 
 ### Task complete
 Message: `[CODEX] Task complete. Response at: <path>`

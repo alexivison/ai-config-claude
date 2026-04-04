@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Wizard Review Gate Hook
-# Hard-blocks tmux-codex.sh --approve — workers cannot self-approve.
-# Wizard approval flows through --review-complete (verdict in findings file).
-# All other Wizard commands (--review, --prompt, --plan-review, --review-complete)
+# Hard-blocks deprecated --approve flag on transport commands — workers cannot self-approve.
+# Wizard approval flows through review-complete (verdict in findings file).
+# All other transport commands (review, prompt, plan-review, review-complete)
 # pass through freely. Workflow skills enforce critic-to-Wizard sequencing;
 # this hook only enforces the self-approval block.
 #
@@ -22,28 +22,28 @@ if [ -z "$SESSION_ID" ] || [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-# Only gate tmux-codex.sh invocations
-if ! echo "$COMMAND" | grep -qE '(^|[;&|] *)([^ ]*/)?tmux-codex\.sh'; then
+# Only gate party-cli transport invocations
+if ! echo "$COMMAND" | grep -qE '(^|[;&|] *)party-cli +transport'; then
   echo '{}'
   exit 0
 fi
 
 # --approve is BLOCKED — only The Wizard can approve (via verdict in findings file)
-# Workers must use --review-complete <findings_file>, which reads the verdict The Wizard wrote.
-if echo "$COMMAND" | grep -qE 'tmux-codex\.sh +--approve'; then
+# Workers must use review-complete <findings_file>, which reads the verdict The Wizard wrote.
+if echo "$COMMAND" | grep -qE 'party-cli +transport +approve'; then
   hook_log "codex-gate" "$SESSION_ID" "deny" "--approve blocked"
   cat << EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "BLOCKED: --approve is forbidden. Codex approval flows through --review-complete, which reads the verdict from the findings file Codex wrote. Do not self-approve."
+    "permissionDecisionReason": "BLOCKED: --approve is forbidden. Codex approval flows through review-complete, which reads the verdict from the findings file Codex wrote. Do not self-approve."
   }
 }
 EOF
   exit 0
 fi
 
-# All other tmux-codex.sh commands pass through
-hook_log "codex-gate" "$SESSION_ID" "allow" "codex command allowed"
+# All other transport commands pass through
+hook_log "codex-gate" "$SESSION_ID" "allow" "transport command allowed"
 echo '{}'

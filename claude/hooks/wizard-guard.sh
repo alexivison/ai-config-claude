@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # wizard-guard.sh — Block direct tmux interaction with the Wizard.
-# Forces Claude to use tmux-codex.sh for all Wizard communication.
+# Forces Claude to use party-cli transport for all Wizard communication.
 set -euo pipefail
 
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [ -n "$CMD" ] || exit 0
 
-DENY_MSG="BLOCKED: Do not interact with the Wizard directly via tmux. Use tmux-codex.sh instead (--review, --prompt, --plan-review). The script handles pane/window resolution."
+DENY_MSG="BLOCKED: Do not interact with the Wizard directly via tmux. Use party-cli transport instead (review, prompt, plan-review). The CLI handles pane/window resolution."
 
 deny() {
   jq -nc --arg reason "$DENY_MSG" \

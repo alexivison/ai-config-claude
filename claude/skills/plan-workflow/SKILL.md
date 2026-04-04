@@ -39,7 +39,7 @@ Do NOT write a plan yourself. Proceed to dispatch.
 
 ## Phase 2 — Dispatch to Codex
 
-Compose a rich prompt and send it to Codex via `--prompt`. The prompt quality directly
+Compose a rich prompt and send it to Codex via `transport prompt`. The prompt quality directly
 determines plan quality — invest here.
 
 ### Prompt Construction
@@ -85,8 +85,8 @@ After writing all files, write a summary to the response file (<response_path>) 
 - Any warnings or assumptions made
 PROMPT_EOF
 
-~/.claude/skills/codex-transport/scripts/tmux-codex.sh \
-  --prompt "$(cat "$PROMPT_FILE")" <work_dir>
+party-cli transport \
+  prompt "$(cat "$PROMPT_FILE")" <work_dir>
 ```
 
 ### Error Handling
@@ -101,12 +101,12 @@ Check the script's stdout for sentinel strings:
 
 | Situation | Mode | Why |
 |-----------|------|-----|
-| New plan from scratch | `--prompt "<task>" <work_dir>` | Codex creates the plan file and writes it |
-| Review an existing plan | `--plan-review "<plan_path>" <work_dir>` | Uses the plan-review template (ungated), returns TOON findings |
-| Iterate on Codex's draft | `--prompt "<feedback>" <work_dir>` | Send feedback, ask for revisions |
+| New plan from scratch | `transport prompt "<task>" <work_dir>` | Codex creates the plan file and writes it |
+| Review an existing plan | `transport plan-review "<plan_path>" <work_dir>` | Uses the plan-review template (ungated), returns TOON findings |
+| Iterate on Codex's draft | `transport prompt "<feedback>" <work_dir>` | Send feedback, ask for revisions |
 
-`--plan-review` is for evaluating a plan that already exists as a file. For initial
-creation, use `--prompt` with explicit instructions to write the plan file.
+`transport plan-review` is for evaluating a plan that already exists as a file. For initial
+creation, use `transport prompt` with explicit instructions to write the plan file.
 
 ### While Codex Works
 
@@ -180,8 +180,8 @@ Write to the response file:
 - CHANGED: list of files that were modified in this revision
 PROMPT_EOF
 
-~/.claude/skills/codex-transport/scripts/tmux-codex.sh \
-  --prompt "$(cat "$REVISION_FILE")" <work_dir>
+party-cli transport \
+  prompt "$(cat "$REVISION_FILE")" <work_dir>
 ```
 
 Repeat Phase 3–5 until the user approves.
@@ -196,10 +196,10 @@ Once the user approves:
 1. **Confirm plan location** — Ensure PLAN.md and TASK*.md files are at the expected
    paths (typically `PLAN.md` in the repo root plus `tasks/TASK-*.md`)
 2. **Dispatch plan review (MANDATORY)** — Per CLAUDE.md contract, every created plan
-   must go through `--plan-review`. This is not optional:
+   must go through `transport plan-review`. This is not optional:
    ```bash
-   ~/.claude/skills/codex-transport/scripts/tmux-codex.sh \
-     --plan-review "<plan_path>" <work_dir>
+   party-cli transport \
+     plan-review "<plan_path>" <work_dir>
    ```
    When `[CODEX] Plan review complete. Findings at: <path>` arrives, triage findings
    per tmux-handler (blocking / non-blocking / out-of-scope). Present any blocking
@@ -212,7 +212,7 @@ Once the user approves:
 | Phase | Paladin's Job | Codex's Job |
 |-------|---------------|-------------|
 | Gather | Read code, fetch tickets, assemble context | — |
-| Dispatch | Compose prompt, send via tmux-codex.sh | Research, write PLAN.md + TASK*.md (canonical templates) |
+| Dispatch | Compose prompt, send via party-cli transport | Research, write PLAN.md + TASK*.md (canonical templates) |
 | Verify | Check paths, scope, completeness | — |
 | Present | Summarize plan, flag concerns | — |
 | Iterate | Relay feedback + own concerns | Revise plan |

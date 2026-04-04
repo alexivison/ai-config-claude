@@ -55,10 +55,10 @@ Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 
 ## The Wizard
 
-The Wizard runs in a tmux pane alongside you. Communicate via `tmux-codex.sh`. All dispatches are non-blocking — keep working while The Wizard thinks.
+The Wizard runs in a tmux pane alongside you. Communicate via `party-cli transport`. All dispatches are non-blocking — keep working while The Wizard thinks.
 
-- ALWAYS use `tmux-codex.sh`, NEVER Task sub-agents for The Wizard.
-- **NEVER interact with the Wizard directly via tmux commands** (`tmux capture-pane`, `tmux list-panes`, `tmux send-keys`, etc.). The Wizard may run as a pane or a window depending on layout — `tmux-codex.sh` handles resolution. Direct tmux commands will be blocked by hook.
+- ALWAYS use `party-cli transport`, NEVER Task sub-agents for The Wizard.
+- **NEVER interact with the Wizard directly via tmux commands** (`tmux capture-pane`, `tmux list-panes`, `tmux send-keys`, etc.). The Wizard may run as a pane or a window depending on layout — `party-cli transport` handles resolution. Direct tmux commands will be blocked by hook.
 - **Dispatch The Wizard FIRST**, then launch sub-agents while The Wizard works.
 - `[CODEX]` messages are from The Wizard. Handle per `tmux-handler` skill.
 - You decide verdicts. The Wizard produces findings, you triage.
@@ -66,45 +66,45 @@ The Wizard runs in a tmux pane alongside you. Communicate via `tmux-codex.sh`. A
 ### When to Dispatch (Autonomous)
 
 **MANDATORY — always dispatch, no exceptions:**
-- Plan created → `--plan-review`
-- Critics pass on code changes → `--review`
-- Stuck on a bug after 2 failed attempts → `--prompt` to investigate
+- Plan created → `transport plan-review`
+- Critics pass on code changes → `transport review`
+- Stuck on a bug after 2 failed attempts → `transport prompt` to investigate
 
 **PROACTIVE — dispatch without being asked:**
-- Architecture decision with 2+ viable approaches → `--prompt` for tradeoff analysis
-- Unfamiliar code area before major changes → `--prompt` to explain the area
-- Complex refactor spanning 3+ files → `--review` for early sanity check
+- Architecture decision with 2+ viable approaches → `transport prompt` for tradeoff analysis
+- Unfamiliar code area before major changes → `transport prompt` to explain the area
+- Complex refactor spanning 3+ files → `transport review` for early sanity check
 
 ### Transport
 
-- Script: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh`
-- All modes (`--review`, `--plan-review`, `--prompt`) require `work_dir` as last arg.
+- Command: `party-cli transport <mode> [args...]`
+- All modes (`review`, `plan-review`, `prompt`) require `work_dir` as last arg.
 - After dispatching: keep working. Do NOT poll. The Wizard notifies via `[CODEX]` when done.
 
 ## Master Session Mode
 
-Any party session can be promoted to master: `party.sh --promote [party-id]`. This replaces the Wizard pane with a tracker pane and sets `session_type` to `master`. Promotion is non-destructive and works mid-session.
+Any party session can be promoted to master: `party-cli promote [party-id]`. This replaces the Wizard pane with a tracker pane and sets `session_type` to `master`. Promotion is non-destructive and works mid-session.
 
 When running in a master session (`session_type == "master"` in manifest):
 - You are an **orchestrator**, not an implementor.
 - **HARD RULE:** Never use Edit or Write on production code. Investigation (Read, Grep, Glob, read-only Bash) is fine — all code changes go to a worker. No exceptions: not for "quick fixes", not for bugs found during testing, not for "obvious" one-liners.
-- There is **no Wizard pane** — `tmux-codex.sh` will return `CODEX_NOT_AVAILABLE`.
+- There is **no Wizard pane** — `party-cli transport` will return `CODEX_NOT_AVAILABLE`.
 - Skip codex review/plan-review/prompt steps entirely.
 - Use `/party-dispatch` to dispatch any number of tasks to workers (single freeform, batch tickets, or mixed).
 - Monitor workers via the tracker pane (left pane).
 
 **Communication with workers:**
-- `party-relay.sh <worker-id> "instruction"` — send a message to a worker's Claude pane
-- `party-relay.sh --broadcast "message"` — send to all workers
-- `party-relay.sh --read <worker-id>` — read the last 50 lines of a worker's Claude pane
-- `party-relay.sh --read <worker-id> --lines 200` — read more scrollback
-- `party-relay.sh --list` — show all workers and their status
+- `party-cli relay <worker-id> "instruction"` — send a message to a worker's Claude pane
+- `party-cli broadcast "message"` — send to all workers
+- `party-cli read <worker-id>` — read the last 50 lines of a worker's Claude pane
+- `party-cli read <worker-id> --lines 200` — read more scrollback
+- `party-cli workers` — show all workers and their status
 - Workers report back via `[WORKER:<session-id>]` prefixed messages to your pane
 
 **CRITICAL — Worker report-back:** Every worker prompt you write MUST end with:
 ```
 When done, report completion to the master:
-~/Code/ai-config/session/party-relay.sh --report "done: <one-line summary> | PR: <url or 'none'>"
+party-cli report "done: <one-line summary> | PR: <url or 'none'>"
 ```
 Workers that don't receive this instruction will silently finish without notifying the master.
 
