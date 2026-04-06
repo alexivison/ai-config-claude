@@ -355,9 +355,19 @@ func (s *Service) templatePath(name string) string {
 	return filepath.Join(s.repoRoot, "claude", "skills", "codex-transport", "templates", name)
 }
 
-// notifyScriptPath returns the path to the notify command.
-// Returns the party-cli notify command for embedding in dispatch messages.
+// notifyScriptPath returns the shell command to invoke party-cli notify.
+// Uses the current binary path when installed, falls back to go run for dev mode.
 func (s *Service) notifyScriptPath() string {
+	if exe, err := os.Executable(); err == nil {
+		if _, err := os.Stat(exe); err == nil {
+			return exe + " notify"
+		}
+	}
+	// Dev mode: use go run from the repo root.
+	modDir := filepath.Join(s.repoRoot, "tools", "party-cli")
+	if _, err := os.Stat(filepath.Join(modDir, "main.go")); err == nil {
+		return fmt.Sprintf("go -C '%s' run . notify", modDir)
+	}
 	return "party-cli notify"
 }
 

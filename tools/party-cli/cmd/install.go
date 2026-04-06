@@ -12,8 +12,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultTPMPath = ".tmux/plugins/tpm"
+const defaultTPMRepo = "https://github.com/tmux-plugins/tpm"
+
 func newInstallCmd(repoRoot string) *cobra.Command {
 	var symlinksOnly bool
+	var tpm bool
 
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -88,6 +92,21 @@ Creates symlinks for Claude, Codex, tmux, and nvim configurations.`,
 				createDirSymlink(w, nvimSource, nvimTarget)
 			}
 
+			// Authentication (optional)
+			if !symlinksOnly {
+				fmt.Fprintln(w, "\n━━━ authentication ━━━")
+				promptAuth(w, r, "claude", filepath.Join(home, ".claude", "settings.local.json"))
+				promptAuth(w, r, "codex", filepath.Join(home, ".codex", "auth.json"))
+			}
+
+			// TPM (tmux plugin manager)
+			if tpm {
+				fmt.Fprintln(w, "\n━━━ tpm ━━━")
+				if err := installTPM(w, home); err != nil {
+					fmt.Fprintf(w, "✗  TPM install failed: %v\n", err)
+				}
+			}
+
 			// fzf
 			if !symlinksOnly {
 				fmt.Fprintln(w, "\n━━━ fzf ━━━")
@@ -121,6 +140,7 @@ Creates symlinks for Claude, Codex, tmux, and nvim configurations.`,
 	}
 
 	cmd.Flags().BoolVar(&symlinksOnly, "symlinks-only", false, "only create config symlinks, skip CLI installation")
+	cmd.Flags().BoolVar(&tpm, "tpm", false, "install tmux Plugin Manager (TPM)")
 	return cmd
 }
 
@@ -292,6 +312,71 @@ func backupExisting(w io.Writer, target string) {
 			fmt.Fprintf(w, "  ✗  Failed to back up: %v\n", err)
 		}
 	}
+}
+
+func installTPM(w io.Writer, home string) error {
+	if _, err := exec.LookPath("git"); err != nil {
+		return fmt.Errorf("git is required to install TPM")
+	}
+
+	tpmPath := os.Getenv("TMUX_PLUGIN_MANAGER_PATH")
+	if tpmPath == "" {
+		tpmPath = filepath.Join(home, defaultTPMPath)
+	}
+	tpmRepo := os.Getenv("TPM_REPO")
+	if tpmRepo == "" {
+		tpmRepo = defaultTPMRepo
+	}
+
+	gitDir := filepath.Join(tpmPath, ".git")
+	if _, err := os.Stat(gitDir); err == nil {
+		fmt.Fprintf(w, "✓  TPM already installed at: %s\n", tpmPath)
+		return nil
+	}
+
+	if fi, err := os.Stat(tpmPath); err == nil && fi.IsDir() {
+		return fmt.Errorf("path exists but is not a TPM git clone: %s", tpmPath)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(tpmPath), 0o755); err != nil {
+		return fmt.Errorf("create parent directory: %w", err)
+	}
+
+	c := exec.Command("git", "clone", tpmRepo, tpmPath)
+	c.Stdout = io.Discard
+	c.Stderr = w
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("git clone: %w", err)
+	}
+
+	fmt.Fprintf(w, "✓  TPM installed at: %s\n", tpmPath)
+	fmt.Fprintln(w, "   In tmux, press Prefix + I to install plugins.")
+	return nil
+}
+
+func promptAuth(w io.Writer, r *bufio.Reader, name, authFile string) {
+	if _, err := exec.LookPath(name); err != nil {
+		fmt.Fprintf(w, "⏭  Skipping %s auth (%s not installed)\n", name, name)
+		return
+	}
+	if _, err := os.Stat(authFile); err == nil {
+		fmt.Fprintf(w, "✓  %s already authenticated\n", name)
+		return
+	}
+	fmt.Fprintf(w, "🔐 %s needs authentication.\n", name)
+	fmt.Fprintf(w, "   Run %s to authenticate? [y/N] ", name)
+	line, _ := r.ReadString('\n')
+	if strings.TrimSpace(strings.ToLower(line)) != "y" {
+		fmt.Fprintf(w, "⏭  Skipping %s authentication\n", name)
+		return
+	}
+	fmt.Fprintf(w, "   Starting %s... (complete auth flow, then exit)\n\n", name)
+	c := exec.Command(name)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	_ = c.Run() // best-effort; user may Ctrl-C out
+	fmt.Fprintf(w, "\n✓  %s authentication complete\n", name)
 }
 
 func installCLIIfMissing(w io.Writer, r *bufio.Reader, name, installCmd, desc string) {

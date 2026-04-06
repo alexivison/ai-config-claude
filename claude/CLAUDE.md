@@ -95,6 +95,7 @@ When running in a master session (`session_type == "master"` in manifest):
 
 **Communication with workers:**
 - `party-cli relay <worker-id> "instruction"` — send a message to a worker's Claude pane
+- `party-cli relay <worker-id> --wizard "instruction"` — send to a worker's Wizard (Codex) pane
 - `party-cli broadcast "message"` — send to all workers
 - `party-cli read <worker-id>` — read the last 50 lines of a worker's Claude pane
 - `party-cli read <worker-id> --lines 200` — read more scrollback
