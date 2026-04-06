@@ -41,7 +41,7 @@ This plan covers the full abstraction from Codex-specific plumbing to companion-
 - [ ] [Task 5](./tasks/TASK5-update-settings-and-install.md) — Update settings.json hook paths; make `party-cli install` companion-aware (deps: Task 2, Task 3)
 - [ ] [Task 6](./tasks/TASK6-extend-tests.md) — Extend Go transport tests for multi-companion; update hook tests for renamed hooks (deps: Task 2, Task 3)
 - [ ] [Task 7](./tasks/TASK7-update-docs-and-workflow-skills.md) — Update CLAUDE.md, execution-core.md, and workflow skill prompts to role-based language (deps: Task 2, Task 3, Task 4)
-- [ ] [Task 8](./tasks/TASK8-stub-companion.md) — Create a documented stub `Companion` implementation as a reference for adding new companions (deps: Task 1)
+- [ ] [Task 8](./tasks/TASK8-stub-companion.md) — Create a documented stub `Companion` implementation as a reference for adding new companions (deps: Task 1) *(can run in parallel with Tasks 2–4)*
 
 ## Dependency Graph
 
@@ -59,7 +59,7 @@ PR #119 ──> Task 1 ───┬───> Task 2 ───┬───> Task
 
 | After Task | State |
 |------------|-------|
-| Task 1 | `Companion` interface, registry, config parser, and Codex implementation exist in `internal/companion/`. Nothing uses them yet. Existing transport still works unchanged. |
+| Task 1 | `Companion` interface, registry, config parser, Codex implementation, `companion_test.go`, and `party-cli companion query` subcommand exist. Nothing uses them yet except hooks (via query). Existing transport still works unchanged. |
 | Task 2 | `transport.Service` dispatches via registry. `party-cli transport --to wizard review` works. `resolveCodexContext()` replaced. |
 | Task 3 | Hooks are companion-generic. Evidence records companion name instead of "codex". PR gate reads `.party.toml`. |
 | Task 4 | `cmd/start.go` creates companion windows dynamically. Manifest tracks N companions. Resume iterates companions. |

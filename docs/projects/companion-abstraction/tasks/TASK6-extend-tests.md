@@ -10,7 +10,7 @@ Extend Go transport tests for multi-companion scenarios and update hook tests fo
 
 **In scope:**
 - `tools/party-cli/internal/transport/transport_test.go` — Add companion-parameterized test cases
-- `tools/party-cli/internal/companion/` — Unit tests for registry, config parsing, Codex implementation
+- `tools/party-cli/internal/companion/` — Extend companion tests from Task 1 with multi-companion scenarios
 - Hook tests: Rename and update `test-codex-gate.sh` → `test-companion-gate.sh`, etc.
 - Update `test-pr-gate.sh` to test config-driven evidence requirements
 
@@ -31,7 +31,7 @@ Extend Go transport tests for multi-companion scenarios and update hook tests fo
 
 | File | Action |
 |------|--------|
-| `tools/party-cli/internal/companion/companion_test.go` | Create |
+| `tools/party-cli/internal/companion/companion_test.go` | Modify — extend (created in Task 1) |
 | `tools/party-cli/internal/transport/transport_test.go` | Modify — add companion-aware tests |
 | `claude/hooks/tests/test-codex-gate.sh` | Rename to `test-companion-gate.sh` + update |
 | `claude/hooks/tests/test-codex-trace.sh` | Rename to `test-companion-trace.sh` + update |
@@ -40,7 +40,7 @@ Extend Go transport tests for multi-companion scenarios and update hook tests fo
 ## Requirements
 
 **Functionality:**
-- `companion_test.go`: Test registry creation (with/without `.party.toml`), `Get()`, `ForCapability()`, `List()`, config resolution, Codex `ParseCompletion()`, default fallback
+- `companion_test.go`: Extend Task 1 tests with multi-companion registry scenarios (two companions, capability conflicts, missing companion graceful degradation)
 - `transport_test.go`: Add test cases for: dispatch with `--to wizard`, dispatch with default companion resolution, `CompanionStatus` written to correct filename, `notify` completion detection via `ParseCompletion()`
 - `test-companion-gate.sh`: Test `approve` blocked for any `--to` value. Test all other modes pass.
 - `test-companion-trace.sh`: Test evidence recorded with companion name as type.
@@ -62,7 +62,7 @@ Extend Go transport tests for multi-companion scenarios and update hook tests fo
 
 ## Acceptance Criteria
 
-- [ ] `companion_test.go` covers registry, config, and Codex implementation
+- [ ] `companion_test.go` extended with multi-companion scenarios (base tests created in Task 1)
 - [ ] Transport tests cover companion-parameterized dispatch
 - [ ] Hook tests renamed and updated for companion-generic logic
 - [ ] PR gate tests cover config-driven and default evidence requirements

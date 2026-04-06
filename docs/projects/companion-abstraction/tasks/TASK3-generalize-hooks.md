@@ -48,13 +48,13 @@ Rename and parameterize the three Codex-specific hooks (`codex-gate.sh`, `wizard
 
 **Functionality:**
 - `companion-gate.sh`: Match `party-cli transport` commands (same as current). Extract companion name from `--to <name>` flag if present (default: "wizard"). Block `approve` subcommand for any companion. Allow all other modes.
-- `companion-guard.sh`: Block direct tmux commands targeting any companion pane. Resolve companion roles dynamically — use `party-cli companion list --roles` (or parse `.party.toml` directly) instead of hardcoded "codex" / "Wizard" regex. Still fail-open on parse errors.
+- `companion-guard.sh`: Block direct tmux commands targeting any companion pane. Resolve companion roles dynamically via `party-cli companion query roles` (provided by Task 1) instead of hardcoded "codex" / "Wizard" regex. Still fail-open on parse errors (e.g., if `party-cli` not found).
 - `companion-trace.sh`: After a successful `party-cli transport` command, record evidence using the companion name extracted from `--to` flag (e.g., `append_evidence "$session_id" "wizard" "APPROVED" "$cwd"`). Sentinel detection generalized: companion adapter outputs standardized markers.
-- `pr-gate.sh`: Use `party-cli companion evidence-required` (or parse `.party.toml` `[evidence].required` directly). If not set, use current default with `"codex"` replaced by active companion name(s). Quick-tier evidence list unchanged.
+- `pr-gate.sh`: Call `party-cli companion query evidence-required` (provided by Task 1) to get the required evidence list. If not set in `.party.toml`, the query subcommand returns defaults with companion name(s) substituted. Quick-tier evidence list unchanged.
 - Redirect stubs: Old filenames source the new file and pass through. One-liners.
 
 **Key gotchas:**
-- Hooks run in shell — they can't import Go packages directly. Use `party-cli` subcommands to query the registry, or parse `.party.toml` with lightweight shell logic.
+- Hooks run in shell — they can't import Go packages directly. Always use `party-cli companion query` to read registry/config state. Never parse `.party.toml` directly from shell.
 - The redirect stubs ensure hooks work during the transition before `settings.json` is updated in Task 5.
 - Evidence type changing from `"codex"` to companion name means existing evidence files become stale — this is fine since evidence is per-session.
 - `companion-trace.sh` sentinel strings may need to standardize. If the Codex adapter (Task 1) defines standard completion markers, use those.

@@ -23,7 +23,7 @@ Make the party harness companion-agnostic: any CLI tool that can review code, cr
 | Swap companion | Set `companions.wizard.cli = "gemini-cli"` in `.party.toml` | Gemini CLI launches in the Wizard pane, transport routes to it |
 | Add second companion | Add `[companions.oracle]` block to `.party.toml` | Second hidden window created, skills can address either by name |
 | Say "ask the Wizard" | Type naturally in Claude session | Claude resolves "Wizard" → active analyzer companion via CLAUDE.md mapping |
-| OpenSpec team repo | Set `specs.format = "openspec"` in `.party.toml` | Plan workflow imports/exports OpenSpec; execution core unchanged |
+| OpenSpec team repo | Set `specs.format = "openspec"` in `.party.toml` | Plan workflow imports/exports OpenSpec; execution core unchanged *(illustrative — OpenSpec adapter is a separate project, not built here)* |
 | No companion available | `.party.toml` has `companions = {}` or companion CLI not installed | Harness runs Claude-only; review gates skip companion evidence (quick-tier-like) |
 
 ## Acceptance Criteria
@@ -40,6 +40,7 @@ Make the party harness companion-agnostic: any CLI tool that can review code, cr
 - [ ] CLAUDE.md and workflow skills reference roles ("the analyzer", "The Wizard"), not tool names
 - [ ] `party-cli install` is companion-aware
 - [ ] At least one non-Codex adapter exists as a reference (can be a stub/example)
+- [ ] Graceful degradation when no companion is available: missing CLI detected at startup, harness runs Claude-only, companion evidence requirements skipped in gates
 
 ## Non-Goals
 

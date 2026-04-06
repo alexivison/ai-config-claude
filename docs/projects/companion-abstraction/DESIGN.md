@@ -76,6 +76,7 @@ tools/party-cli/
 │   └── tmux/
 │       └── query.go              # No change — ResolveRole() already generic
 ├── cmd/
+│   ├── companion.go              # Create — `party-cli companion query` subcommand
 │   ├── transport.go              # Modify — add --to flag
 │   ├── start.go                  # Modify — dynamic companion startup
 │   ├── continue.go               # Modify — multi-companion resume
@@ -83,7 +84,10 @@ tools/party-cli/
 claude/
 ├── skills/
 │   ├── companion-transport/      # Rename from codex-transport/
-│   │   └── SKILL.md              # Modify — role-based dispatch, --to flag
+│   │   ├── SKILL.md              # Modify — role-based dispatch, --to flag
+│   │   └── templates/
+│   │       └── wizard/           # Create — per-companion template subdir
+│   │           └── review.md     # Move from codex-transport/templates/
 ├── hooks/
 │   ├── companion-gate.sh         # Rename from codex-gate.sh
 │   ├── companion-guard.sh        # Rename from wizard-guard.sh
@@ -104,11 +108,17 @@ type Companion interface {
     CLI() string               // "codex" — binary name
     Role() string              // "analyzer" — tmux @party_role value
     Capabilities() []string    // ["review", "plan", "prompt"]
-    PaneWindow() int           // 0 — preferred tmux window index
 
     // Lifecycle
-    Start(ctx context.Context, session string, window int, cwd string, threadID string) error
+    Start(ctx context.Context, opts StartOpts) error
     ParseCompletion(message string) (*CompletionResult, bool)
+}
+
+type StartOpts struct {
+    Session  string
+    CWD      string
+    ThreadID string // for resumption (e.g. Codex uses CODEX_THREAD_ID env var)
+    Window   int    // tmux window index — layout concern, not core identity
 }
 
 type CompletionResult struct {
@@ -119,12 +129,13 @@ type CompletionResult struct {
 
 type Registry struct {
     companions map[string]Companion
+    order      []string              // .party.toml declaration order; deterministic iteration
 }
 
 func NewRegistry(cfg *Config) *Registry          // from .party.toml or defaults
 func (r *Registry) Get(name string) (Companion, error)
 func (r *Registry) List() []Companion
-func (r *Registry) ForCapability(cap string) (Companion, error)
+func (r *Registry) ForCapability(cap string) (Companion, error)  // returns first match in .party.toml declaration order (deterministic)
 func (r *Registry) Names() []string
 ```
 
@@ -146,7 +157,7 @@ type CompanionConfig struct {
     CLI          string   `toml:"cli"`
     Role         string   `toml:"role"`
     Capabilities []string `toml:"capabilities"`
-    PaneWindow   int      `toml:"pane_window"`
+    PaneWindow   int      `toml:"pane_window"`  // tmux layout concern — passed via StartOpts, not on interface
 }
 ```
 
@@ -225,6 +236,20 @@ Claude skill invokes:
        └── WriteCompanionStatus("wizard", "idle", verdict)
 ```
 
+## Hook Bridge: `party-cli companion query`
+
+Shell hooks cannot import Go packages. A `party-cli companion query` subcommand bridges the gap — hooks call it to read registry/config state without parsing TOML themselves.
+
+```
+party-cli companion query roles              # list all companion roles (one per line)
+party-cli companion query names              # list all companion names (one per line)
+party-cli companion query evidence-required  # list required evidence types (one per line)
+```
+
+Reads `.party.toml` using the same resolution logic as the registry (CWD → git root → defaults). Output is newline-delimited plain text for easy consumption by `grep`/`while read`.
+
+This subcommand is created in **Task 1** (alongside the registry) and consumed by **Task 3** hooks.
+
 ## Integration Points (post-PR #119)
 
 | Point | PR #119 Code | Companion Abstraction Change |
@@ -239,9 +264,9 @@ Claude skill invokes:
 | Session resume | `continue.go` reads `codex_thread_id` | Iterates `manifest.Companions` for each thread ID |
 | CLI command | `party-cli transport review` | `party-cli transport --to wizard review` (default: first w/ capability) |
 | PreToolUse gate | `codex-gate.sh` matches `party-cli +transport` | `companion-gate.sh` extracts `--to <name>`, blocks `approve` for any companion |
-| PreToolUse guard | `wizard-guard.sh` matches codex/Wizard tmux refs | `companion-guard.sh` resolves all companion roles from registry |
+| PreToolUse guard | `wizard-guard.sh` matches codex/Wizard tmux refs | `companion-guard.sh` calls `party-cli companion query roles` to resolve all companion roles |
 | PostToolUse trace | `codex-trace.sh` records evidence type "codex" | `companion-trace.sh` records evidence type = companion name |
-| PR gate | `pr-gate.sh` hardcodes `REQUIRED="... codex ..."` | Reads `[evidence].required` from `.party.toml`; falls back to default with companion name |
+| PR gate | `pr-gate.sh` hardcodes `REQUIRED="... codex ..."` | Calls `party-cli companion query evidence-required`; falls back to default with companion name |
 | Install | `party-cli install` hardcodes Codex setup | Iterates registered companions for CLI checks and auth |
 | Permissions | `Bash(party-cli:*)` in settings.json | No change needed — already covers `party-cli transport --to ...` |
 
@@ -250,7 +275,7 @@ Claude skill invokes:
 | Decision | Rationale | Alternatives Considered |
 |----------|-----------|-------------------------|
 | Go `Companion` interface (not shell adapters) | PR #119 already moved transport to Go; shell adapters would re-introduce the shell layer we just removed | Shell adapter scripts (rejected: contradicts #119 direction) |
-| `.party.toml` parsed in Go | `party-cli` already owns config; Go TOML libraries are mature (`BurntSushi/toml`) | Shell TOML parsing (rejected: #119 removes shell scripts) |
+| `.party.toml` parsed in Go, exposed via `party-cli companion query` | `party-cli` owns config; hooks call query subcommand instead of parsing TOML in shell | Shell TOML parsing (rejected: #119 removes shell scripts; fragile and duplicates logic) |
 | Interface with concrete types (not plugin system) | New companions are added as Go files + rebuild; simpler than plugin loading | Go plugin system (rejected: fragile, platform-dependent) |
 | `--to <name>` on CLI command | Explicit routing is simpler and debuggable; capability routing layers on top | Capability-only routing (rejected: ambiguous when multiple companions share a capability) |
 | Default to Codex when no config | Zero-config backward compatibility; existing users don't need `.party.toml` | Require `.party.toml` (rejected: breaking change) |

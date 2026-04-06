@@ -46,6 +46,7 @@ Wire the renamed hooks into `settings.json` and make `party-cli install` compani
 
 **Key gotchas:**
 - Deleting the redirect stubs is safe ONLY after settings.json points to the new names. These must happen atomically (same commit).
+- **Running session migration:** Sessions started before this task will have the old settings.json cached. Document in the commit message and PR description that active party sessions should be restarted after this change lands. `party-cli install` should warn if old hook paths are detected in any loaded settings.json.
 - `party-cli install` must still work with no `.party.toml` (defaults to Codex install flow)
 
 ## Tests
