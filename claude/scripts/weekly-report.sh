@@ -353,7 +353,6 @@ findings_raised = 0
 findings_fixed = 0
 findings_dismissed = 0
 findings_overridden = 0
-findings_noted = 0
 triage_blocking = 0
 triage_nonblocking = 0
 triage_outofscope = 0

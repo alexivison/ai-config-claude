@@ -216,7 +216,7 @@ case "$agent_type" in
           *"[LoB]"*)          f_category="locality" ;;
           *orrectness*)       f_category="correctness" ;;
           *ecurity*)          f_category="security" ;;
-          *est*)              f_category="testing" ;;
+          *"[Tests]"*|*"test "*|*"Test "*) f_category="testing" ;;
           *ead*code*|*nused*) f_category="bloat" ;;
         esac
 

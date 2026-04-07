@@ -349,6 +349,51 @@ else
 fi
 assert "Cross-hash: code-critic same finding across 3 hashes → NO auto-triage (correctness exempt)" '[ "$OVERRIDE_COUNT" -eq 0 ]'
 
+# ─── Triage/Resolution metrics from critic findings ─────────────────────────
+
+echo "=== Triage: code-critic REQUEST_CHANGES records finding_raised + triage ==="
+clean_evidence
+METRICS_FILE="$HOME/.claude/logs/review-metrics/${SESSION}.jsonl"
+rm -f "$METRICS_FILE"
+
+CRITIC_MSG="## Code Review Report
+
+### Must Fix
+- **src/app.ts:42** - [SRP] Handler doing too much
+
+### Nits
+- **src/app.ts:90** - [nit] Minor style issue
+
+### Verdict
+**REQUEST_CHANGES**"
+
+run_stop "$(stop_input code-critic "$CRITIC_MSG")"
+
+FINDING_COUNT=$(jq -s '[.[] | select(.event == "finding_raised")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Triage: 2 findings raised" '[ "$FINDING_COUNT" -eq 2 ]'
+
+BLOCKING_TRIAGE=$(jq -s '[.[] | select(.event == "triage" and .classification == "blocking" and .action == "fix")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Triage: 1 blocking finding triaged as fix" '[ "$BLOCKING_TRIAGE" -eq 1 ]'
+
+NB_TRIAGE=$(jq -s '[.[] | select(.event == "triage" and .classification == "non-blocking" and .action == "noted")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Triage: 1 non-blocking finding triaged as noted" '[ "$NB_TRIAGE" -eq 1 ]'
+
+echo "=== Resolution: code-critic APPROVED resolves prior blocking findings ==="
+APPROVE_MSG="## Code Review Report
+
+### Summary
+All issues fixed.
+
+### Verdict
+**APPROVE**"
+
+run_stop "$(stop_input code-critic "$APPROVE_MSG")"
+
+RESOLVED_COUNT=$(jq -s '[.[] | select(.event == "resolved" and .resolution == "fixed")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Resolution: prior blocking finding resolved as fixed" '[ "$RESOLVED_COUNT" -ge 1 ]'
+
+rm -f "$METRICS_FILE"
+
 # ─── Summary ─────────────────────────────────────────────────────────────────
 
 echo ""

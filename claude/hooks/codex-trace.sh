@@ -161,7 +161,7 @@ if echo "$response" | grep -qx "CODEX_REVIEW_RAN" && [ -n "$codex_verdict" ]; th
         "${f_category:-other}" "${f_file:-}" "${f_line:-}" "${f_desc:-}" "$diff_hash"
 
       # Record triage: blocking findings get "fix", others get "noted"
-      local f_action="noted"
+      f_action="noted"
       if [ "$f_severity" = "blocking" ]; then f_action="fix"; fi
       record_triage "$session_id" "$fid" "codex" "$f_severity" "$f_action"
     done < <(sed -n '/^findings\[/,/^[^ ]/{ /^  /p; }' "$findings_file" 2>/dev/null || true)
