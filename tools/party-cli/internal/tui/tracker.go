@@ -290,7 +290,7 @@ func (tm TrackerModel) viewWorkers() string {
 	} else {
 		for i, w := range tm.workers {
 			if i > 0 {
-				body.WriteString("\n\n")
+				body.WriteString("\n")
 			}
 			body.WriteString(tm.renderWorkerRow(w, i, compact, innerW))
 

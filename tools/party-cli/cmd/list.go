@@ -105,3 +105,4 @@ func printSessionLine(w io.Writer, m state.Manifest) {
 	}
 	fmt.Fprintf(w, "  %s\n", strings.Join(parts, "  "))
 }
+

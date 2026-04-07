@@ -47,7 +47,7 @@ Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 
 ## The Wizard
 
-Communicate via `tmux-codex.sh` only (never raw tmux commands — blocked by hook). All dispatches are non-blocking. `[CODEX]` messages are from The Wizard — handle per `tmux-handler` skill. You decide verdicts; The Wizard produces findings.
+Communicate via `tmux-codex.sh` only (never raw tmux commands — blocked by hook). Dispatch The Wizard FIRST, then launch sub-agents — keep working in parallel while The Wizard thinks. `[CODEX]` messages are from The Wizard — handle per `tmux-handler` skill. You decide verdicts; The Wizard produces findings.
 
 ### When to Dispatch (Autonomous)
 

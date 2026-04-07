@@ -94,7 +94,7 @@ type Model struct {
 	claudeSessionID string // Claude's UUID for evidence file lookup
 
 	// Worker sidebar input mode for messaging the Wizard.
-	workerMode  workerMode
+	workerMode workerMode
 	workerInput textinput.Model
 	workerErr   error
 	tmuxClient  *tmux.Client // for sending messages to the Wizard pane
@@ -362,6 +362,7 @@ func (m Model) viewError() string {
 
 	return borderedPane(body.String(), title, footer, w, h, true)
 }
+
 
 // renderWizardComposer renders the message input for sending to the Wizard.
 func (m Model) renderWizardComposer(bordered bool, width int) string {
