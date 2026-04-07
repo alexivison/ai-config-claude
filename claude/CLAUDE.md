@@ -63,7 +63,10 @@ Communicate via `tmux-codex.sh` only (never raw tmux commands — blocked by hoo
 
 ### Transport
 
-Script: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh` — see `codex-transport` skill for modes and usage.
+Script: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh`
+- Modes: `--review`, `--plan-review`, `--prompt` — all require `work_dir` as last arg
+- All dispatches are non-blocking — keep working after sending
+- See `codex-transport` skill for full mode reference
 
 ## Master Session Mode
 
@@ -93,7 +96,7 @@ Evidence before claims. Code edits invalidate prior results. Never mark complete
 
 ## Self-Improvement
 
-After ANY user correction: identify the pattern, write a preventive rule, save to memory.
+After ANY user correction: identify the pattern, write a preventive rule, save to auto-memory (`~/.claude/projects/.../memory/`).
 
 ## Skills (Mandatory)
 

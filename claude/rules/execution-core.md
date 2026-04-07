@@ -188,11 +188,16 @@ Evidence before claims. No assertions without proof (test output, file:line, gre
 | Behavior change without RED evidence | Block; add RED test first |
 | Feature-flag without ON/OFF gate tests | Block; add gate tests first |
 | Out-of-scope file changes without rationale | NEEDS_DISCUSSION |
+| Add abstraction used once without clear gain | Remove or justify |
+| Implement every finding without triage | Classify blocking/non-blocking/out-of-scope first |
 | Stop after partial completion | Continue — never ask "should I continue?" |
 | Chase non-blocking nits 2+ rounds | Triage, note, move on |
 | Edit after approval, then PR | Evidence stale — re-run cascade |
+| Approve without `--review-complete` | Gate blocks — run review first |
 | Evidence created outside authorized paths | Forbidden — only hooks/workflow skills write evidence |
 | Codex review bypassed or declared "done" without APPROVED | FORBIDDEN — no iteration cap |
 | Lint/typecheck via Bash instead of check-runner | Always delegate to sub-agents |
 | Push without check-runner | Run check-runner before every push |
 | Dependency added without lockfile | Stage lockfile in same commit |
+| Spec PR without spec-review + plan-review | Block; run spec tier cascade first |
+| Spec tier PR containing production code | Block; use Full tier instead |

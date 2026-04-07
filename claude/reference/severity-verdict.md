@@ -18,7 +18,7 @@
 | **REQUEST_CHANGES** | One or more `[must]` findings |
 | **NEEDS_DISCUSSION** | Architectural concerns, unclear requirements, persistent blocking findings |
 
-Scribe uses only APPROVE / REQUEST_CHANGES (no NEEDS_DISCUSSION).
+Scribe and Sentinel use only APPROVE / REQUEST_CHANGES (no NEEDS_DISCUSSION).
 
 In Codex findings files, verdicts appear as `VERDICT: APPROVED` / `VERDICT: REQUEST_CHANGES`.
 
