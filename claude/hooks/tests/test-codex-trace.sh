@@ -220,6 +220,47 @@ COMBINED_OVERRIDE=$'CODEX_REVIEW_RAN\nTRIAGE_OVERRIDE minimizer | Rebased code f
 run_hook "$(bash_input_obj 'tmux-codex.sh --review-complete /tmp/f.toon' "$COMBINED_OVERRIDE")"
 assert "Combined → minimizer override evidence" 'has_evidence "minimizer"'
 
+# ─── Triage/Resolution metrics from codex findings ──────────────────────────
+
+echo "=== Codex triage: findings from TOON file get triage events ==="
+clean_evidence
+METRICS_FILE="$HOME/.claude/logs/review-metrics/${SESSION}.jsonl"
+rm -f "$METRICS_FILE"
+
+# Create a TOON findings file with 2 findings
+TOON_FILE=$(mktemp /tmp/test-codex-XXXXXX.toon)
+cat > "$TOON_FILE" << 'TOON'
+findings[2]{id,file,line,severity,category,description,suggestion}:
+  F1,src/app.ts,42,blocking,correctness,Missing null check,Add check
+  F2,src/util.ts,10,low,style,Unused import,Remove it
+
+summary:
+  VERDICT: REQUEST_CHANGES
+TOON
+
+CODEX_RC_RESP=$'CODEX_REVIEW_RAN\nCODEX REQUEST_CHANGES'
+run_hook "$(bash_input_obj "tmux-codex.sh --review-complete $TOON_FILE" "$CODEX_RC_RESP")"
+
+CODEX_FINDINGS=$(jq -s '[.[] | select(.event == "finding_raised" and .source == "codex")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Codex triage: 2 findings raised" '[ "$CODEX_FINDINGS" -eq 2 ]'
+
+CODEX_TRIAGE=$(jq -s '[.[] | select(.event == "triage" and .source == "codex")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Codex triage: 2 triage events recorded" '[ "$CODEX_TRIAGE" -eq 2 ]'
+
+CODEX_BLOCK_FIX=$(jq -s '[.[] | select(.event == "triage" and .source == "codex" and .action == "fix")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Codex triage: blocking finding triaged as fix" '[ "$CODEX_BLOCK_FIX" -eq 1 ]'
+
+echo "=== Codex resolution: APPROVED resolves prior findings ==="
+clean_evidence
+# Write approval response
+CODEX_APPR_RESP=$'CODEX_REVIEW_RAN\nCODEX APPROVED'
+run_hook "$(bash_input_obj "tmux-codex.sh --review-complete $TOON_FILE" "$CODEX_APPR_RESP")"
+
+CODEX_RESOLVED=$(jq -s '[.[] | select(.event == "resolved" and .resolution == "fixed")] | length' "$METRICS_FILE" 2>/dev/null || echo 0)
+assert "Codex resolution: prior fix findings resolved" '[ "$CODEX_RESOLVED" -ge 1 ]'
+
+rm -f "$TOON_FILE" "$METRICS_FILE"
+
 # ─── Summary ─────────────────────────────────────────────────────────────────
 
 echo ""
