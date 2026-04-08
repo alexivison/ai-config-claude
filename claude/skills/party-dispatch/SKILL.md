@@ -285,7 +285,7 @@ When all workers have reported back (all tasks completed):
 
 ## Important
 
-- The spawned workers run `claude --dangerously-skip-permissions`, so they
+- The spawned workers run `claude --permission-mode bypassPermissions`, so they
   execute autonomously. The prompt is all they get — make it complete.
 - Each worker creates its own worktree (per workflow conventions), so there
   are no git conflicts between sessions.

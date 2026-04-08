@@ -24,15 +24,12 @@ ai-party/
 ├── claude/          # Claude Code configuration (hooks, skills, agents, rules)
 ├── codex/           # OpenAI Codex CLI configuration
 ├── docs/            # Project documentation
-├── nvim/            # Neovim (LazyVim) configuration
 ├── shared/          # Skills shared by both platforms
 ├── session/         # Shell wrappers and retained routing library
 │   ├── party.sh              # Thin wrapper — delegates to party-cli
 │   ├── party-lib.sh          # State helpers, locking, routing (retained for tmux-codex.sh)
 │   ├── party-relay.sh        # Thin wrapper — delegates to party-cli
-│   ├── party-picker.sh       # Thin wrapper — delegates to party-cli picker
-│   ├── party-preview.sh      # Thin wrapper — delegates to party-cli picker preview
-│   └── party-master-jump.sh  # tmux keybinding: jump from worker to master
+│   └── party-master.sh       # tmux keybinding: jump from worker to master
 ├── tools/
 │   ├── party-cli/         # Unified Go binary: TUI + CLI (primary implementation)
 │   └── (party-tracker removed — functionality absorbed into party-cli)
@@ -58,7 +55,7 @@ cd ~/Code/ai-party
 ```
 
 The installer will:
-1. Create config symlinks (`~/.claude`, `~/.codex`, `~/.config/nvim`, `~/.tmux.conf`)
+1. Create config symlinks (`~/.claude`, `~/.codex`, `~/.tmux.conf`)
 2. Offer to install missing CLI tools (optional)
 3. Offer to run authentication for each tool (optional)
 
