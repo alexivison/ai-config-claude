@@ -182,10 +182,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "k", "up":
 		m.moveCursor(-1)
 		return m, m.loadPreview()
-	case "tab", "l":
+	case "l":
 		m.switchTab(true)
 		return m, m.loadPreview()
-	case "shift+tab", "h":
+	case "h":
 		m.switchTab(false)
 		return m, m.loadPreview()
 	case "ctrl+d":
@@ -311,7 +311,7 @@ func (m Model) View() string {
 	pad := strings.Repeat(" ", padLeft)
 	tabBar := pad + m.renderTabBar()
 	dividerLine := pickerDividerLineStyle.Render(strings.Repeat("─", m.width))
-	footer := pickerFooterStyle.Render(fitToWidth(pad+"⏎ resume  ^d delete  tab switch  esc quit", m.width))
+	footer := pickerFooterStyle.Render(fitToWidth(pad+"⏎ resume  ^d delete  h/l switch  esc quit", m.width))
 
 	bodyH := m.height - headerHeight - footerHeight
 	if bodyH < 1 {
