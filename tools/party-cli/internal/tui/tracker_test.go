@@ -1365,3 +1365,101 @@ func TestTracker_View_ShowsSessionID(t *testing.T) {
 		t.Error("worker without title should show session ID")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// ClaudeState rendering
+// ---------------------------------------------------------------------------
+
+func TestTracker_View_ClaudeState_Active(t *testing.T) {
+	t.Parallel()
+
+	workers := []WorkerRow{
+		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "active"},
+	}
+	tm := newTestTracker(workers, &fakeActions{})
+	tm.width = 80
+	tm.height = 24
+	tm.refreshWorkers()
+
+	view := tm.View()
+
+	// Active claude state renders a green filled dot (ClaudeStateDotActive)
+	if !strings.Contains(view, ClaudeStateDotActive) {
+		t.Errorf("active ClaudeState should render %q dot in view", ClaudeStateDotActive)
+	}
+}
+
+func TestTracker_View_ClaudeState_Waiting(t *testing.T) {
+	t.Parallel()
+
+	workers := []WorkerRow{
+		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "waiting"},
+	}
+	tm := newTestTracker(workers, &fakeActions{})
+	tm.width = 80
+	tm.height = 24
+	tm.refreshWorkers()
+
+	view := tm.View()
+
+	if !strings.Contains(view, ClaudeStateDotWaiting) {
+		t.Errorf("waiting ClaudeState should render %q dot in view", ClaudeStateDotWaiting)
+	}
+}
+
+func TestTracker_View_ClaudeState_Idle(t *testing.T) {
+	t.Parallel()
+
+	workers := []WorkerRow{
+		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "idle"},
+	}
+	tm := newTestTracker(workers, &fakeActions{})
+	tm.width = 80
+	tm.height = 24
+	tm.refreshWorkers()
+
+	view := tm.View()
+
+	if !strings.Contains(view, ClaudeStateDotIdle) {
+		t.Errorf("idle ClaudeState should render %q dot in view", ClaudeStateDotIdle)
+	}
+}
+
+func TestTracker_View_ClaudeState_Done(t *testing.T) {
+	t.Parallel()
+
+	workers := []WorkerRow{
+		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "done"},
+	}
+	tm := newTestTracker(workers, &fakeActions{})
+	tm.width = 80
+	tm.height = 24
+	tm.refreshWorkers()
+
+	view := tm.View()
+
+	if !strings.Contains(view, ClaudeStateDotDone) {
+		t.Errorf("done ClaudeState should render %q dot in view", ClaudeStateDotDone)
+	}
+}
+
+func TestTracker_View_ClaudeState_Empty_NoDot(t *testing.T) {
+	t.Parallel()
+
+	workers := []WorkerRow{
+		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: ""},
+	}
+	tm := newTestTracker(workers, &fakeActions{})
+	tm.width = 80
+	tm.height = 24
+	tm.refreshWorkers()
+
+	view := tm.View()
+
+	// No claude state dot when empty
+	for _, dot := range []string{ClaudeStateDotActive, ClaudeStateDotWaiting, ClaudeStateDotIdle, ClaudeStateDotDone} {
+		if strings.Contains(view, dot) {
+			t.Errorf("empty ClaudeState should not render %q dot", dot)
+		}
+	}
+}
