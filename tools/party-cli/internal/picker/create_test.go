@@ -535,7 +535,7 @@ func TestCreateForm_Enter_FileNotDir_SetsError(t *testing.T) {
 	}
 }
 
-func TestCreateForm_SubmittingBlocksEsc(t *testing.T) {
+func TestCreateForm_SubmittingBlocksAllInput(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	f, _ := NewCreateForm(false, dir)
@@ -547,19 +547,20 @@ func TestCreateForm_SubmittingBlocksEsc(t *testing.T) {
 		t.Fatal("expected submitting=true after enter")
 	}
 
-	// Esc should be blocked.
-	f, cmd := f.handleKey(tea.KeyMsg{Type: tea.KeyEscape})
-	if cmd != nil {
-		t.Error("esc should be no-op while submitting")
-	}
-	if f.submitting != true {
-		t.Error("submitting should still be true after esc")
-	}
-
-	// Ctrl+C should still work.
-	_, cmd = f.handleKey(tea.KeyMsg{Type: tea.KeyCtrlC})
-	if cmd == nil {
-		t.Error("ctrl+c should still produce a quit command while submitting")
+	// All keys blocked while submitting (prevents stranding detached sessions).
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyEscape},
+		{Type: tea.KeyCtrlC},
+		{Type: tea.KeyEnter},
+		{Type: tea.KeyRunes, Runes: []rune{'x'}},
+	} {
+		f, cmd := f.handleKey(key)
+		if cmd != nil {
+			t.Errorf("key %q should be no-op while submitting", key.String())
+		}
+		if !f.submitting {
+			t.Errorf("submitting should remain true after %q", key.String())
+		}
 	}
 }
 

@@ -74,11 +74,9 @@ func (f CreateForm) Update(msg tea.Msg) (CreateForm, tea.Cmd) {
 }
 
 func (f CreateForm) handleKey(msg tea.KeyMsg) (CreateForm, tea.Cmd) {
-	// While startFn is in-flight, only allow ctrl+c to quit entirely.
+	// While startFn is in-flight, block all input to prevent quitting
+	// before the result arrives (which would strand a detached session).
 	if f.submitting {
-		if msg.String() == "ctrl+c" {
-			return f, tea.Quit
-		}
 		return f, nil
 	}
 
