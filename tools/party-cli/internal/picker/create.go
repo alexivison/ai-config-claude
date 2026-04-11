@@ -14,6 +14,8 @@ import (
 // StartFunc creates a session and returns its ID.
 type StartFunc func(ctx context.Context, title, cwd string, master bool) (string, error)
 
+const labelWidth = 8 // width of "Title:  " and "Dir:    " labels
+
 type createField int
 
 const (
@@ -63,6 +65,12 @@ func (f CreateForm) Update(msg tea.Msg) (CreateForm, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		return f.handleKey(keyMsg)
 	}
+	cmd := f.updateFocusedInput(msg)
+	return f, cmd
+}
+
+// updateFocusedInput forwards a non-key message to the active text input.
+func (f *CreateForm) updateFocusedInput(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	switch f.focus {
 	case fieldTitle:
@@ -70,17 +78,15 @@ func (f CreateForm) Update(msg tea.Msg) (CreateForm, tea.Cmd) {
 	case fieldDir:
 		f.dirInput, cmd = f.dirInput.Update(msg)
 	}
-	return f, cmd
+	return cmd
 }
 
 func (f CreateForm) handleKey(msg tea.KeyMsg) (CreateForm, tea.Cmd) {
-	// While startFn is in-flight, block all input to prevent quitting
-	// before the result arrives (which would strand a detached session).
+	// Block all input while startFn is in-flight (prevents stranding sessions).
 	if f.submitting {
 		return f, nil
 	}
 
-	// Only preserve completions when Tab is pressed on the dir field.
 	isTabOnDir := msg.String() == "tab" && f.focus == fieldDir
 	if !isTabOnDir {
 		f.completions = nil
@@ -98,7 +104,6 @@ func (f CreateForm) handleKey(msg tea.KeyMsg) (CreateForm, tea.Cmd) {
 		}
 		f.tabComplete()
 		return f, nil
-
 	case "shift+tab":
 		if f.focus == fieldDir {
 			f.dirInput.Blur()
@@ -107,38 +112,23 @@ func (f CreateForm) handleKey(msg tea.KeyMsg) (CreateForm, tea.Cmd) {
 			return f, cmd
 		}
 		return f, nil
-
 	case "enter":
-		dir := expandTilde(f.dirInput.Value())
-		if dir == "" {
-			f.err = "directory is required"
-			return f, nil
-		}
-		info, err := os.Stat(dir)
-		if err != nil || !info.IsDir() {
-			f.err = "directory does not exist"
+		dir, errMsg := validateDir(f.dirInput.Value())
+		if errMsg != "" {
+			f.err = errMsg
 			return f, nil
 		}
 		f.submitting = true
 		return f, func() tea.Msg {
 			return createRequestMsg{title: f.titleInput.Value(), dir: dir, master: f.master}
 		}
-
 	case "esc":
 		return f, func() tea.Msg { return createCancelMsg{} }
-
 	case "ctrl+c":
 		return f, tea.Quit
 	}
 
-	// Pass to focused input.
-	var cmd tea.Cmd
-	switch f.focus {
-	case fieldTitle:
-		f.titleInput, cmd = f.titleInput.Update(msg)
-	case fieldDir:
-		f.dirInput, cmd = f.dirInput.Update(msg)
-	}
+	cmd := f.updateFocusedInput(msg)
 	return f, cmd
 }
 
@@ -222,7 +212,7 @@ func (f CreateForm) View(width, height int) string {
 		header = "New Master Session"
 	}
 
-	inputWidth := width - padLeft - 8 // 8 = len("Title:  ") or len("Dir:    ")
+	inputWidth := width - padLeft - labelWidth
 	if inputWidth < 10 {
 		inputWidth = 10
 	}
@@ -241,27 +231,13 @@ func (f CreateForm) View(width, height int) string {
 	lines = append(lines, pad+titleLabel+f.titleInput.View())
 	lines = append(lines, "")
 	lines = append(lines, pad+dirLabel+f.dirInput.View())
-
-	// Show completion hints below the dir input.
-	if len(f.completions) > 0 {
-		for i, c := range f.completions {
-			name := filepath.Base(strings.TrimSuffix(c, "/")) + "/"
-			style := pickerMutedStyle
-			prefix := "  "
-			if i == f.compIndex {
-				style = pickerCleanStyle
-				prefix = "> "
-			}
-			lines = append(lines, pad+"        "+style.Render(prefix+name))
-		}
-	}
+	lines = append(lines, f.renderCompletions(pad)...)
 
 	if f.err != "" {
 		lines = append(lines, "")
 		lines = append(lines, pad+pickerWarnStyle.Render(f.err))
 	}
 
-	// Pad body to fill height (header=2, footer=2 for divider+help).
 	for len(lines) < height-2 {
 		lines = append(lines, "")
 	}
@@ -274,6 +250,26 @@ func (f CreateForm) View(width, height int) string {
 	lines = append(lines, pickerFooterStyle.Render(fitToWidth(footerText, width)))
 
 	return strings.Join(lines, "\n")
+}
+
+// renderCompletions renders the tab-completion hints below the dir input.
+func (f CreateForm) renderCompletions(pad string) []string {
+	if len(f.completions) == 0 {
+		return nil
+	}
+	indent := pad + strings.Repeat(" ", labelWidth)
+	lines := make([]string, len(f.completions))
+	for i, c := range f.completions {
+		name := filepath.Base(strings.TrimSuffix(c, "/")) + "/"
+		style := pickerMutedStyle
+		prefix := "  "
+		if i == f.compIndex {
+			style = pickerCleanStyle
+			prefix = "> "
+		}
+		lines[i] = indent + style.Render(prefix+name)
+	}
+	return lines
 }
 
 // ---------------------------------------------------------------------------
@@ -294,8 +290,22 @@ type createResultMsg struct {
 }
 
 // ---------------------------------------------------------------------------
-// Tab-completion helpers
+// Helpers
 // ---------------------------------------------------------------------------
+
+// validateDir expands tilde and checks the path is an existing directory.
+// Returns the resolved path and an empty error string on success.
+func validateDir(raw string) (string, string) {
+	dir := expandTilde(raw)
+	if dir == "" {
+		return "", "directory is required"
+	}
+	info, err := os.Stat(dir)
+	if err != nil || !info.IsDir() {
+		return "", "directory does not exist"
+	}
+	return dir, ""
+}
 
 func expandTilde(path string) string {
 	if strings.HasPrefix(path, "~/") || path == "~" {
