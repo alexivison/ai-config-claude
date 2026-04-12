@@ -34,7 +34,7 @@ type WorkerRow struct {
 // Claude state dot indicators for the tracker.
 // Uses characters distinct from workflow stage labels (which use ● and ○).
 const (
-	ClaudeStateDotActive  = "⚡"
+	ClaudeStateDotActive  = "▸"
 	ClaudeStateDotWaiting = "◐"
 	ClaudeStateDotIdle    = "◌"
 	ClaudeStateDotDone    = "✔"

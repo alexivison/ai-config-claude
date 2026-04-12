@@ -7,7 +7,6 @@ HOOK="$SCRIPT_DIR/../claude-state.sh"
 
 PASS=0
 FAIL=0
-TMPDIR_BASE=""
 
 assert() {
   local desc="$1"
@@ -21,14 +20,13 @@ assert() {
 }
 
 setup() {
-  TMPDIR_BASE=$(mktemp -d)
   SESSION_NAME="party-test-state-$$"
   STATE_DIR="/tmp/$SESSION_NAME"
   mkdir -p "$STATE_DIR"
 }
 
 cleanup() {
-  rm -rf "$TMPDIR_BASE" "$STATE_DIR" 2>/dev/null || true
+  rm -rf "$STATE_DIR" 2>/dev/null || true
 }
 trap cleanup EXIT
 

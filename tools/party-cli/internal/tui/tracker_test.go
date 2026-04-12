@@ -1370,96 +1370,47 @@ func TestTracker_View_ShowsSessionID(t *testing.T) {
 // ClaudeState rendering
 // ---------------------------------------------------------------------------
 
-func TestTracker_View_ClaudeState_Active(t *testing.T) {
+func TestTracker_View_ClaudeState(t *testing.T) {
 	t.Parallel()
 
-	workers := []WorkerRow{
-		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "active"},
+	allDots := []string{ClaudeStateDotActive, ClaudeStateDotWaiting, ClaudeStateDotIdle, ClaudeStateDotDone}
+
+	tests := map[string]struct {
+		state   string
+		wantDot string // empty = expect no dot
+	}{
+		"active":  {state: "active", wantDot: ClaudeStateDotActive},
+		"waiting": {state: "waiting", wantDot: ClaudeStateDotWaiting},
+		"idle":    {state: "idle", wantDot: ClaudeStateDotIdle},
+		"done":    {state: "done", wantDot: ClaudeStateDotDone},
+		"empty":   {state: "", wantDot: ""},
 	}
-	tm := newTestTracker(workers, &fakeActions{})
-	tm.width = 80
-	tm.height = 24
-	tm.refreshWorkers()
 
-	view := tm.View()
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	// Active claude state renders a green filled dot (ClaudeStateDotActive)
-	if !strings.Contains(view, ClaudeStateDotActive) {
-		t.Errorf("active ClaudeState should render %q dot in view", ClaudeStateDotActive)
-	}
-}
+			workers := []WorkerRow{
+				{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: tc.state},
+			}
+			tm := newTestTracker(workers, &fakeActions{})
+			tm.width = 80
+			tm.height = 24
+			tm.refreshWorkers()
 
-func TestTracker_View_ClaudeState_Waiting(t *testing.T) {
-	t.Parallel()
+			view := tm.View()
 
-	workers := []WorkerRow{
-		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "waiting"},
-	}
-	tm := newTestTracker(workers, &fakeActions{})
-	tm.width = 80
-	tm.height = 24
-	tm.refreshWorkers()
-
-	view := tm.View()
-
-	if !strings.Contains(view, ClaudeStateDotWaiting) {
-		t.Errorf("waiting ClaudeState should render %q dot in view", ClaudeStateDotWaiting)
-	}
-}
-
-func TestTracker_View_ClaudeState_Idle(t *testing.T) {
-	t.Parallel()
-
-	workers := []WorkerRow{
-		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "idle"},
-	}
-	tm := newTestTracker(workers, &fakeActions{})
-	tm.width = 80
-	tm.height = 24
-	tm.refreshWorkers()
-
-	view := tm.View()
-
-	if !strings.Contains(view, ClaudeStateDotIdle) {
-		t.Errorf("idle ClaudeState should render %q dot in view", ClaudeStateDotIdle)
-	}
-}
-
-func TestTracker_View_ClaudeState_Done(t *testing.T) {
-	t.Parallel()
-
-	workers := []WorkerRow{
-		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: "done"},
-	}
-	tm := newTestTracker(workers, &fakeActions{})
-	tm.width = 80
-	tm.height = 24
-	tm.refreshWorkers()
-
-	view := tm.View()
-
-	if !strings.Contains(view, ClaudeStateDotDone) {
-		t.Errorf("done ClaudeState should render %q dot in view", ClaudeStateDotDone)
-	}
-}
-
-func TestTracker_View_ClaudeState_Empty_NoDot(t *testing.T) {
-	t.Parallel()
-
-	workers := []WorkerRow{
-		{ID: "party-w1", Title: "task-a", Status: "active", ClaudeState: ""},
-	}
-	tm := newTestTracker(workers, &fakeActions{})
-	tm.width = 80
-	tm.height = 24
-	tm.refreshWorkers()
-
-	view := tm.View()
-
-	// No claude state dot when empty
-	for _, dot := range []string{ClaudeStateDotActive, ClaudeStateDotWaiting, ClaudeStateDotIdle, ClaudeStateDotDone} {
-		if strings.Contains(view, dot) {
-			t.Errorf("empty ClaudeState should not render %q dot", dot)
-		}
+			if tc.wantDot != "" {
+				if !strings.Contains(view, tc.wantDot) {
+					t.Errorf("ClaudeState %q: view should contain %q", tc.state, tc.wantDot)
+				}
+			} else {
+				for _, dot := range allDots {
+					if strings.Contains(view, dot) {
+						t.Errorf("empty ClaudeState should not render %q dot", dot)
+					}
+				}
+			}
+		})
 	}
 }
