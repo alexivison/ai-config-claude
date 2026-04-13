@@ -271,6 +271,25 @@ append_triage_override() {
   _atomic_append "$file" "$run_entry" "$session_id"
 }
 
+# ── Session-level readers (hash-independent) ──
+# Some evidence types (e.g., execution-tier) are session-level decisions that
+# should not be invalidated when code changes. These readers ignore diff_hash.
+
+get_session_tier() {
+  local session_id="$1"
+  local file
+  file=$(evidence_file "$session_id")
+  [ ! -f "$file" ] && return 1
+
+  local tier
+  tier=$(jq -rs '[.[] | select(.type == "execution-tier")] | last | .result // empty' "$file" 2>/dev/null)
+  if [ -n "$tier" ]; then
+    echo "$tier"
+    return 0
+  fi
+  return 1
+}
+
 # ── Evidence readers ──
 
 check_evidence() {

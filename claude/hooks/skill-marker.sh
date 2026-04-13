@@ -24,10 +24,26 @@ if [ "$TOOL" != "Skill" ]; then
   exit 0
 fi
 
+# --- Tier assignment (convention: only this hook writes execution-tier) ---
+# Workflow skills set the PR gate tier. Utility skills (pre-pr-verification,
+# write-tests, etc.) are not listed and leave the current tier unchanged.
+declare -A SKILL_TIERS=(
+  ["openspec-workflow"]="ci-gate"
+  ["task-workflow"]="full"
+  ["bugfix-workflow"]="full"
+  ["quick-fix-workflow"]="full"
+)
+
+tier="${SKILL_TIERS[$SKILL]:-}"
+if [ -n "$tier" ]; then
+  append_evidence "$SESSION_ID" "execution-tier" "$tier" "$CWD"
+  hook_log "skill-marker" "$SESSION_ID" "tier" "skill=$SKILL tier=$tier"
+fi
+
 # --- Evidence creation for enforced skills ---
 case "$SKILL" in
   pre-pr-verification)
-    append_evidence "$SESSION_ID" "pr-verified" "COMPLETED" "$CWD"
+    append_evidence "$SESSION_ID" "pr-verified" "PASS" "$CWD"
     ;;
 esac
 

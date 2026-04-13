@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/transport"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/transport"
 	"github.com/spf13/cobra"
 )
 

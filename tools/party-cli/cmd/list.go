@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 	"github.com/spf13/cobra"
 )
 
@@ -105,4 +105,3 @@ func printSessionLine(w io.Writer, m state.Manifest) {
 	}
 	fmt.Fprintf(w, "  %s\n", strings.Join(parts, "  "))
 }
-

@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
 // LargeMessageThreshold is the character count above which messages use file indirection.
@@ -135,7 +135,12 @@ func (s *Service) Read(ctx context.Context, workerID string, lines int) (string,
 		return "", fmt.Errorf("resolve claude pane in %q: %w", workerID, err)
 	}
 
-	return s.client.Capture(ctx, target, lines)
+	raw, err := s.client.Capture(ctx, target, lines)
+	if err != nil {
+		return "", err
+	}
+	filtered := tmux.FilterAgentLines(raw, lines)
+	return strings.Join(filtered, "\n"), nil
 }
 
 // Report sends a report-back message from a worker to its master's Claude pane.

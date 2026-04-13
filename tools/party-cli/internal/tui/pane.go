@@ -7,10 +7,77 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+// composerHint is the shared footer text shown when a composer is active.
+const composerHint = "⏎ send · esc cancel"
+
+// composerHeight is the number of rows reserved below the main pane for
+// a borderless composer (divider line + input line).
+const composerHeight = 2
+
+// renderComposerInput renders a borderless composer: a dim divider line
+// followed by a bold "label>" prefix and the input view.
+func renderComposerInput(label, inputView string, width int) string {
+	if width < 1 {
+		width = 1
+	}
+	dividerStyle := lipgloss.NewStyle().Foreground(DividerBorder)
+	divider := dividerStyle.Render(strings.Repeat("─", width))
+	line := " " + sidebarLabelStyle.Render(label+">") + " " + inputView
+	return divider + "\n" + fitBar(line, width)
+}
+
+// borderlessMargin is the horizontal overhead for borderless views (no padding).
+const borderlessMargin = 0
+
 // keyHint pairs a key name with a short label for status bar badges.
 type keyHint struct {
 	Key   string
 	Label string
+}
+
+// borderlessView renders content without box borders. A dim horizontal rule
+// separates the title from the body. The footer is pinned to the last line.
+func borderlessView(title, body, footer string, width, height int) string {
+	if width < 1 {
+		width = 20
+	}
+	if height < 1 {
+		height = 10
+	}
+
+	var lines []string
+
+	if title != "" {
+		lines = append(lines, title)
+		dividerStyle := lipgloss.NewStyle().Foreground(DividerBorder)
+		lines = append(lines, dividerStyle.Render(strings.Repeat("─", width)))
+	}
+
+	if body != "" {
+		for _, bline := range strings.Split(body, "\n") {
+			lines = append(lines, bline)
+		}
+	}
+
+	// Reserve last line for footer.
+	maxBody := height
+	if footer != "" {
+		maxBody--
+	}
+	// Trim excess body lines.
+	if len(lines) > maxBody {
+		lines = lines[:maxBody]
+	}
+	// Fill remaining height with blanks.
+	for len(lines) < maxBody {
+		lines = append(lines, "")
+	}
+
+	if footer != "" {
+		lines = append(lines, footer)
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // borderedPane wraps content in a rounded border with an optional title and footer.
@@ -175,6 +242,15 @@ func renderStatusBar(width int, hints []keyHint, message string, err error) stri
 		badges = append(badges, badge)
 	}
 	return statusBarStyle.Render(fitBar(" "+strings.Join(badges, "  "), width))
+}
+
+// composerInputWidth returns the space left for the input after the composer prefix.
+func composerInputWidth(width int, label string) int {
+	available := width - lipgloss.Width(" "+label+"> ")
+	if available < 1 {
+		return 1
+	}
+	return available
 }
 
 // fitBar truncates or pads a bar string to exactly the given visual width.

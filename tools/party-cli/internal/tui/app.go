@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/message"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/session"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/message"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/session"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
 // Option configures the TUI launch.
@@ -80,6 +80,7 @@ func newAutoModelWithOverride(sessionID string) Model {
 	}
 	client := tmux.NewExecClient()
 	m := NewModelWithResolver(staticResolver(sessionID))
+	m.tmuxClient = client
 	m.trackerFactory = buildTrackerFactory(store, client)
 	return m
 }
@@ -97,6 +98,7 @@ func newAutoModel() Model {
 	}
 	client := tmux.NewExecClient()
 	m := NewModel(store, client)
+	m.tmuxClient = client
 	m.trackerFactory = buildTrackerFactory(store, client)
 	return m
 }

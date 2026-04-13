@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/message"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/session"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/message"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/session"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
 // TrackerActions defines the operations the tracker can perform.
@@ -139,10 +139,12 @@ func NewLiveWorkerFetcher(messageSvc *message.Service, tmuxClient *tmux.Client, 
 
 		rows := make([]WorkerRow, 0, len(workers))
 		for _, w := range workers {
+			runtimeDir := fmt.Sprintf("/tmp/%s", w.SessionID)
 			row := WorkerRow{
-				ID:     w.SessionID,
-				Title:  w.Title,
-				Status: w.Status,
+				ID:          w.SessionID,
+				Title:       w.Title,
+				Status:      w.Status,
+				ClaudeState: ReadClaudeState(runtimeDir),
 			}
 			if w.Status == "active" {
 				// Resolve Claude UUID for evidence lookup; fall back to tmux session ID.

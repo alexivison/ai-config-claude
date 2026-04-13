@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
 // ---------------------------------------------------------------------------
@@ -1198,13 +1198,18 @@ func TestBuildClaudeCmd(t *testing.T) {
 
 	tests := map[string]struct {
 		bin, path, resume, prompt, title string
+		master                           bool
 		wantContains                     []string
 		wantNotContains                  []string
 	}{
 		"basic": {
 			bin: "/usr/bin/claude", path: "/usr/bin", resume: "", prompt: "", title: "",
-			wantContains:    []string{"/usr/bin/claude", "--dangerously-skip-permissions"},
-			wantNotContains: []string{"--resume", "--name", "-- "},
+			wantContains:    []string{"/usr/bin/claude", "--permission-mode bypassPermissions"},
+			wantNotContains: []string{"--resume", "--name", "-- ", "--effort", "--append-system-prompt"},
+		},
+		"master": {
+			bin: "/usr/bin/claude", path: "/usr/bin", resume: "", prompt: "", title: "", master: true,
+			wantContains: []string{"--effort high", "--append-system-prompt", "master session", "party-dispatch"},
 		},
 		"with resume": {
 			bin: "/usr/bin/claude", path: "/usr/bin", resume: "sess-123", prompt: "", title: "",
@@ -1226,7 +1231,7 @@ func TestBuildClaudeCmd(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			cmd := buildClaudeCmd(tc.bin, tc.path, tc.resume, tc.prompt, tc.title)
+			cmd := buildClaudeCmd(tc.bin, tc.path, tc.resume, tc.prompt, tc.title, tc.master)
 			for _, s := range tc.wantContains {
 				if !strings.Contains(cmd, s) {
 					t.Errorf("expected %q in cmd: %s", s, cmd)

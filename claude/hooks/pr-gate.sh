@@ -2,11 +2,12 @@
 # PR Gate Hook - Enforces workflow completion before PR creation
 # Uses JSONL evidence log with diff_hash matching (stale evidence auto-ignored).
 #
-# Two tiers:
-#   - Quick tier: requires explicit "quick-tier" evidence (from quick-fix-workflow)
+# Three tiers (checked in priority order):
+#   - CI-gate tier: hook-assigned via skill-marker.sh SKILL_TIERS mapping.
+#     Requires: pr-verified + test-runner + check-runner. For repos with CI review bots.
+#   - Quick tier: requires explicit "quick-tier" evidence
 #     + code-critic + test-runner + check-runner. Size-gated: ≤30 lines, ≤3 files, 0 new files.
 #   - Full tier (default): pr-verified, code-critic, minimizer, codex, test-runner, check-runner
-#     (scribe evidence is checked when present — enforced by task-workflow, not the gate)
 #
 # The quick tier ONLY activates when quick-tier evidence exists — size alone is
 # insufficient. This prevents behavioral changes from skipping review.
@@ -52,10 +53,17 @@ if echo "$COMMAND" | grep -qE 'gh pr create'; then
     exit 0
   fi
 
-  # Quick tier: requires explicit quick-tier evidence AND small diff
-  # The quick-fix-workflow skill writes quick-tier evidence after scope validation.
-  # Size alone never qualifies — prevents behavioral changes from skipping review.
-  if check_evidence "$SESSION_ID" "quick-tier" "$CWD" 2>/dev/null; then
+  # Tier selection: hook-assigned tier > quick-tier > full
+  # get_session_tier is hash-independent (session-level decision, not code-state).
+  TIER=$(get_session_tier "$SESSION_ID" 2>/dev/null || echo "")
+
+  if [ "$TIER" = "ci-gate" ]; then
+    # CI-gate tier: repo has CI-based review bots — local critics/codex skipped
+    REQUIRED="pr-verified test-runner check-runner"
+  elif check_evidence "$SESSION_ID" "quick-tier" "$CWD" 2>/dev/null; then
+    # Quick tier: requires explicit quick-tier evidence AND small diff
+    # Quick-tier evidence is written by the invoking skill after scope validation.
+    # Size alone never qualifies — prevents behavioral changes from skipping review.
     STATS=$(diff_stats "$CWD")
     LINES=$(echo "$STATS" | awk '{print $1}')
     FILES=$(echo "$STATS" | awk '{print $2}')
@@ -68,7 +76,7 @@ if echo "$COMMAND" | grep -qE 'gh pr create'; then
       REQUIRED="pr-verified code-critic minimizer codex test-runner check-runner"
     fi
   else
-    # No quick-tier evidence — full gate requires all evidence at current hash
+    # No tier evidence — full gate requires all evidence at current hash
     REQUIRED="pr-verified code-critic minimizer codex test-runner check-runner"
   fi
 

@@ -8,14 +8,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
 // Entry represents a single row in the picker display.
 type Entry struct {
 	SessionID string
-	Status    string // "active", "* current", "master (N)", "worker", "worker (orphan)", "resumable"
+	Status    string // "active", "* current", "master (N)", "worker", "worker (orphan)", "resumable", "tmux", "* current tmux"
 	Title     string
 	Cwd       string
 	IsSep     bool // separator line between active and resumable
@@ -23,7 +23,7 @@ type Entry struct {
 
 // PreviewData holds the information rendered in the fzf preview pane.
 type PreviewData struct {
-	Status      string // "master", "active", "resumable"
+	Status      string // "master", "active", "resumable", "tmux"
 	WorkerCount int
 	Cwd         string
 	Timestamp   string
@@ -162,11 +162,37 @@ func BuildEntries(ctx context.Context, store *state.Store, client *tmux.Client) 
 	return entries, nil
 }
 
+// BuildTmuxEntries returns picker entries for non-party tmux sessions.
+func BuildTmuxEntries(ctx context.Context, client *tmux.Client, currentSession string) ([]Entry, error) {
+	details, err := client.ListSessionDetails(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list session details: %w", err)
+	}
+
+	var entries []Entry
+	for _, d := range details {
+		if strings.HasPrefix(d.Name, "party-") {
+			continue
+		}
+		status := "tmux"
+		if d.Name == currentSession {
+			status = "* current tmux"
+		}
+		entries = append(entries, Entry{
+			SessionID: d.Name,
+			Status:    status,
+			Title:     d.Name,
+			Cwd:       shortPath(d.Cwd),
+		})
+	}
+	return entries, nil
+}
+
 // BuildPreview generates preview data for a single session.
 // Returns nil for non-session tokens (e.g. separator rows from fzf).
 func BuildPreview(ctx context.Context, sessionID string, store *state.Store, client *tmux.Client) (*PreviewData, error) {
 	if !strings.HasPrefix(sessionID, "party-") {
-		return nil, nil
+		return buildTmuxPreview(ctx, sessionID, client)
 	}
 	m, err := store.Read(sessionID)
 	if err != nil {
@@ -179,10 +205,10 @@ func BuildPreview(ctx context.Context, sessionID string, store *state.Store, cli
 	alive, _ := client.HasSession(ctx, sessionID)
 
 	pd := &PreviewData{
-		Cwd:       shortPath(m.Cwd),
-		Prompt:    m.ExtraString("initial_prompt"),
-		ClaudeID:  m.ExtraString("claude_session_id"),
-		CodexID:   m.ExtraString("codex_thread_id"),
+		Cwd:      shortPath(m.Cwd),
+		Prompt:   m.ExtraString("initial_prompt"),
+		ClaudeID: m.ExtraString("claude_session_id"),
+		CodexID:  m.ExtraString("codex_thread_id"),
 	}
 
 	ts := m.ExtraString("last_started_at")
@@ -234,3 +260,41 @@ func shortTS(ts string) string {
 	return ts
 }
 
+// buildTmuxPreview generates a preview for a non-party tmux session.
+func buildTmuxPreview(ctx context.Context, sessionID string, client *tmux.Client) (*PreviewData, error) {
+	alive, _ := client.HasSession(ctx, sessionID)
+	if !alive {
+		return nil, nil //nolint:nilnil
+	}
+
+	pd := &PreviewData{Status: "tmux"}
+
+	cwd, err := client.SessionCwd(ctx, sessionID)
+	if err == nil {
+		pd.Cwd = shortPath(cwd)
+	}
+
+	// Capture last lines from the active pane (tmux defaults to active window/pane).
+	raw, err := client.Capture(ctx, sessionID, 500)
+	if err == nil {
+		pd.PaneLines = lastNonEmptyLines(raw, 8)
+	}
+
+	return pd, nil
+}
+
+// lastNonEmptyLines returns the last max non-empty lines from raw text.
+func lastNonEmptyLines(raw string, max int) []string {
+	lines := strings.Split(raw, "\n")
+	var result []string
+	for _, l := range lines {
+		trimmed := strings.TrimRight(l, " ")
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	if len(result) > max {
+		result = result[len(result)-max:]
+	}
+	return result
+}

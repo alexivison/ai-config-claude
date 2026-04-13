@@ -68,6 +68,18 @@ if echo "$response" | grep -qx "CODEX APPROVED"; then
   if echo "$response" | grep -qx "CODEX_REVIEW_RAN"; then
     append_evidence "$session_id" "codex" "APPROVED" "$cwd"
     log_evidence "CODEX_APPROVED"
+    # Resolve all prior unresolved codex findings as "fixed"
+    metrics_f=$(metrics_file "$session_id")
+    if [ -f "$metrics_f" ]; then
+      codex_dh=$(compute_diff_hash "$cwd")
+      prior_fix_ids=$(jq -r 'select(.event == "triage" and .source == "codex" and .action == "fix") | .finding_id' "$metrics_f" 2>/dev/null | sort -u)
+      resolved_ids=$(jq -r 'select(.event == "resolved" and .source == "codex") | .finding_id' "$metrics_f" 2>/dev/null | sort -u)
+      for fix_id in $prior_fix_ids; do
+        if ! echo "$resolved_ids" | grep -qxF "$fix_id"; then
+          record_resolution "$session_id" "$fix_id" "codex" "fixed" "$codex_dh"
+        fi
+      done
+    fi
   else
     echo "BLOCKED: CODEX APPROVED without CODEX_REVIEW_RAN sentinel — review may not have completed" >&2
     log_evidence "CODEX_APPROVE_BLOCKED:no_review_ran"
@@ -118,25 +130,27 @@ if echo "$response" | grep -qx "CODEX_REVIEW_RAN" && [ -n "$codex_verdict" ]; th
       finding_idx=$((finding_idx + 1))
       fid="codex-${finding_idx}"
 
-      # Extract fields by position using CSV-aware parsing
-      # Fields may be quoted: F1,src/app.ts,10,blocking,correctness,"desc with, commas","suggestion"
-      IFS=',' read -ra parts <<< "$row"
+      # Extract fields using Python for correct CSV parsing (handles quoted commas)
       f_file="" ; f_line="" ; f_severity="" ; f_category="" ; f_desc=""
       if [ -n "$field_list" ]; then
-        fidx=0
-        IFS=',' read -ra hfields <<< "$field_list"
-        for fn in "${hfields[@]}"; do
-          fidx=$((fidx + 1))
-          val="${parts[$((fidx - 1))]:-}"
-          val=$(echo "$val" | sed 's/^"//;s/"$//')  # strip quotes
-          case "$fn" in
-            file) f_file="$val" ;;
-            line) f_line="$val" ;;
-            severity) f_severity="$val" ;;
-            category) f_category="$val" ;;
-            description) f_desc="$val" ;;
-          esac
-        done
+        parsed=$(python3 -c "
+import csv, json, sys, io
+fields = '$field_list'.split(',')
+row = sys.stdin.read().strip()
+reader = csv.reader(io.StringIO(row))
+for parts in reader:
+    result = {}
+    for i, f in enumerate(fields):
+        if i < len(parts):
+            result[f] = parts[i]
+    print(json.dumps(result))
+    break
+" <<< "$row" 2>/dev/null || echo "{}")
+        f_file=$(echo "$parsed" | jq -r '.file // ""')
+        f_line=$(echo "$parsed" | jq -r '.line // ""')
+        f_severity=$(echo "$parsed" | jq -r '.severity // ""')
+        f_category=$(echo "$parsed" | jq -r '.category // ""')
+        f_desc=$(echo "$parsed" | jq -r '.description // ""')
       fi
 
       # Normalize severity
@@ -147,6 +161,11 @@ if echo "$response" | grep -qx "CODEX_REVIEW_RAN" && [ -n "$codex_verdict" ]; th
       esac
       record_finding_raised "$session_id" "codex" "$fid" "$f_severity" \
         "${f_category:-other}" "${f_file:-}" "${f_line:-}" "${f_desc:-}" "$diff_hash"
+
+      # Record triage: blocking findings get "fix", others get "noted"
+      f_action="noted"
+      if [ "$f_severity" = "blocking" ]; then f_action="fix"; fi
+      record_triage "$session_id" "$fid" "codex" "$f_severity" "$f_action"
     done < <(sed -n '/^findings\[/,/^[^ ]/{ /^  /p; }' "$findings_file" 2>/dev/null || true)
 
     non_blocking_findings=$((total_findings - blocking_findings))
@@ -170,6 +189,9 @@ if [ -n "$override_line" ]; then
   if [ -n "$override_type" ] && [ -n "$override_rationale" ]; then
     if append_triage_override "$session_id" "$override_type" "$override_rationale" "$cwd"; then
       log_evidence "TRIAGE_OVERRIDE:$override_type"
+      # Record as out-of-scope triage + overridden resolution
+      record_triage "$session_id" "override-${override_type}" "$override_type" "out-of-scope" "dismissed" "$override_rationale"
+      record_resolution "$session_id" "override-${override_type}" "$override_type" "overridden" "" "$override_rationale"
     else
       log_evidence "TRIAGE_OVERRIDE_REJECTED:$override_type"
     fi

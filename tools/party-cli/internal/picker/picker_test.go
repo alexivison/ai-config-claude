@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
 // ---------------------------------------------------------------------------
@@ -338,22 +338,28 @@ func TestBuildPreview_NoManifest(t *testing.T) {
 func TestFilterPaneLines_FiltersAndCaps(t *testing.T) {
 	t.Parallel()
 
-	raw := "some random line\n❯ git status\n⏺ Running...\n❯\n⏺\nplain text\n❯ make test\n⏺ All passed\n❯ exit"
-	got := tmux.FilterAgentLines(raw, 3)
+	raw := "some random line\n❯ git status\n⏺ Running...\n⎿ Done\n❯\n⏺\n⎿\nplain text\n❯ make test\n⏺ All passed\n⎿ Error: exit 1\n   npm error details\n   see log at /tmp/x\n❯ exit"
+	got := tmux.FilterAgentLines(raw, 20)
 
-	// Should exclude non-prefixed lines, blank ❯/⏺ lines, and cap at 3.
-	if len(got) != 3 {
-		t.Fatalf("expected 3 lines, got %d: %v", len(got), got)
+	// Should include ⎿ continuation lines, exclude non-prefixed, blank prefix lines.
+	want := []string{
+		"❯ git status",
+		"⏺ Running...",
+		"⎿ Done",
+		"❯ make test",
+		"⏺ All passed",
+		"⎿ Error: exit 1",
+		"npm error details",
+		"see log at /tmp/x",
+		"❯ exit",
 	}
-	// Should be the last 3 significant lines.
-	if got[0] != "❯ make test" {
-		t.Errorf("line 0: got %q, want %q", got[0], "❯ make test")
+	if len(got) != len(want) {
+		t.Fatalf("expected %d lines, got %d: %v", len(want), len(got), got)
 	}
-	if got[1] != "⏺ All passed" {
-		t.Errorf("line 1: got %q, want %q", got[1], "⏺ All passed")
-	}
-	if got[2] != "❯ exit" {
-		t.Errorf("line 2: got %q, want %q", got[2], "❯ exit")
+	for i, w := range want {
+		if got[i] != w {
+			t.Errorf("line %d: got %q, want %q", i, got[i], w)
+		}
 	}
 }
 
@@ -367,9 +373,245 @@ func TestFilterPaneLines_Empty(t *testing.T) {
 
 func TestFilterPaneLines_AllBlankPrefixes(t *testing.T) {
 	t.Parallel()
-	got := tmux.FilterAgentLines("❯\n⏺\n❯  \n⏺  ", 8)
+	got := tmux.FilterAgentLines("❯\n⏺\n⎿\n❯  \n⏺  \n⎿  ", 8)
 	if len(got) != 0 {
 		t.Errorf("expected 0 lines for blank-prefix-only input, got %d", len(got))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FormatEntries ANSI token tests
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// BuildTmuxEntries tests
+// ---------------------------------------------------------------------------
+
+func TestBuildTmuxEntries_NonPartySessions(t *testing.T) {
+	t.Parallel()
+
+	runner := &mockRunner{fn: func(_ context.Context, args ...string) (string, error) {
+		if len(args) > 0 && args[0] == "list-sessions" {
+			return "party-abc\t/tmp/a\nmy-dev\t/home/user/code\nscratchy\t/tmp/s", nil
+		}
+		if len(args) > 0 && args[0] == "display-message" {
+			return "my-dev", nil // current session
+		}
+		return "", nil
+	}}
+	client := tmux.NewClient(runner)
+
+	entries, err := BuildTmuxEntries(t.Context(), client, "my-dev")
+	if err != nil {
+		t.Fatalf("BuildTmuxEntries: %v", err)
+	}
+
+	// Should only include non-party sessions.
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d: %+v", len(entries), entries)
+	}
+
+	// my-dev should be marked current.
+	if entries[0].SessionID != "my-dev" {
+		t.Errorf("first entry: got %q, want %q", entries[0].SessionID, "my-dev")
+	}
+	if !strings.Contains(entries[0].Status, "current") {
+		t.Errorf("current session should be marked current, got %q", entries[0].Status)
+	}
+
+	// scratchy should be a plain tmux entry.
+	if entries[1].SessionID != "scratchy" {
+		t.Errorf("second entry: got %q, want %q", entries[1].SessionID, "scratchy")
+	}
+	if !strings.Contains(entries[1].Status, "tmux") {
+		t.Errorf("non-current session should have tmux status, got %q", entries[1].Status)
+	}
+}
+
+func TestBuildTmuxEntries_NoNonParty(t *testing.T) {
+	t.Parallel()
+
+	runner := &mockRunner{fn: func(_ context.Context, args ...string) (string, error) {
+		if len(args) > 0 && args[0] == "list-sessions" {
+			return "party-abc\t/tmp/a\nparty-def\t/tmp/b", nil
+		}
+		return "", nil
+	}}
+	client := tmux.NewClient(runner)
+
+	entries, err := BuildTmuxEntries(t.Context(), client, "")
+	if err != nil {
+		t.Fatalf("BuildTmuxEntries: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("expected 0 entries when all sessions are party-, got %d", len(entries))
+	}
+}
+
+func TestBuildPreview_TmuxSession(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	store := state.OpenStore(root)
+
+	runner := &mockRunner{fn: func(_ context.Context, args ...string) (string, error) {
+		if len(args) > 0 && args[0] == "has-session" {
+			return "", nil // alive
+		}
+		if len(args) > 0 && args[0] == "display-message" {
+			return "/home/user/code", nil
+		}
+		if len(args) > 0 && args[0] == "capture-pane" {
+			return "$ ls\nfile1.txt\nfile2.txt\n$ echo hello\nhello", nil
+		}
+		return "", nil
+	}}
+	client := tmux.NewClient(runner)
+
+	preview, err := BuildPreview(t.Context(), "my-dev", store, client)
+	if err != nil {
+		t.Fatalf("BuildPreview: %v", err)
+	}
+	if preview == nil {
+		t.Fatal("expected non-nil preview for tmux session")
+	}
+	if preview.Status != "tmux" {
+		t.Errorf("status: got %q, want %q", preview.Status, "tmux")
+	}
+	if len(preview.PaneLines) == 0 {
+		t.Error("expected pane lines for live tmux session")
+	}
+}
+
+func TestBuildPreview_TmuxSession_Dead(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	store := state.OpenStore(root)
+
+	runner := &mockRunner{fn: func(_ context.Context, args ...string) (string, error) {
+		if len(args) > 0 && args[0] == "has-session" {
+			return "", &tmux.ExitError{Code: 1} // not alive
+		}
+		return "", nil
+	}}
+	client := tmux.NewClient(runner)
+
+	preview, err := BuildPreview(t.Context(), "dead-sess", store, client)
+	if err != nil {
+		t.Fatalf("BuildPreview: %v", err)
+	}
+	if preview != nil {
+		t.Error("expected nil preview for dead non-party session")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tab navigation tests
+// ---------------------------------------------------------------------------
+
+func TestSwitchTab_CyclesForward(t *testing.T) {
+	t.Parallel()
+
+	m := Model{
+		active:    []Entry{{SessionID: "a"}},
+		resumable: []Entry{{SessionID: "b"}},
+		tmux:      []Entry{{SessionID: "c"}},
+		tab:       tabActive,
+	}
+
+	m.switchTab(true)
+	if m.tab != tabTmux {
+		t.Errorf("after first forward: got tab %d, want %d", m.tab, tabTmux)
+	}
+	m.switchTab(true)
+	if m.tab != tabResumable {
+		t.Errorf("after second forward: got tab %d, want %d", m.tab, tabResumable)
+	}
+	m.switchTab(true)
+	if m.tab != tabActive {
+		t.Errorf("after third forward (wrap): got tab %d, want %d", m.tab, tabActive)
+	}
+}
+
+func TestSwitchTab_CyclesBackward(t *testing.T) {
+	t.Parallel()
+
+	m := Model{
+		active:    []Entry{{SessionID: "a"}},
+		resumable: []Entry{{SessionID: "b"}},
+		tmux:      []Entry{{SessionID: "c"}},
+		tab:       tabActive,
+	}
+
+	m.switchTab(false)
+	if m.tab != tabResumable {
+		t.Errorf("after backward from Active: got tab %d, want %d", m.tab, tabResumable)
+	}
+	m.switchTab(false)
+	if m.tab != tabTmux {
+		t.Errorf("after backward from Resumable: got tab %d, want %d", m.tab, tabTmux)
+	}
+}
+
+func TestSwitchTab_IncludesEmptyTabs(t *testing.T) {
+	t.Parallel()
+
+	m := Model{
+		active: []Entry{{SessionID: "a"}},
+		tmux:   []Entry{{SessionID: "c"}},
+		tab:    tabActive,
+	}
+
+	// Should visit empty Resumable tab (all tabs navigable).
+	m.switchTab(true)
+	if m.tab != tabTmux {
+		t.Errorf("forward should continue to tmux: got tab %d, want %d", m.tab, tabTmux)
+	}
+	m.switchTab(true)
+	if m.tab != tabResumable {
+		t.Errorf("forward should include empty resumable: got tab %d, want %d", m.tab, tabResumable)
+	}
+	m.switchTab(true)
+	if m.tab != tabActive {
+		t.Errorf("forward should wrap back: got tab %d, want %d", m.tab, tabActive)
+	}
+}
+
+func TestSwitchTab_AllEmpty_StillCycles(t *testing.T) {
+	t.Parallel()
+
+	m := Model{tab: tabActive}
+
+	m.switchTab(true)
+	if m.tab != tabTmux {
+		t.Errorf("should cycle even with all tabs empty: got tab %d, want %d", m.tab, tabTmux)
+	}
+	m.switchTab(true)
+	if m.tab != tabResumable {
+		t.Errorf("should reach resumable: got tab %d, want %d", m.tab, tabResumable)
+	}
+}
+
+func TestFirstNonEmptyTab(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		active, resumable, tmux []Entry
+		want                    tab
+	}{
+		"active first":    {active: []Entry{{SessionID: "a"}}, want: tabActive},
+		"resumable first": {resumable: []Entry{{SessionID: "b"}}, want: tabResumable},
+		"tmux first":      {tmux: []Entry{{SessionID: "c"}}, want: tabTmux},
+		"all empty":       {want: tabActive},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			m := Model{active: tc.active, resumable: tc.resumable, tmux: tc.tmux}
+			got := m.firstNonEmptyTab()
+			if got != tc.want {
+				t.Errorf("got %d, want %d", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -536,5 +778,45 @@ func TestFormatPreview_PromptLinesUseCleanANSI(t *testing.T) {
 	cleanANSI := "\033[32m"
 	if !strings.Contains(got, cleanANSI+"❯ git status") {
 		t.Errorf("FormatPreview prompt (❯) lines should use Clean ANSI 2, got:\n%s", got)
+	}
+}
+
+func TestFormatEntries_TmuxUsesAccentDot(t *testing.T) {
+	t.Parallel()
+	entries := []Entry{
+		{SessionID: "my-dev", Status: "tmux", Title: "my-dev", Cwd: "/tmp"},
+	}
+	got := FormatEntries(entries)
+
+	accentANSI := "\033[34m"
+	if !strings.Contains(got, accentANSI+"● ") {
+		t.Errorf("FormatEntries tmux entry should have accent (blue) dot, got:\n%s", got)
+	}
+}
+
+func TestFormatPreview_TmuxUsesAccentANSI(t *testing.T) {
+	t.Parallel()
+	pd := &PreviewData{
+		Status:    "tmux",
+		Cwd:       "/home/user/code",
+		PaneLines: []string{"$ ls", "file1.txt"},
+	}
+	got := FormatPreview(pd)
+
+	accentANSI := "\033[34m"
+	if !strings.Contains(got, accentANSI) {
+		t.Errorf("FormatPreview tmux status should use Accent ANSI, got:\n%s", got)
+	}
+	if !strings.Contains(got, "● tmux") {
+		t.Errorf("FormatPreview tmux should show status dot, got:\n%s", got)
+	}
+}
+
+func TestEntryTypeLabel_Tmux(t *testing.T) {
+	t.Parallel()
+	e := Entry{Status: "tmux"}
+	got := entryTypeLabel(&e)
+	if got != "tmux" {
+		t.Errorf("entryTypeLabel: got %q, want %q", got, "tmux")
 	}
 }

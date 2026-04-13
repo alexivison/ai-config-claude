@@ -23,12 +23,22 @@ const (
 
 // WorkerRow is the display-ready worker data for the tracker.
 type WorkerRow struct {
-	ID      string
-	Title   string
-	Status  string // "active" or "stopped"
-	Stage   string // workflow stage label (e.g. "● critics ✓"); empty = use Status
-	Snippet string
+	ID          string
+	Title       string
+	Status      string // "active" or "stopped"
+	Stage       string // workflow stage label (e.g. "● critics ✓"); empty = use Status
+	Snippet     string
+	ClaudeState string // "active", "idle", "waiting", "done", or ""
 }
+
+// Claude state dot indicators for the tracker.
+// Uses characters distinct from workflow stage labels (which use ● and ○).
+const (
+	ClaudeStateDotActive  = "▸"
+	ClaudeStateDotWaiting = "◐"
+	ClaudeStateDotIdle    = "◌"
+	ClaudeStateDotDone    = "✔"
+)
 
 // WorkerFetcher loads worker data for the tracker.
 type WorkerFetcher func(masterID string) []WorkerRow
@@ -259,9 +269,10 @@ func (tm TrackerModel) View() string {
 
 func (tm TrackerModel) viewWorkers() string {
 	outerW, outerH := clampDimensions(tm.width, tm.height)
+	outerH-- // bottom padding
 
 	compact := outerW > 0 && outerW < compactThreshold
-	innerW, _ := contentDimensions(outerW, outerH)
+	innerW := outerW - borderlessMargin
 	if innerW < 4 {
 		innerW = 4
 	}
@@ -270,14 +281,14 @@ func (tm TrackerModel) viewWorkers() string {
 	wantsStatus := tm.lastErr != nil || tm.mode != trackerModeNormal
 	_, showStatus := chromeLayout(outerH, wantsStatus)
 
-	// Title: gold "Master" token embedded in border.
-	title := masterTitleStyle.Render(LabelMaster) + paneTitleStyle.Render(": "+tm.masterID)
+	// Title: bold label, plain ID. Inherits terminal foreground.
+	title := sidebarLabelStyle.Render(LabelMaster+":") + " " + tm.masterID
 
 	// Footer: input-mode hints when composing, otherwise steady-state.
 	isInputMode := tm.mode != trackerModeNormal && tm.mode != trackerModeManifest
 	var footer string
 	if isInputMode {
-		footer = "⏎ send · esc cancel"
+		footer = composerHint
 	} else {
 		footer = tm.trackerFooter(compact, showStatus)
 	}
@@ -290,7 +301,7 @@ func (tm TrackerModel) viewWorkers() string {
 	} else {
 		for i, w := range tm.workers {
 			if i > 0 {
-				body.WriteString("\n")
+				body.WriteString("\n\n")
 			}
 			body.WriteString(tm.renderWorkerRow(w, i, compact, innerW))
 
@@ -314,23 +325,19 @@ func (tm TrackerModel) viewWorkers() string {
 
 	// Compute pane height, reserving space for composer/status below.
 	paneH := outerH
-	useBorderedComposer := isInputMode && outerW >= 40 && outerH >= compactHeightThreshold
-
-	if useBorderedComposer {
-		paneH -= 3 // bordered composer = 3 rows
-	} else if isInputMode {
-		paneH-- // inline composer = 1 row
+	if isInputMode {
+		paneH -= composerHeight
 	} else if showStatus {
 		paneH-- // status bar = 1 row
 	}
 	if paneH < 3 {
 		paneH = 3
 	}
-	result := borderedPane(body.String(), title, footer, outerW, paneH, true)
+	result := borderlessView(title, body.String(), footer, outerW, paneH)
 
 	// Append composer or status bar below the pane.
 	if isInputMode {
-		result += "\n" + tm.renderComposer(useBorderedComposer, outerW)
+		result += "\n" + tm.renderComposer(outerW)
 	} else if showStatus && tm.lastErr != nil {
 		result += "\n" + renderStatusBar(outerW, nil, "", tm.lastErr)
 	}
@@ -372,7 +379,11 @@ func (tm TrackerModel) renderWorkerRow(w WorkerRow, idx int, compact bool, inner
 			statusLen = 10
 		}
 	}
-	maxTitle := innerW - statusLen - 4 // cursor + spacing
+	dotWidth := 0
+	if w.ClaudeState != "" {
+		dotWidth = 2 // dot char + separator space
+	}
+	maxTitle := innerW - statusLen - dotWidth - 4 // cursor + spacing
 	if maxTitle < 4 {
 		maxTitle = 4
 	}
@@ -385,7 +396,27 @@ func (tm TrackerModel) renderWorkerRow(w WorkerRow, idx int, compact bool, inner
 		titleStyle = selectedWorkerTitleStyle
 	}
 
+	dot := w.claudeStateDot()
+	if dot != "" {
+		return fmt.Sprintf("%s%s  %s %s", prefix, titleStyle.Render(title), dot, status)
+	}
 	return fmt.Sprintf("%s%s  %s", prefix, titleStyle.Render(title), status)
+}
+
+// claudeStateDot returns a colored state indicator for the Claude session.
+func (w WorkerRow) claudeStateDot() string {
+	switch w.ClaudeState {
+	case "active":
+		return claudeStateActiveStyle.Render(ClaudeStateDotActive)
+	case "waiting":
+		return claudeStateWaitingStyle.Render(ClaudeStateDotWaiting)
+	case "idle":
+		return claudeStateDimStyle.Render(ClaudeStateDotIdle)
+	case "done":
+		return claudeStateDimStyle.Render(ClaudeStateDotDone)
+	default:
+		return ""
+	}
 }
 
 // stageLabel returns the display label for the worker's workflow stage.
@@ -429,7 +460,7 @@ func workerDisplayName(title, id string) string {
 	return fmt.Sprintf("%s (%s)", title, id)
 }
 
-func (tm TrackerModel) renderComposer(bordered bool, width int) string {
+func (tm TrackerModel) renderComposer(width int) string {
 	var label string
 	switch tm.mode {
 	case trackerModeRelay:
@@ -440,18 +471,9 @@ func (tm TrackerModel) renderComposer(bordered bool, width int) string {
 		label = "spawn"
 	}
 
-	inputView := tm.input.View()
-
-	if bordered {
-		composerTitle := paneTitleStyle.Render(label)
-		composerFooter := "⏎ send · esc cancel"
-		content := " " + inputView
-		return borderedPane(content, composerTitle, composerFooter, width, 3, true)
-	}
-
-	// Inline compact fallback.
-	short := string([]rune(label)[0])
-	return fmt.Sprintf(" %s> %s", short, inputView)
+	input := tm.input
+	input.Width = composerInputWidth(width, label)
+	return renderComposerInput(label, input.View(), width)
 }
 
 func (tm TrackerModel) viewManifest() string {

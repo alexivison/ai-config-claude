@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anthropics/ai-config/tools/party-cli/internal/state"
-	"github.com/anthropics/ai-config/tools/party-cli/internal/tmux"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
+	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
 // ---------------------------------------------------------------------------
@@ -58,7 +58,7 @@ func messagingRunner(live ...string) *mockRunner {
 			return "", nil
 		}
 		if len(args) >= 1 && args[0] == "capture-pane" {
-			return "captured output line 1\ncaptured output line 2", nil
+			return "⏺ captured output line 1\n⎿ captured output line 2", nil
 		}
 		return "", &tmux.ExitError{Code: 1}
 	}}

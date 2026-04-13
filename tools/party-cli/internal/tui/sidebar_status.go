@@ -77,6 +77,23 @@ func ReadCodexStatus(runtimeDir string) (CodexStatus, error) {
 	return cs, nil
 }
 
+// ReadClaudeState reads claude-state.json from a runtime directory.
+// Returns empty state (no error) when the file is missing or unreadable.
+func ReadClaudeState(runtimeDir string) string {
+	path := filepath.Join(runtimeDir, "claude-state.json")
+	data, err := os.ReadFile(path)
+	if err != nil || len(data) == 0 {
+		return ""
+	}
+	var cs struct {
+		State string `json:"state"`
+	}
+	if json.Unmarshal(data, &cs) != nil {
+		return ""
+	}
+	return cs.State
+}
+
 // EvidenceEntry represents one line from the JSONL evidence log.
 type EvidenceEntry struct {
 	Timestamp string `json:"timestamp"`
@@ -87,17 +104,17 @@ type EvidenceEntry struct {
 
 // WorkflowStage labels displayed in the tracker.
 const (
-	StageTesting  = "● testing"
-	StageChecks   = "● checks"
-	StageCritics  = "● critics"
+	StageTesting   = "● testing"
+	StageChecks    = "● checks"
+	StageCritics   = "● critics"
 	StageCriticsOK = "● critics ✓"
-	StageCodex    = "● codex"
-	StageCodexOK  = "● codex ✓"
-	StagePRReady  = "● pr-ready"
-	StageQuick    = "● quick"
-	StageActive  = "● active"
-	StageStopped = "○ stopped"
-	StageError   = "⚠ error"
+	StageCodex     = "● codex"
+	StageCodexOK   = "● codex ✓"
+	StagePRReady   = "● pr-ready"
+	StageQuick     = "● quick"
+	StageActive    = "● active"
+	StageStopped   = "○ stopped"
+	StageError     = "⚠ error"
 )
 
 type evidenceVerdict struct{ hasAny, approved bool }

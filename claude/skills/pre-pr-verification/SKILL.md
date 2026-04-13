@@ -18,34 +18,32 @@ Run all checks locally before creating a PR. No PR without passing verification.
 
 **"Evidence before PR, always."** — If you haven't run verification fresh and seen it pass, you cannot create a PR.
 
+## Ordering — Run AFTER Commit
+
+The PR gate checks evidence against the current **committed** `diff_hash`. Re-running verification on an uncommitted diff and then committing invalidates the evidence the gate will check, and you'll have to re-run anyway. Sequence:
+
+```
+… → commit → /pre-pr-verification → gh pr create
+```
+
+Any edit (even a comment fix) after verification passes also invalidates evidence — re-run before pushing.
+
 ## Process
 
-### Step 1: Identify Verification Commands
+### Step 1 — DO THIS NOW: Dispatch Sub-Agents in Parallel
 
-Check project's package.json or CI config for the exact commands. Common patterns:
+Launch **test-runner** and **check-runner** in the **same message** using the Task tool — not sequentially. This is the primary action of this skill; everything else supports it.
 
-| Check | Common Commands |
-|-------|-----------------|
-| Types | `pnpm typecheck`, `tsc --noEmit` |
-| Lint | `pnpm lint`, `eslint src` |
-| Tests | `pnpm test`, `vitest` |
+```
+Task(test-runner, …)  ←┐  same message, parallel dispatch
+Task(check-runner, …) ←┘
+```
 
-### Step 2: Run All Checks
+Wait for both to complete, then review their summaries. Sub-agents auto-discover the project's test/lint/typecheck commands — no need to pre-identify them.
 
-Delegate to sub-agents **in parallel** for efficiency:
+**If you need more detail:** re-run the specific failing test/check in main context to see full output.
 
-1. Launch **test-runner** and **check-runner** simultaneously using Task tool
-2. Wait for both to complete
-3. Review their summaries
-
-**Why sub-agents?**
-- Parallel execution is faster
-- Summaries show what failed (test name, file:line, error message)
-- Isolates verbose output from main context
-
-**If you need more detail:** Re-run the specific failing test/check in main context to see full output.
-
-### Step 3: Handle Failures
+### Step 2: Handle Failures
 
 **If checks fail on NEW code you wrote:**
 1. Fix the issue
@@ -62,7 +60,7 @@ Delegate to sub-agents **in parallel** for efficiency:
 2. If you can't fix it: file an issue, skip the test explicitly with a comment, document in PR
 3. Never ship with unskipped flaky tests
 
-### Step 4: Capture Evidence
+### Step 3: Capture Evidence
 
 After all checks pass, capture the output for the PR description:
 
