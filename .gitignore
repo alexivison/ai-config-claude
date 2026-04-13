@@ -7,6 +7,7 @@ tmux-capture-*.txt
 codex/.tmp/
 codex/cache/
 codex/plugins/
+codex/installation_id
 
 # Go build artifacts
 tools/party-tracker/party-tracker
