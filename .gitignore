@@ -3,9 +3,6 @@
 blog/
 tmux-capture-*.txt
 
-# Personal wants state (local backlog resolution tracking)
-claude/wants/
-
 # Codex CLI runtime artifacts
 codex/.tmp/
 codex/cache/
