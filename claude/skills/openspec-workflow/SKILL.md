@@ -59,14 +59,19 @@ Goal: produce OpenSpec artifacts and get them approved by the spec review bot.
 
 3. **Commit and push** the spec artifacts.
 
-4. **Create a draft PR** targeting `main`.
+4. **Pre-PR verification** — invoke `/pre-pr-verification`. The `pr-gate`
+   hook requires CI-tier evidence (test-runner + check-runner) before
+   `gh pr create` — this applies even to spec-only pushes with no source
+   changes. Skipping this step will cause PR creation to be blocked.
 
-5. **Add the `ai-spec-review` label.**
+5. **Create a draft PR** targeting `main`.
 
-6. **Poll and iterate** — enter the [Review Loop](#review-loop) with
+6. **Add the `ai-spec-review` label.**
+
+7. **Poll and iterate** — enter the [Review Loop](#review-loop) with
    label `ai-spec-review`. Continue until all checks green + review APPROVED.
 
-7. **STOP.** Report the PR URL and status. Do NOT begin implementation.
+8. **STOP.** Report the PR URL and status. Do NOT begin implementation.
 
 ---
 
@@ -145,8 +150,12 @@ as soon as results arrive.
    - Read the review comments: `gh api repos/{owner}/{repo}/pulls/{PR}/reviews/{REVIEW_ID}/comments`
    - Fix the issue in code, OR reply to the inline comment with justification
    - Push the fix
-   - Dismiss the old review:
+   - Dismiss the old review — **`REVIEW_ID` must be the numeric `databaseId`,
+     not the GraphQL node ID**. `gh pr view --json reviews` returns node IDs
+     (`PRR_kwDO...`) which the dismissal endpoint rejects with 404. Fetch
+     numeric IDs via the REST endpoint:
      ```
+     gh api repos/{owner}/{repo}/pulls/{PR}/reviews --jq '.[] | {id, state, user: .user.login}'
      gh api -X PUT repos/{owner}/{repo}/pulls/{PR}/reviews/{REVIEW_ID}/dismissals \
        -f message="Addressed feedback" -f event="DISMISS"
      ```
@@ -155,6 +164,16 @@ as soon as results arrive.
 
 5. **If CI checks are failing:**
    - Investigate the failure (read logs via `gh run view`)
+   - **Superseded-run caveat**: a `fail` with suspiciously short duration
+     (< 30s) right after a re-push is usually a concurrency-cancelled run
+     from the previous push, not a real failure. Confirm via
+     `gh run list --branch <branch>` before investigating — the newer run
+     may still be in progress.
+   - **Missing bootstrap**: if a push fails on pre-push hooks citing
+     missing tooling or artifacts (browser binaries, generated build
+     output, etc.), check the project's `AGENTS.md` / `CLAUDE.md` for
+     required bootstrap steps before retrying. Bootstrap is typically a
+     once-per-worktree step.
    - Fix and push
    - Continue polling
 
