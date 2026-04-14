@@ -4,7 +4,7 @@
 >
 > **Architecture:** Introduce a Go `Agent` interface, role-based registry, `.party.toml` project config, agent-agnostic session lifecycle, and unified party tracker TUI.
 >
-> **Tech Stack:** Go (agent package, session, state, tui, cmd), TOML (project config), Bash (hooks — thin wrappers with `party-cli agent query` bridge)
+> **Tech Stack:** Go (agent package, session, state, tui, cmd), TOML (project config), Bash (hooks and existing transport wrappers, with `party-cli agent query` bridge)
 >
 > **Specification:** [SPEC.md](./SPEC.md) | **Design:** [DESIGN.md](./DESIGN.md)
 
@@ -23,6 +23,7 @@ This plan covers:
 - Manifest schema evolution with backward compatibility
 - Unified party tracker TUI with master→worker hierarchy
 - Agent-agnostic messaging (relay, broadcast, read, report)
+- Shell transport compatibility updates in the existing Bash layer (`party-lib.sh`, `party-relay.sh`, `tmux-codex.sh`, `tmux-claude.sh`)
 - Hook generalization (companion-gate, companion-trace, companion-guard, primary-state)
 - CLI flag updates and backward-compatible aliases
 
@@ -44,7 +45,7 @@ All work is done on a feature branch: `feature/multi-agent-planning`. PRs from t
 - [ ] [Task 1](./tasks/TASK1-agent-interface-and-registry.md) — Create Go `Agent` interface, registry, `.party.toml` config parser, Claude/Codex/stub providers, and `party-cli agent query` subcommand (deps: none)
 - [ ] [Task 2](./tasks/TASK2-agent-agnostic-session-lifecycle.md) — Refactor session start/continue/spawn to use agent registry; evolve manifest schema (deps: Task 1)
 - [ ] [Task 3](./tasks/TASK3-agent-agnostic-layouts.md) — Refactor layout functions to use role-based `@party_role` values and role→command maps (deps: Task 2)
-- [ ] [Task 4](./tasks/TASK4-agent-agnostic-messaging.md) — Refactor messaging (relay, broadcast, read, report) to resolve panes by role (deps: Task 3)
+- [ ] [Task 4](./tasks/TASK4-agent-agnostic-messaging.md) — Refactor messaging and shell transport helpers/scripts to resolve panes by role (deps: Task 3)
 - [ ] [Task 5](./tasks/TASK5-unified-party-tracker.md) — Build the unified party tracker TUI replacing both worker sidebar and master tracker, with master→worker hierarchy (deps: Task 3, Task 4)
 - [ ] [Task 6](./tasks/TASK6-agent-agnostic-promote.md) — Refactor promote to use role-based pane resolution and agent-agnostic master mode (deps: Task 3)
 - [ ] [Task 7](./tasks/TASK7-generalize-hooks.md) — Rename and parameterize hooks; make pr-gate config-driven; add `party-cli agent query` consumption (deps: Task 1)
@@ -80,7 +81,7 @@ Task 10 is the final verification gate.
 | Task 1 | `Agent` interface, registry, config parser, Claude/Codex/stub providers, `party-cli agent query` subcommand exist. Nothing uses them yet. All existing code unchanged. |
 | Task 2 | `session/start.go` and `session/continue.go` use registry. `buildClaudeCmd()`/`buildCodexCmd()` deleted (logic in providers). Manifest has `Agents[]` with migration. Old manifests still work. |
 | Task 3 | Layout functions accept role→command maps. `@party_role` values are `"primary"`/`"companion"`. Backward compat fallback in `ResolveRole()`. |
-| Task 4 | All messaging functions resolve panes by role. `"claude"` no longer hardcoded in `message/message.go`. |
+| Task 4 | All messaging functions and shell transport helpers resolve panes by role. `"claude"` no longer hardcoded in `message/message.go`; Bash transport wrappers honor `primary`/`companion` with legacy fallback. |
 | Task 5 | Unified party tracker replaces `ViewWorker` and `ViewMaster`. Master→worker hierarchy displayed. Companion status and evidence inline. |
 | Task 6 | `promote.go` uses role-based pane resolution. Master mode injects prompt via `agent.MasterPrompt()`. |
 | Task 7 | Hooks renamed and parameterized. `pr-gate.sh` reads evidence requirements from config. |
@@ -94,6 +95,7 @@ Task 10 is the final verification gate.
 - [ ] Running `party.sh "test"` with NO `.party.toml` works exactly as today (Claude primary + Codex companion)
 - [ ] Running with `.party.toml` setting Codex as primary routes correctly
 - [ ] Running with `.party.toml` omitting companion starts primary-only session
+- [ ] `tmux-codex.sh` / `tmux-claude.sh` still route correctly after the role-tag migration
 - [ ] Unified party tracker shows master→worker hierarchy
 - [ ] All Go tests pass (existing + new)
 - [ ] All hook tests pass (renamed)

@@ -20,7 +20,7 @@ Rename and parameterize shell hooks to be companion-agnostic. Make `pr-gate.sh` 
 
 **Out of scope:**
 - `claude/settings.json` updates (Task 8 — so the old paths still work during development)
-- Transport scripts (remain as-is)
+- Transport role-resolution changes (Task 4 handles those; this task only needs to keep matching the existing transport filenames/CLI surface)
 - TUI (Task 5)
 
 ## Reference Files
@@ -30,12 +30,14 @@ Rename and parameterize shell hooks to be companion-agnostic. Make `pr-gate.sh` 
 - `claude/hooks/codex-gate.sh` — **Read the entire file (50 lines).** Gates `tmux-codex.sh --approve`. The rename changes: (1) match pattern from `tmux-codex.sh` to the companion transport command, (2) use `party-cli agent query companion-name` to resolve the companion name dynamically.
 - `claude/hooks/codex-trace.sh` — PostToolUse hook that traces Codex interactions. Records evidence with type "codex". After rename: evidence type = companion name from config.
 - `claude/hooks/wizard-guard.sh` — **Read the entire file.** Blocks direct tmux commands targeting Codex/Wizard panes (enforces use of transport script). After rename: queries `party-cli agent query roles` to discover companion role names.
-- `claude/hooks/claude-state.sh` — Tracks Claude's lifecycle events, writes `claude-state.json`. After rename: writes `<primary-name>-state.json` using `party-cli agent query primary-name`.
+- `claude/hooks/claude-state.sh` — Tracks Claude's lifecycle events, writes `claude-state.json`. After rename: the hook filename changes, but the output artifact stays `claude-state.json` in v1.
 - `claude/hooks/pr-gate.sh` — **Read the entire file (lines relevant to evidence).** Currently hardcodes required evidence types. After change: calls `party-cli agent query evidence-required` to get the list dynamically.
 
 ### Hook library
 
-- `claude/hooks/lib/evidence.sh` — `append_evidence()` already accepts agent type as a string parameter. No changes needed to the library itself.
+- `claude/hooks/lib/evidence.sh` — `append_evidence()` already accepts agent type as a string parameter. Keep the evidence file path on `/tmp/claude-evidence-*` in v1; do not rename the artifact in this task.
+- `claude/hooks/register-agent-id.sh` — Keep writing `claude-session-id` / `claude_session_id` in v1. This task only renames the hook filename, not the persisted artifact names.
+- `claude/hooks/session-cleanup.sh` — Still cleans up `claude-evidence-*` files in v1. No change required unless artifact names change in a future project.
 
 ### Hook tests
 
@@ -53,7 +55,7 @@ Rename and parameterize shell hooks to be companion-agnostic. Make `pr-gate.sh` 
 | `claude/hooks/companion-gate.sh` | Create (copy+modify from `codex-gate.sh`) | Match companion transport command by name; use `party-cli agent query` |
 | `claude/hooks/companion-trace.sh` | Create (copy+modify from `codex-trace.sh`) | Evidence type = companion name from config |
 | `claude/hooks/companion-guard.sh` | Create (copy+modify from `wizard-guard.sh`) | Query roles dynamically |
-| `claude/hooks/primary-state.sh` | Create (copy+modify from `claude-state.sh`) | State file name from primary agent |
+| `claude/hooks/primary-state.sh` | Create (copy+modify from `claude-state.sh`) | Hook name becomes role-based; output stays `claude-state.json` |
 | `claude/hooks/pr-gate.sh` | Modify | Call `party-cli agent query evidence-required` |
 | `claude/hooks/codex-gate.sh` | Replace with symlink → `companion-gate.sh` |
 | `claude/hooks/codex-trace.sh` | Replace with symlink → `companion-trace.sh` |
@@ -110,12 +112,13 @@ ROLE_PATTERN=$(echo "$COMPANION_ROLES" | tr '\n' '|' | sed 's/|$//')
 
 ### primary-state.sh
 
-Current `claude-state.sh` writes `claude-state.json`. The new version writes `<primary-name>-state.json`:
+Current `claude-state.sh` writes `claude-state.json`. Keep that output file in v1; only the hook filename changes:
 
 ```bash
-PRIMARY_NAME=$(party-cli agent query primary-name 2>/dev/null || echo "claude")
-STATE_FILE="$RUNTIME_DIR/${PRIMARY_NAME}-state.json"
+STATE_FILE="$RUNTIME_DIR/claude-state.json"
 ```
+
+Do **not** rename `claude-session-id`, `claude_session_id`, or `/tmp/claude-evidence-*` in this task. Those artifacts are consumed by `register-agent-id.sh`, `lib/evidence.sh`, `session-cleanup.sh`, TUI readers, and reporting scripts, and they only exist when Claude is primary anyway.
 
 ### pr-gate.sh Changes
 
@@ -148,7 +151,7 @@ ln -sf primary-state.sh claude/hooks/claude-state.sh
 - companion-gate allows all commands when no companion configured
 - companion-trace records evidence with companion name as type
 - companion-guard blocks raw tmux to companion roles
-- primary-state writes state file with primary name
+- primary-state still writes `claude-state.json`
 - pr-gate reads evidence requirements from `party-cli agent query`
 - Symlinks at old paths work
 
@@ -158,5 +161,6 @@ ln -sf primary-state.sh claude/hooks/claude-state.sh
 - [ ] Old hook files replaced with symlinks
 - [ ] Hooks use `party-cli agent query` for dynamic resolution
 - [ ] `pr-gate.sh` reads evidence requirements from config
+- [ ] Runtime artifact names stay unchanged in v1 (`claude-state.json`, `claude-session-id`, `/tmp/claude-evidence-*`)
 - [ ] All hook tests updated and passing
 - [ ] Hooks fail open gracefully when `party-cli` is not available

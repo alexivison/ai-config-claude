@@ -15,6 +15,7 @@ Extend the test suite for multi-agent scenarios, verify zero-config backward com
 - Manifest migration tests (old format → new format)
 - Zero-config parity verification
 - Hook test updates for renamed hooks
+- Shell transport compatibility verification for the role-tag migration
 
 **Out of scope:**
 - Code changes (all previous tasks handle implementation)
@@ -57,6 +58,7 @@ Extend the test suite for multi-agent scenarios, verify zero-config backward com
 | `tools/party-cli/internal/message/message_test.go` | Modify | Update role strings in test fixtures |
 | `claude/hooks/tests/test-codex-gate.sh` | Modify | Point to new hook, test companion-generic behavior |
 | `claude/hooks/tests/test-codex-trace.sh` | Modify | Point to new hook, test companion-generic behavior |
+| `tests/shell-transport-compat.sh` | Create | Smoke-test `party_role_pane_target`, `tmux-codex.sh`, and `tmux-claude.sh` against new role tags |
 | `tests/run-tests.sh` | Modify | Include new test files |
 
 ## Requirements
@@ -102,8 +104,17 @@ Test cases:
 1. `companion-gate.sh` with no companion configured → allows all commands
 2. `companion-gate.sh` with companion configured → blocks `--approve`
 3. `companion-trace.sh` records evidence with companion name
-4. `primary-state.sh` writes state file with primary name
+4. `primary-state.sh` still writes `claude-state.json`
 5. Symlinks at old paths work
+
+### Shell Transport Compatibility Tests
+
+1. `party_role_pane_target primary` resolves a pane tagged `primary`
+2. `party_role_pane_target companion` resolves a pane tagged `companion`
+3. `party_role_pane_target primary` still falls back to a pane tagged `claude`
+4. `party_role_pane_target companion` still falls back to a pane tagged `codex`
+5. `tmux-claude.sh` delivers to a pane tagged `primary`
+6. `tmux-codex.sh` delivers to a pane tagged `companion`
 
 ## Verification Checklist
 
@@ -115,6 +126,9 @@ cd tools/party-cli && go test ./...
 
 # Hook tests
 bash claude/hooks/tests/run-all.sh
+
+# Shell transport smoke tests
+bash tests/shell-transport-compat.sh
 
 # Specific backward compat verification
 # (these are manual checks, not automated)
@@ -138,4 +152,5 @@ cd tools/party-cli && go build -o /tmp/party-cli .
 - [ ] Manifest migration tests cover all old→new scenarios
 - [ ] Multi-agent scenario tests cover Codex-as-primary, no-companion, missing-CLI cases
 - [ ] Unified tracker tests cover hierarchy display
+- [ ] Shell transport compatibility is covered for both new and legacy role tags
 - [ ] No regressions in existing functionality

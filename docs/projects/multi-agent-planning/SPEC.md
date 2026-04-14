@@ -19,7 +19,7 @@ The existing `companion-abstraction` project (in this `docs/projects/` directory
 
 **This project subsumes `companion-abstraction`.** Rather than abstracting the companion first and then re-abstracting the primary (touching the same files twice), we do both in one coherent refactor. The design decisions from `companion-abstraction/DESIGN.md` (Go interface, `.party.toml`, `party-cli agent query` bridge) carry forward and are extended to cover both roles.
 
-**This project does NOT depend on PR #119.** It builds on the current `main` branch. The shell transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) remain functional. If PR #119 lands later, the transport layer can adopt the agent registry as a follow-up.
+**This project does NOT depend on PR #119.** It builds on the current `main` branch. The existing shell transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) are updated in place so they continue working with role-based pane tags, but they remain Bash scripts. If PR #119 lands later, the transport layer can still migrate to Go as a follow-up.
 
 ### source-agnostic-workflow
 
@@ -46,6 +46,7 @@ Complementary project. That decouples execution from TASK file format; this deco
 - [ ] Manifest supports N agents (not just `ClaudeBin` / `codex_thread_id`)
 - [ ] `@party_role` pane tags use role names (`primary`, `companion`) not agent names (`claude`, `codex`)
 - [ ] All messaging (`Relay`, `Broadcast`, `Read`, `Report`) resolves panes by role, not by hardcoded `"claude"`
+- [ ] Existing shell transport helpers/scripts still route correctly after the role-tag migration, with backward-compatible fallback for old `claude`/`codex` panes
 - [ ] A unified party tracker TUI replaces both the worker sidebar and master tracker
 - [ ] The unified tracker shows master→worker hierarchy (workers indented/nested under their master)
 - [ ] The unified tracker shows companion status and evidence inline per-session

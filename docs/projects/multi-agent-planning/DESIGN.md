@@ -11,7 +11,7 @@ The design introduces four new concepts:
 3. **Project Config** (`.party.toml`) — Per-repo overrides for agent selection and role assignment
 4. **Unified Party Tracker** — A single TUI view replacing both the worker sidebar and master tracker, showing all sessions with master→worker hierarchy
 
-The execution core, sub-agents, evidence system, and shell transport scripts are untouched.
+The execution core and sub-agents are untouched. The evidence system keeps its current on-disk artifacts in v1, and the existing shell transport scripts stay in Bash but are updated in place for role-based routing.
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -365,7 +365,7 @@ The tracker uses the existing `state.Store` to discover all sessions (`DiscoverS
 
 ### Backward Compatibility
 
-Shell scripts that resolve panes by role (`party_role_pane_target()`) must accept both old and new names during a transition period. The Go `ResolveRole()` function adds a fallback: if `"primary"` not found, try `"claude"`; if `"companion"` not found, try `"codex"`.
+Shell scripts that resolve panes by role (`party_role_pane_target()`, `tmux-codex.sh`, `tmux-claude.sh`, `party-relay.sh`) must accept both old and new names during a transition period. The shell helper layer gets the same fallback map as the Go `ResolveRole()` function: if `"primary"` not found, try `"claude"`; if `"companion"` not found, try `"codex"`.
 
 ## Session Lifecycle Changes
 
@@ -434,6 +434,16 @@ party-cli agent query evidence-required  # list required evidence types
 
 Reads `.party.toml` using the same resolution logic as the registry.
 
+### Runtime Artifact Stability (v1)
+
+The hook *filenames* become role-based, but the hook-produced runtime artifacts stay on their current Claude-specific names in v1:
+
+- `claude-state.json`
+- `claude-session-id`
+- `/tmp/claude-evidence-{session}.jsonl`
+
+This is intentional. Those files are only produced when Claude is the primary agent, because hooks do not run for non-Claude primaries. Renaming the files now would force coordinated changes across `register-agent-id.sh`, `lib/evidence.sh`, `session-cleanup.sh`, TUI readers, reporting scripts, and test fixtures without improving behavior for non-Claude primaries.
+
 ## Message Prefix Migration
 
 | Current | New | Rationale |
@@ -443,7 +453,7 @@ Reads `.party.toml` using the same resolution logic as the registry.
 | `[MASTER] message` | `[MASTER] message` | Unchanged |
 | `[WORKER:id] message` | `[WORKER:id] message` | Unchanged |
 
-Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) keep working but use role-based pane resolution internally. The message prefixes change for new sessions; old sessions in flight keep old prefixes.
+Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) remain Bash scripts, but they are updated in place to use role-based pane resolution internally. Their filenames stay unchanged for backward compatibility. The message prefixes change for new sessions; old sessions in flight keep old prefixes.
 
 ## Design Decisions
 
@@ -471,12 +481,14 @@ Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) keep working but use role-
 | Binary resolution | `resolveBinary("CLAUDE_BIN", ...)` | `agent.BinaryEnvVar()` + `agent.FallbackPath()` |
 | Resume ID storage | `claude_session_id`, `codex_thread_id` in extras | `manifest.Agents[].ResumeID` |
 | Resume file names | `claude-session-id`, `codex-thread-id` in runtime dir | `agent.ResumeFileName()` per provider |
-| Evidence file path | `/tmp/claude-evidence-{session}.jsonl` hardcoded | `/tmp/{primary-name}-evidence-{session}.jsonl` or configurable |
+| Evidence file path | `/tmp/claude-evidence-{session}.jsonl` hardcoded | Keep the same path in v1; future work can generalize it once hooks move out of Claude-specific plumbing |
 | Pane role tags | `"claude"`, `"codex"` hardcoded | `"primary"`, `"companion"` from role config |
 | Pane resolution in messaging | `ResolveRole(_, _, "claude", _)` | `ResolveRole(_, _, primaryRole, _)` |
+| Shell transport routing | `party_role_pane_target()`, `tmux-codex.sh`, `tmux-claude.sh`, `party-relay.sh` use `claude`/`codex` literals | Update in place to resolve `primary`/`companion`, with legacy fallback for existing sessions |
 | TUI worker view | `ViewWorker` + Codex status polling | Unified tracker with per-session detail |
 | TUI master view | `ViewMaster` + `TrackerModel` | Same unified tracker (master gets relay/spawn actions) |
 | State file reading | `ReadCodexStatus()` hardcoded | `agent.ReadState(runtimeDir)` per provider |
+| Primary hook artifacts | `claude-state.json`, `claude-session-id` | Keep the artifact names in v1; only hook *filenames* become role-based |
 | Window constants | `WindowCodex = 0`, `WindowWorkspace = 1` | From role binding `Window` field |
 | Master prompt | `masterSystemPrompt` constant | `agent.MasterPrompt()` per provider |
 | CLI flags | `--resume-claude`, `--resume-codex` | `--resume primary=<id>` (old flags kept as hidden aliases) |

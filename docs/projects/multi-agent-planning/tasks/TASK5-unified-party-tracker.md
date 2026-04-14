@@ -165,7 +165,7 @@ Universal actions: `j`/`k` navigate, `Enter` jump/switch, `m` manifest, `q` quit
 4. For current session: read companion status via `ReadCompanionStatus(runtimeDir, agent.StateFileName())`, read evidence via `ReadEvidenceSummary(evidenceID, 6)`
 5. Render
 
-**Evidence path:** Currently hardcoded to `/tmp/claude-evidence-{sessionID}.jsonl`. For the initial refactor, keep this path format but use the primary agent name: `/tmp/{primary-name}-evidence-{sessionID}.jsonl`. The `ReadEvidenceSummary()` function needs a parameter for the primary name (or the full path).
+**Evidence path:** Keep the current `/tmp/claude-evidence-{sessionID}.jsonl` path in v1. That file is still produced only by Claude hooks, and non-Claude primaries simply have no hook-backed evidence stream. The tracker should keep using the existing reader/path plumbing rather than renaming artifacts mid-refactor.
 
 ### Specific Code Removals/Changes
 
@@ -176,7 +176,7 @@ Universal actions: `j`/`k` navigate, `Enter` jump/switch, `m` manifest, `q` quit
 - Delete `defaultCodexPaneCheck()` (line ~440) — uses `tmux.CodexTarget()`. Tracker checks companion pane via `HasSession` + role-based resolution
 
 **In `sidebar_status.go`:**
-- `ReadClaudeState(runtimeDir)` (line ~82) → `ReadPrimaryState(runtimeDir, stateFileName)`. This function reads `claude-state.json` and returns a simple state string. Make it accept the file name as a parameter so it works with any agent's state file.
+- `ReadClaudeState(runtimeDir)` (line ~82) → `ReadPrimaryState(runtimeDir)`. Keep reading `claude-state.json` in v1 for hook compatibility; non-Claude primaries simply report no hook-backed state.
 - `ReadCodexStatus(runtimeDir)` → `ReadCompanionStatus(runtimeDir, stateFileName)`. Already noted in scope.
 
 **In `tracker_actions.go`:**
@@ -223,6 +223,7 @@ The `TrackerModel` absorbs the companion status polling and evidence reading for
 - Tracker `r` on a session that's not a worker of current master → no-op
 - Companion status reading with `codex-status.json` → correct state parsed
 - Companion status reading with missing file → "offline" state
+- Primary state reading still uses `claude-state.json` for Claude-primary sessions and returns empty for non-Claude primaries
 - All existing tracker tests updated for new SessionRow type
 
 ## Acceptance Criteria

@@ -5,7 +5,7 @@
 
 ## Goal
 
-Refactor all messaging functions (`Relay`, `Broadcast`, `Read`, `Report`) to resolve panes by role instead of hardcoded `"claude"`. Update the `tmux.CodexTarget()` function and `tmux.FilterWizardLines()` to be role-agnostic.
+Refactor all messaging functions (`Relay`, `Broadcast`, `Read`, `Report`) and the existing shell transport layer to resolve panes by role instead of hardcoded `"claude"` / `"codex"`. Update the `tmux.CodexTarget()` function and `tmux.FilterWizardLines()` to be role-agnostic.
 
 ## Scope Boundary
 
@@ -13,10 +13,14 @@ Refactor all messaging functions (`Relay`, `Broadcast`, `Read`, `Report`) to res
 - `tools/party-cli/internal/message/message.go` — All messaging functions
 - `tools/party-cli/internal/tmux/popup.go` — Rename `CodexTarget()` → `CompanionTarget()`
 - `tools/party-cli/internal/tmux/query.go` — Rename `FilterWizardLines()` if applicable
+- `session/party-lib.sh` — Role-resolution helper fallback for `primary` / `companion`
+- `session/party-relay.sh` — Companion relay helper still works after role-tag migration
+- `claude/skills/codex-transport/scripts/tmux-codex.sh` — Resolve the companion pane by role internally
+- `codex/skills/claude-transport/scripts/tmux-claude.sh` — Resolve the primary pane by role internally
 
 **Out of scope:**
 - TUI changes (Task 5)
-- Transport scripts (remain shell-based)
+- Porting the shell transport layer to Go (the scripts remain shell-based)
 
 **Additional call sites outside `message.go`** — also grep for `"claude"` in `ResolveRole` calls in:
 - `tools/party-cli/internal/picker/picker.go` (~line 232) — resolves Claude pane for preview. Change to `"primary"`.
@@ -48,6 +52,13 @@ Refactor all messaging functions (`Relay`, `Broadcast`, `Read`, `Report`) to res
 
 - `tools/party-cli/internal/message/message.go` lines 12-17 — `Service` struct with `store` and `client`. The service currently has no knowledge of agent roles. It needs to know the primary role's `@party_role` name (always `"primary"` after Task 3, but using the role constant is cleaner).
 
+### Shell transport helpers
+
+- `session/party-lib.sh` — `party_role_pane_target()` currently matches the requested role exactly, and `party_codex_pane_target()` hardcodes `"codex"`. After Task 3 changes pane tags to `"primary"` / `"companion"`, the shell helper needs the same backward-compat fallback map as Go `ResolveRole()`.
+- `session/party-relay.sh` — `--wizard` currently resolves the companion pane through `party_codex_pane_target()`. Keep the CLI surface for backward compatibility, but route internally through the role-based helper.
+- `codex/skills/claude-transport/scripts/tmux-claude.sh` — currently resolves `party_role_pane_target "$SESSION_NAME" "claude"` and prefixes outbound messages with `[CODEX]`. Update it to target the primary role internally and emit the role-based prefix for new sessions.
+- `claude/skills/codex-transport/scripts/tmux-codex.sh` — mirror the same change on the Claude→companion path: resolve the companion role internally and emit the role-based prefix for new sessions.
+
 ## Files to Create/Modify
 
 | File | Action | Key Changes |
@@ -55,6 +66,10 @@ Refactor all messaging functions (`Relay`, `Broadcast`, `Read`, `Report`) to res
 | `tools/party-cli/internal/message/message.go` | Modify | Replace all `"claude"` in `ResolveRole()` calls with `"primary"` |
 | `tools/party-cli/internal/tmux/popup.go` | Modify | Rename `CodexTarget()` → `CompanionTarget()` |
 | `tools/party-cli/internal/tmux/query.go` | Modify | Rename `FilterWizardLines()` → `FilterAgentLines()` (optional, low priority) |
+| `session/party-lib.sh` | Modify | Add shell-side fallback for `primary` / `companion`; keep old helper names as wrappers |
+| `session/party-relay.sh` | Modify | Continue supporting `--wizard`, but target the companion role internally |
+| `claude/skills/codex-transport/scripts/tmux-codex.sh` | Modify | Resolve companion pane by role; keep filename for backward compatibility |
+| `codex/skills/claude-transport/scripts/tmux-claude.sh` | Modify | Resolve primary pane by role; keep filename for backward compatibility |
 
 ## Requirements
 
@@ -69,6 +84,20 @@ ResolveRole(ctx, sessionID, "primary", tmux.WindowWorkspace)
 This is a straightforward string replacement in 5 call sites. The `ResolveRole()` fallback from Task 3 ensures this works with both old sessions (tagged `"claude"`) and new sessions (tagged `"primary"`).
 
 The message prefixes (`[MASTER]`, `[WORKER:id]`) are unchanged — they're role-based already.
+
+### Shell Transport Compatibility
+
+The role-tag migration in Task 3 changes pane metadata from `claude` / `codex` to `primary` / `companion`. The shell transport layer must be updated in the same task slice or the default review workflow breaks immediately.
+
+Required behavior:
+
+- `party_role_pane_target()` accepts `primary` / `companion` and falls back to `claude` / `codex` for existing sessions
+- `party_codex_pane_target()` becomes a thin backward-compatible wrapper around a new role-based companion helper (or is renamed with a wrapper kept in place)
+- `tmux-claude.sh` targets the primary role internally instead of hardcoding `"claude"`
+- `tmux-codex.sh` targets the companion role internally instead of hardcoding `"codex"`
+- Script filenames stay unchanged in v1; only their internal routing and message prefixes become role-based
+
+Do **not** rename runtime artifacts here. The existing `codex-thread-id`, `codex-status.json`, and related status plumbing stay on their current filenames in v1 for backward compatibility.
 
 ### CompanionTarget()
 
@@ -89,6 +118,10 @@ Optional cosmetic rename to `FilterAgentLines()`. The function at `tmux/query.go
 - `Read()` captures from worker's primary pane
 - `Report()` delivers to master's primary pane
 - `CompanionTarget()` returns correct target string
+- `party_role_pane_target primary` resolves a pane tagged `primary` and still falls back to `claude`
+- `party_role_pane_target companion` resolves a pane tagged `companion` and still falls back to `codex`
+- `tmux-claude.sh` delivers to a pane tagged `primary`
+- `tmux-codex.sh` delivers to a pane tagged `companion`
 - All existing message tests pass (update the mock pane role from "claude" to "primary" in test fixtures)
 
 ## Acceptance Criteria
@@ -96,4 +129,5 @@ Optional cosmetic rename to `FilterAgentLines()`. The function at `tmux/query.go
 - [ ] No `"claude"` string appears in `message/message.go` role resolution
 - [ ] `CodexTarget()` renamed to `CompanionTarget()`
 - [ ] All messaging functions resolve `"primary"` role
+- [ ] Shell transport helpers/scripts work with `@party_role="primary"` / `"companion"` and still tolerate legacy sessions
 - [ ] All existing message tests pass
