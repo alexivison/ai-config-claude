@@ -491,5 +491,5 @@ Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) remain Bash scripts, but t
 | Primary hook artifacts | `claude-state.json`, `claude-session-id` | Keep the artifact names in v1; only hook *filenames* become role-based |
 | Window constants | `WindowCodex = 0`, `WindowWorkspace = 1` | From role binding `Window` field |
 | Master prompt | `masterSystemPrompt` constant | `agent.MasterPrompt()` per provider |
-| CLI flags | `--resume-claude`, `--resume-codex` | `--resume primary=<id>` (old flags kept as hidden aliases) |
+| CLI flags | `--resume-claude`, `--resume-codex` | `--resume-agent primary=<id>` (old flags kept as hidden aliases) |
 | Agent selection | N/A (hardcoded) | `--primary <agent>`, `--companion <agent>`, `--no-companion` flags override `.party.toml` per-session |
