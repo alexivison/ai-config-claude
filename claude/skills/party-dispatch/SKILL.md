@@ -87,7 +87,7 @@ If not already a master, promote:
 ~/Code/ai-party/session/party.sh --promote <session-name>
 ```
 
-This replaces the Codex pane with the tracker and sets `session_type=master`.
+This replaces the companion pane (Codex by default) with the tracker and sets `session_type=master`.
 If already a master, this is a no-op.
 
 ### Step 4 — Construct prompts and spawn workers
@@ -106,7 +106,7 @@ Capture the output to extract the worker session ID.
 
 #### Prompt construction
 
-The prompt must be self-contained — the spawned Claude has zero prior context.
+The prompt must be self-contained — the spawned primary agent has zero prior context.
 
 **For skill-based items (Linear tickets):**
 
@@ -285,20 +285,20 @@ When all workers have reported back (all tasks completed):
 
 ## Master Session Mode
 
-Any party session can be promoted to master: `party.sh --promote [party-id]`. This replaces the Wizard pane with a tracker pane and sets `session_type` to `master`. Promotion is non-destructive and works mid-session.
+Any party session can be promoted to master: `party.sh --promote [party-id]`. This replaces the companion pane with a tracker pane and sets `session_type` to `master`. Promotion is non-destructive and works mid-session.
 
 When running in a master session (`session_type == "master"` in manifest):
 - You are an **orchestrator**, not an implementor.
 - **HARD RULE:** Never use Edit or Write on production code. Investigation (Read, Grep, Glob, read-only Bash) is fine — all code changes go to a worker. No exceptions: not for "quick fixes", not for bugs found during testing, not for "obvious" one-liners.
-- There is **no Wizard pane** — `tmux-codex.sh` will return `CODEX_NOT_AVAILABLE`.
-- Skip codex review/plan-review/prompt steps entirely.
+- There is **no companion pane** — the default transport script `tmux-codex.sh` will return `CODEX_NOT_AVAILABLE`.
+- Skip companion review/plan-review/prompt steps entirely.
 - Use `/party-dispatch` to dispatch any number of tasks to workers (single freeform, batch tickets, or mixed).
 - Monitor workers via the tracker pane (left pane).
 
 **Communication with workers:**
-- `party-relay.sh <worker-id> "instruction"` — send a message to a worker's Claude pane
+- `party-relay.sh <worker-id> "instruction"` — send a message to a worker's primary pane
 - `party-relay.sh --broadcast "message"` — send to all workers
-- `party-relay.sh --read <worker-id>` — read the last 50 lines of a worker's Claude pane
+- `party-relay.sh --read <worker-id>` — read the last 50 lines of a worker's primary pane
 - `party-relay.sh --read <worker-id> --lines 200` — read more scrollback
 - `party-relay.sh --list` — show all workers and their status
 - Workers report back via `[WORKER:<session-id>]` prefixed messages to your pane
@@ -307,8 +307,9 @@ When running in a master session (`session_type == "master"` in manifest):
 
 ## Important
 
-- The spawned workers run `claude --permission-mode bypassPermissions`, so they
-  execute autonomously. The prompt is all they get — make it complete.
+- The spawned workers run whatever CLI is configured for the primary role
+  (Claude Code by default), so they execute autonomously. The prompt is all
+  they get — make it complete.
 - Each worker creates its own worktree (per workflow conventions), so there
   are no git conflicts between sessions.
 - If a Linear fetch fails, warn the user and skip that item (don't block the rest).

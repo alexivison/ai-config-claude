@@ -50,7 +50,7 @@ All work is done on a feature branch: `feature/multi-agent-planning`. PRs from t
 - [ ] [Task 6](./tasks/TASK6-agent-agnostic-promote.md) — Refactor promote to use role-based pane resolution and agent-agnostic master mode (deps: Task 3)
 - [ ] [Task 7](./tasks/TASK7-generalize-hooks.md) — Rename and parameterize hooks; make pr-gate config-driven; add `party-cli agent query` consumption (deps: Task 1)
 - [ ] [Task 8](./tasks/TASK8-cli-flags-and-compat.md) — Update CLI flags (`--resume-agent`), backward-compatible aliases, settings.json hook paths, and install script (deps: Task 7)
-- [ ] [Task 9](./tasks/TASK9-update-docs-and-skills.md) — Update CLAUDE.md, AGENTS.md, execution-core.md, workflow skill prompts to role-based language (deps: Tasks 2-6)
+- [x] [Task 9](./tasks/TASK9-update-docs-and-skills.md) — Update CLAUDE.md, AGENTS.md, execution-core.md, workflow skill prompts to role-based language (deps: Tasks 2-6)
 - [ ] [Task 10](./tasks/TASK10-tests-and-compat-verification.md) — Extend tests for multi-agent scenarios, verify zero-config backward compatibility, manifest migration (deps: all)
 
 ## Dependency Graph
