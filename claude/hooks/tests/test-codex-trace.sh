@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Tests for codex-trace.sh
-# Single-phase model: codex evidence created directly from CODEX APPROVED + CODEX_REVIEW_RAN.
-# No codex-ran intermediate evidence.
+# Tests for companion-trace.sh.
+# Single-phase model: companion evidence is created directly from
+# CODEX APPROVED + CODEX_REVIEW_RAN. No intermediate run evidence.
 #
 # Usage: bash ~/.claude/hooks/tests/test-codex-trace.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOK="$SCRIPT_DIR/../codex-trace.sh"
+HOOK="$SCRIPT_DIR/../companion-trace.sh"
 source "$SCRIPT_DIR/../lib/evidence.sh"
 
 PASS=0
@@ -36,8 +36,27 @@ clean_evidence() {
   rmdir "/tmp/claude-evidence-${SESSION}.lock.d" 2>/dev/null || true
 }
 
+clear_config() {
+  rm -f "$TMPDIR_BASE/.party.toml" 2>/dev/null || true
+}
+
+write_stub_companion_config() {
+  cat > "$TMPDIR_BASE/.party.toml" <<'EOF'
+[agents.stub]
+cli = "stub"
+
+[roles.primary]
+agent = "claude"
+
+[roles.companion]
+agent = "stub"
+window = 0
+EOF
+}
+
 full_cleanup() {
   clean_evidence
+  clear_config
   if [ -n "$TMPDIR_BASE" ] && [ -d "$TMPDIR_BASE" ]; then
     rm -rf "$TMPDIR_BASE"
   fi
@@ -96,6 +115,18 @@ COMBINED_STDOUT=$'CODEX_REVIEW_RAN\nCODEX APPROVED'
 run_hook "$(bash_input_obj 'tmux-codex.sh --review-complete /tmp/f.toon' "$COMBINED_STDOUT")"
 assert "APPROVED → codex evidence created" 'has_evidence "codex"'
 
+echo "=== review-complete: custom companion name drives evidence type ==="
+clean_evidence
+clear_config
+write_stub_companion_config
+METRICS_FILE="$HOME/.claude/logs/review-metrics/${SESSION}.jsonl"
+rm -f "$METRICS_FILE"
+run_hook "$(bash_input_obj 'tmux-codex.sh --review-complete /tmp/f.toon' "$COMBINED_STDOUT")"
+assert "APPROVED → stub evidence created" 'has_evidence "stub"'
+assert "APPROVED → codex evidence not created for stub companion" '! has_evidence "codex"'
+clear_config
+rm -f "$METRICS_FILE"
+
 echo "=== review-complete: APPROVED creates codex evidence (string response) ==="
 clean_evidence
 run_hook "$(bash_input_str 'tmux-codex.sh --review-complete /tmp/f.toon' "$COMBINED_STDOUT")"
@@ -105,6 +136,12 @@ echo "=== review-complete: APPROVED via full path ==="
 clean_evidence
 run_hook "$(bash_input_obj '~/.claude/skills/codex-transport/scripts/tmux-codex.sh --review-complete /tmp/f.toon' "$COMBINED_STDOUT")"
 assert "Full path APPROVED → codex evidence created" 'has_evidence "codex"'
+
+echo "=== review-complete: missing party-cli falls back to codex evidence ==="
+clean_evidence
+echo "$(bash_input_obj 'tmux-codex.sh --review-complete /tmp/f.toon' "$COMBINED_STDOUT")" \
+  | PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash "$HOOK" 2>/dev/null
+assert "Missing party-cli → codex evidence created" 'has_evidence "codex"'
 
 # ═══ --review-complete with REQUEST_CHANGES ═══════════════════════════════════
 
@@ -265,6 +302,6 @@ rm -f "$TOON_FILE" "$METRICS_FILE"
 
 echo ""
 echo "═══════════════════════════════════════"
-echo "codex-trace.sh: $PASS passed, $FAIL failed"
+echo "companion-trace.sh: $PASS passed, $FAIL failed"
 echo "═══════════════════════════════════════"
 [ "$FAIL" -eq 0 ] || exit 1
