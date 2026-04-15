@@ -40,26 +40,26 @@ Complementary project. That decouples execution from TASK file format; this deco
 
 ## Acceptance Criteria
 
-- [ ] A Go `Agent` interface and registry exist that map names to CLI tools, command builders, and resume metadata
-- [ ] A `Role` system (`primary`, `companion`) maps roles to agent providers via `.party.toml` or defaults
-- [ ] Session startup creates agent panes dynamically from registry — no hardcoded `buildClaudeCmd()` or `buildCodexCmd()`
-- [ ] Manifest supports N agents (not just `ClaudeBin` / `codex_thread_id`)
-- [ ] `@party_role` pane tags use role names (`primary`, `companion`) not agent names (`claude`, `codex`)
-- [ ] All messaging (`Relay`, `Broadcast`, `Read`, `Report`) resolves panes by role, not by hardcoded `"claude"`
-- [ ] Existing shell transport helpers/scripts still route correctly after the role-tag migration, with backward-compatible fallback for old `claude`/`codex` panes
-- [ ] A unified party tracker TUI replaces both the worker sidebar and master tracker
-- [ ] The unified tracker shows master→worker hierarchy (workers indented/nested under their master)
-- [ ] The unified tracker shows companion status and evidence inline per-session
-- [ ] Master mode is agent-agnostic — any primary agent can orchestrate if given the right prompt
-- [ ] Hooks are parameterized by role/companion name — not Codex-specific
-- [ ] A `.party.toml` config drives per-project agent and role choices
-- [ ] Default behavior with no config file matches today's behavior exactly (Claude as primary, Codex as companion)
-- [ ] Existing Go tests pass with agent abstraction (backward compatibility)
-- [ ] At least one non-Codex, non-Claude adapter exists as a reference (can be a stub)
-- [ ] Graceful degradation when a companion is unavailable: missing CLI detected at startup, session runs primary-only
-- [ ] A `party-cli agent query` subcommand exists as a bridge for shell hooks to read registry/config state
-- [ ] `install.sh` is agent-aware — detects configured agents and offers to install missing CLIs
-- [ ] All workflow skill prompts reference roles ("the companion"), not hardcoded agent names ("Codex")
+- [x] A Go `Agent` interface and registry exist that map names to CLI tools, command builders, and resume metadata
+- [x] A `Role` system (`primary`, `companion`) maps roles to agent providers via `.party.toml` or defaults
+- [x] Session startup creates agent panes dynamically from registry — no hardcoded `buildClaudeCmd()` or `buildCodexCmd()`
+- [x] Manifest supports N agents (not just `ClaudeBin` / `codex_thread_id`)
+- [x] `@party_role` pane tags use role names (`primary`, `companion`) not agent names (`claude`, `codex`)
+- [x] All messaging (`Relay`, `Broadcast`, `Read`, `Report`) resolves panes by role, not by hardcoded `"claude"`
+- [x] Existing shell transport helpers/scripts still route correctly after the role-tag migration, with backward-compatible fallback for old `claude`/`codex` panes
+- [x] A unified party tracker TUI replaces both the worker sidebar and master tracker
+- [x] The unified tracker shows master→worker hierarchy (workers indented/nested under their master)
+- [x] The unified tracker shows companion status and evidence inline per-session
+- [x] Master mode is agent-agnostic — any primary agent can orchestrate if given the right prompt
+- [x] Hooks are parameterized by role/companion name — not Codex-specific
+- [x] A `.party.toml` config drives per-project agent and role choices
+- [x] Default behavior with no config file matches today's behavior exactly (Claude as primary, Codex as companion)
+- [x] Existing Go tests pass with agent abstraction (backward compatibility)
+- [x] At least one non-Codex, non-Claude adapter exists as a reference (can be a stub)
+- [x] Graceful degradation when a companion is unavailable: missing CLI detected at startup, session runs primary-only
+- [x] A `party-cli agent query` subcommand exists as a bridge for shell hooks to read registry/config state
+- [x] `install.sh` is agent-aware — detects configured agents and offers to install missing CLIs
+- [x] All workflow skill prompts reference roles ("the companion"), not hardcoded agent names ("Codex")
 
 ## Non-Goals
 

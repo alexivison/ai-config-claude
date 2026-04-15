@@ -42,16 +42,16 @@ All work is done on a feature branch: `feature/multi-agent-planning`. PRs from t
 
 ## Tasks
 
-- [ ] [Task 1](./tasks/TASK1-agent-interface-and-registry.md) — Create Go `Agent` interface, registry, `.party.toml` config parser, Claude/Codex/stub providers, and `party-cli agent query` subcommand (deps: none)
-- [ ] [Task 2](./tasks/TASK2-agent-agnostic-session-lifecycle.md) — Refactor session start/continue/spawn to use agent registry; evolve manifest schema (deps: Task 1)
-- [ ] [Task 3](./tasks/TASK3-agent-agnostic-layouts.md) — Refactor layout functions to use role-based `@party_role` values and role→command maps (deps: Task 2)
-- [ ] [Task 4](./tasks/TASK4-agent-agnostic-messaging.md) — Refactor messaging and shell transport helpers/scripts to resolve panes by role (deps: Task 3)
-- [ ] [Task 5](./tasks/TASK5-unified-party-tracker.md) — Build the unified party tracker TUI replacing both worker sidebar and master tracker, with master→worker hierarchy (deps: Task 3, Task 4)
-- [ ] [Task 6](./tasks/TASK6-agent-agnostic-promote.md) — Refactor promote to use role-based pane resolution and agent-agnostic master mode (deps: Task 3)
-- [ ] [Task 7](./tasks/TASK7-generalize-hooks.md) — Rename and parameterize hooks; make pr-gate config-driven; add `party-cli agent query` consumption (deps: Task 1)
-- [ ] [Task 8](./tasks/TASK8-cli-flags-and-compat.md) — Update CLI flags (`--resume-agent`), backward-compatible aliases, settings.json hook paths, and install script (deps: Task 7)
+- [x] [Task 1](./tasks/TASK1-agent-interface-and-registry.md) — Create Go `Agent` interface, registry, `.party.toml` config parser, Claude/Codex/stub providers, and `party-cli agent query` subcommand (deps: none)
+- [x] [Task 2](./tasks/TASK2-agent-agnostic-session-lifecycle.md) — Refactor session start/continue/spawn to use agent registry; evolve manifest schema (deps: Task 1)
+- [x] [Task 3](./tasks/TASK3-agent-agnostic-layouts.md) — Refactor layout functions to use role-based `@party_role` values and role→command maps (deps: Task 2)
+- [x] [Task 4](./tasks/TASK4-agent-agnostic-messaging.md) — Refactor messaging and shell transport helpers/scripts to resolve panes by role (deps: Task 3)
+- [x] [Task 5](./tasks/TASK5-unified-party-tracker.md) — Build the unified party tracker TUI replacing both worker sidebar and master tracker, with master→worker hierarchy (deps: Task 3, Task 4)
+- [x] [Task 6](./tasks/TASK6-agent-agnostic-promote.md) — Refactor promote to use role-based pane resolution and agent-agnostic master mode (deps: Task 3)
+- [x] [Task 7](./tasks/TASK7-generalize-hooks.md) — Rename and parameterize hooks; make pr-gate config-driven; add `party-cli agent query` consumption (deps: Task 1)
+- [x] [Task 8](./tasks/TASK8-cli-flags-and-compat.md) — Update CLI flags (`--resume-agent`), backward-compatible aliases, settings.json hook paths, and install script (deps: Task 7)
 - [x] [Task 9](./tasks/TASK9-update-docs-and-skills.md) — Update CLAUDE.md, AGENTS.md, execution-core.md, workflow skill prompts to role-based language (deps: Tasks 2-6)
-- [ ] [Task 10](./tasks/TASK10-tests-and-compat-verification.md) — Extend tests for multi-agent scenarios, verify zero-config backward compatibility, manifest migration (deps: all)
+- [x] [Task 10](./tasks/TASK10-tests-and-compat-verification.md) — Extend tests for multi-agent scenarios, verify zero-config backward compatibility, manifest migration (deps: all)
 
 ## Dependency Graph
 
@@ -91,13 +91,13 @@ Task 10 is the final verification gate.
 
 ## Definition of Done
 
-- [ ] All task checkboxes complete
-- [ ] Running `party.sh "test"` with NO `.party.toml` works exactly as today (Claude primary + Codex companion)
-- [ ] Running with `.party.toml` setting Codex as primary routes correctly
-- [ ] Running with `.party.toml` omitting companion starts primary-only session
-- [ ] `tmux-codex.sh` / `tmux-claude.sh` still route correctly after the role-tag migration
-- [ ] Unified party tracker shows master→worker hierarchy
-- [ ] All Go tests pass (existing + new)
-- [ ] All hook tests pass (renamed)
-- [ ] A stub agent exists demonstrating the interface
-- [ ] SPEC.md acceptance criteria satisfied
+- [x] All task checkboxes complete
+- [x] Running `party.sh "test"` with NO `.party.toml` works exactly as today (Claude primary + Codex companion)
+- [x] Running with `.party.toml` setting Codex as primary routes correctly
+- [x] Running with `.party.toml` omitting companion starts primary-only session
+- [x] `tmux-codex.sh` / `tmux-claude.sh` still route correctly after the role-tag migration
+- [x] Unified party tracker shows master→worker hierarchy
+- [x] All Go tests pass (existing + new)
+- [x] All hook tests pass (renamed)
+- [x] A stub agent exists demonstrating the interface
+- [x] SPEC.md acceptance criteria satisfied
