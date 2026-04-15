@@ -41,6 +41,7 @@ clean_evidence() {
   rm -f "$(evidence_file "$SESSION_ID")"
   rm -f "/tmp/claude-evidence-${SESSION_ID}.lock"
   rmdir "/tmp/claude-evidence-${SESSION_ID}.lock.d" 2>/dev/null || true
+  rm -f "$TMPDIR_BASE/.party.toml" 2>/dev/null || true
 }
 
 full_cleanup() {
@@ -62,6 +63,13 @@ add_all_evidence() {
   for type in pr-verified code-critic minimizer codex test-runner check-runner; do
     append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
   done
+}
+
+write_custom_evidence_config() {
+  cat > "$TMPDIR_BASE/.party.toml" <<'EOF'
+[evidence]
+required = ["pr-verified", "test-runner", "check-runner"]
+EOF
 }
 
 echo "--- test-pr-gate.sh ---"
@@ -192,6 +200,32 @@ append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
 assert "Small diff with partial evidence blocked" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== Full gate: custom evidence-required config drives requirements ==="
+setup_repo
+clean_evidence
+write_custom_evidence_config
+echo "configurable" >> file.sh
+git add file.sh && git commit -q -m "configurable gate"
+append_evidence "$SESSION_ID" "pr-verified" "PASS" "$TMPDIR_BASE"
+append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
+append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "Custom evidence list allows without critic/minimizer/companion evidence" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== Full gate: missing party-cli falls back to default evidence list ==="
+setup_repo
+clean_evidence
+write_custom_evidence_config
+echo "fallback" >> file.sh
+git add file.sh && git commit -q -m "fallback gate"
+append_evidence "$SESSION_ID" "pr-verified" "PASS" "$TMPDIR_BASE"
+append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
+append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
+OUTPUT=$(echo "$(gate_input)" | PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash "$GATE")
+assert "Missing party-cli restores default full gate" \
   'echo "$OUTPUT" | grep -q "deny"'
 
 # ═══ Quick tier tests ════════════════════════════════════════════════════════

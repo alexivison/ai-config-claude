@@ -46,6 +46,44 @@ func TestAgentQuery_NoCompanion(t *testing.T) {
 	}
 }
 
+func TestAgentQuery_RepoRootOverride(t *testing.T) {
+	repoRoot := t.TempDir()
+	if err := os.Mkdir(filepath.Join(repoRoot, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, ".party.toml"), []byte("[roles.primary]\nagent = \"claude\"\n"), 0o644); err != nil {
+		t.Fatalf("write .party.toml: %v", err)
+	}
+
+	otherDir := t.TempDir()
+	previous, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if err := os.Chdir(otherDir); err != nil {
+		t.Fatalf("Chdir(%s): %v", otherDir, err)
+	}
+	defer func() {
+		if chdirErr := os.Chdir(previous); chdirErr != nil {
+			t.Fatalf("restore cwd: %v", chdirErr)
+		}
+	}()
+
+	t.Setenv("PARTY_REPO_ROOT", repoRoot)
+
+	root := NewRootCmd(WithTUILauncher(func(...tui.Option) error { return nil }))
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&bytes.Buffer{})
+	root.SetArgs([]string{"agent", "query", "companion-name"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute(agent query companion-name): %v", err)
+	}
+	if got := out.String(); got != "" {
+		t.Fatalf("companion-name with PARTY_REPO_ROOT = %q, want empty", got)
+	}
+}
+
 func runAgentQuery(t *testing.T, cwd string, args ...string) string {
 	t.Helper()
 

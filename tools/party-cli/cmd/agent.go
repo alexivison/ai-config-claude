@@ -23,12 +23,13 @@ func newAgentQueryCmd(repoRoot string) *cobra.Command {
 		Short: "Query agent config for hooks and scripts",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				if repoRoot == "" {
+			cwd := repoRoot
+			if cwd == "" {
+				var err error
+				cwd, err = os.Getwd()
+				if err != nil {
 					return fmt.Errorf("get working directory: %w", err)
 				}
-				cwd = repoRoot
 			}
 
 			cfg, err := agent.LoadConfig(cwd, nil)
