@@ -29,11 +29,11 @@ Complementary project. That decouples execution from TASK file format; this deco
 
 | Scenario | User Action | Expected Result |
 |----------|-------------|-----------------|
-| Current setup (no change) | Run `party.sh "task"` with no `.party.toml` | Claude launches as primary, Codex as companion — identical to today |
+| Current setup (no change) | Run `party.sh "task"` with no config | Claude launches as primary, Codex as companion — identical to today |
 | Codex as primary (per-session) | Run `party.sh --primary codex "task"` | Codex launches in the primary pane for this session only |
-| Codex as primary (per-repo) | Set `roles.primary.agent = "codex"` in `.party.toml` | All sessions in this repo use Codex as primary |
-| Override repo default | `.party.toml` says Codex primary, run `party.sh --primary claude "task"` | This session uses Claude despite repo config |
-| Gemini as primary | Add `[agents.gemini]` to `.party.toml` + `--primary gemini` | Gemini CLI launches; requires a Go adapter file |
+| Codex as primary (persistent) | `party-cli config set-primary codex` writes to `~/.config/party-cli/config.toml` | All future sessions use Codex as primary until changed |
+| Override user default | User config says Codex primary, run `party.sh --primary claude "task"` | This session uses Claude despite user config |
+| Gemini as primary | Install Gemini CLI, run `party.sh --primary gemini "task"` | Gemini CLI launches; requires a Go adapter file |
 | No companion | Run `party.sh --no-companion "task"` | Session runs primary-only; companion evidence skipped |
 | TUI sidebar | Any session | Unified party tracker shows all sessions with master→worker hierarchy |
 | Master session | Any primary agent | Master mode works — agent receives orchestration instructions via prompt |
@@ -41,7 +41,7 @@ Complementary project. That decouples execution from TASK file format; this deco
 ## Acceptance Criteria
 
 - [ ] A Go `Agent` interface and registry exist that map names to CLI tools, command builders, and resume metadata
-- [ ] A `Role` system (`primary`, `companion`) maps roles to agent providers via `.party.toml` or defaults
+- [ ] A `Role` system (`primary`, `companion`) maps roles to agent providers via user-global config or defaults
 - [ ] Session startup creates agent panes dynamically from registry — no hardcoded `buildClaudeCmd()` or `buildCodexCmd()`
 - [ ] Manifest supports N agents (not just `ClaudeBin` / `codex_thread_id`)
 - [ ] `@party_role` pane tags use role names (`primary`, `companion`) not agent names (`claude`, `codex`)
@@ -51,7 +51,8 @@ Complementary project. That decouples execution from TASK file format; this deco
 - [ ] The unified tracker shows companion status and evidence inline per-session
 - [ ] Master mode is agent-agnostic — any primary agent can orchestrate if given the right prompt
 - [ ] Hooks are parameterized by role/companion name — not Codex-specific
-- [ ] A `.party.toml` config drives per-project agent and role choices
+- [ ] A user-global config at `~/.config/party-cli/config.toml` drives agent preferences across all repos — no per-repo config files (keeps user preferences out of project repos to avoid git noise)
+- [ ] `party-cli config` subcommand manages the user-global config (`init`, `set-primary`, `set-companion`, `show`, `path`)
 - [ ] Default behavior with no config file matches today's behavior exactly (Claude as primary, Codex as companion)
 - [ ] Existing Go tests pass with agent abstraction (backward compatibility)
 - [ ] At least one non-Codex, non-Claude adapter exists as a reference (can be a stub)

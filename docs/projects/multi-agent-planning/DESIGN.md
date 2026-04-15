@@ -8,7 +8,7 @@ The design introduces four new concepts:
 
 1. **Agent Interface** — A Go interface (`Agent`) that each CLI agent implements, covering command construction, resume metadata, and state observation
 2. **Role System** — A mapping from abstract roles (`primary`, `companion`) to concrete agent providers
-3. **Project Config** (`.party.toml`) — Per-repo overrides for agent selection and role assignment
+3. **User-Global Config** (`~/.config/party-cli/config.toml`) — Persistent user preferences for agent selection (not per-repo — keeps user prefs out of git)
 4. **Unified Party Tracker** — A single TUI view replacing both the worker sidebar and master tracker, showing all sessions with master→worker hierarchy
 
 The execution core, sub-agents, evidence system, and shell transport scripts are untouched.
@@ -22,7 +22,7 @@ The execution core, sub-agents, evidence system, and shell transport scripts are
                      ▼
 ┌─────────────────────────────────────────────────┐
 │           Agent Registry + Role Config           │
-│  .party.toml → roles → Agent implementations     │
+│  ~/.config/party-cli → roles → Agent impls       │
 └───────┬─────────────┬───────────────┬───────────┘
         ▼             ▼               ▼
    ┌─────────┐  ┌──────────┐  ┌────────────┐
@@ -130,11 +130,17 @@ func (r *Registry) Bindings() []*RoleBinding  // in role order: primary first
 func (r *Registry) HasRole(role Role) bool
 ```
 
-## Project Config (`.party.toml`)
+## User-Global Config (`~/.config/party-cli/config.toml`)
+
+Persistent user preferences for agent selection. This is the ONLY config file — there is no per-repo config. Keeps user preferences out of project repos (no git noise, no `.gitignore` entries, no accidentally-committed files forcing agent choices on collaborators).
+
+**Location resolution:**
+1. `$XDG_CONFIG_HOME/party-cli/config.toml` if `XDG_CONFIG_HOME` is set
+2. `~/.config/party-cli/config.toml` otherwise
 
 ```toml
-# .party.toml — optional, lives in repo root
-# Absence = defaults (Claude as primary, Codex as companion)
+# ~/.config/party-cli/config.toml — optional user preferences
+# Absence = hardcoded defaults (Claude as primary, Codex as companion)
 
 [agents.claude]
 cli = "claude"
@@ -155,6 +161,19 @@ cli = "codex"
 # Default when companion exists: ["pr-verified", "code-critic", "minimizer", "<companion-name>", "test-runner", "check-runner"]
 # Default when no companion:     ["pr-verified", "code-critic", "minimizer", "test-runner", "check-runner"]
 # required = ["pr-verified", "code-critic", "minimizer", "test-runner", "check-runner"]
+```
+
+### Managing the config
+
+The `party-cli config` subcommand manages this file so users rarely need to edit TOML directly:
+
+```bash
+party-cli config init                    # create with defaults if missing
+party-cli config show                    # print current config
+party-cli config path                    # print config file path
+party-cli config set-primary codex       # set primary agent
+party-cli config set-companion claude    # set companion agent
+party-cli config unset-companion         # run without a companion by default
 ```
 
 ### Swapping agents: Codex as primary, Claude as companion
@@ -186,9 +205,9 @@ cli = "claude"
   agent = "claude"
 ```
 
-### Default Config (no `.party.toml`)
+### Default Config (no config file)
 
-When no `.party.toml` exists, the registry produces:
+When no `~/.config/party-cli/config.toml` exists, the registry produces:
 
 ```
 primary  → Claude agent, @party_role="primary",  window=workspace
@@ -197,16 +216,16 @@ companion → Codex agent,  @party_role="companion", window=0 (hidden)
 
 This matches today's behavior exactly.
 
-### Config Resolution Order (flags override file override defaults)
+### Config Resolution Order (flags override user global override defaults)
 
-1. **CLI flags** (`--primary`, `--companion`) — per-session override, highest priority
-2. `.party.toml` in CWD → walk up to git root — per-project defaults
-3. Hardcoded defaults (Claude primary + Codex companion)
+1. **CLI flags** (`--primary`, `--companion`, `--no-companion`) — per-session override, highest priority
+2. **User global config** at `~/.config/party-cli/config.toml` (XDG: `$XDG_CONFIG_HOME/party-cli/config.toml` if set) — persistent user preference
+3. **Hardcoded defaults** (Claude primary + Codex companion) — for first-run users with no config
 
-This means you can set a repo-wide default in `.party.toml` but override per-session:
+**No per-repo config file.** Agent selection is a user preference, not a repo property — keeping it out of repos avoids git noise (no `.gitignore` entries, no accidentally-committed `.party.toml` files forcing agent choices on collaborators).
 
 ```bash
-# Use repo default (from .party.toml or Claude+Codex)
+# Use user default (or Claude+Codex if no config)
 party.sh "task A"
 
 # Override primary for this session only
@@ -217,6 +236,10 @@ party.sh --primary codex --companion claude "task C"
 
 # No companion for this session
 party.sh --primary claude --no-companion "task D"
+
+# Change user default persistently
+party-cli config set-primary codex
+party-cli config set-companion claude
 ```
 
 Flags are passed through to `party-cli start`:
@@ -224,7 +247,7 @@ Flags are passed through to `party-cli start`:
 party-cli start --primary codex --companion claude "task title"
 ```
 
-The registry resolves: flags → `.party.toml` → defaults. Flags modify the loaded config before building the registry — they don't bypass config parsing entirely (so `.party.toml` agent definitions are still available).
+The registry resolves: flags → user global config → defaults. Flags modify the loaded config before building the registry.
 
 ## Manifest Schema Evolution
 
@@ -373,7 +396,7 @@ Shell scripts that resolve panes by role (`party_role_pane_target()`) must accep
 
 Current `launchSession()` calls `buildClaudeCmd()` and `buildCodexCmd()` directly. New flow:
 
-1. Load registry from `.party.toml` (or defaults)
+1. Load registry from user global config (or defaults)
 2. For each role binding in `registry.Bindings()`:
    a. Resolve binary via `agent.BinaryEnvVar()` → PATH → `agent.FallbackPath()`
    b. Check binary exists (`exec.LookPath`). If missing: warn and skip (companion) or error (primary)
@@ -432,7 +455,7 @@ party-cli agent query companion-name     # "codex" (or empty if none)
 party-cli agent query evidence-required  # list required evidence types
 ```
 
-Reads `.party.toml` using the same resolution logic as the registry.
+Reads the user-global config using the same resolution logic as the registry.
 
 ## Message Prefix Migration
 
@@ -460,7 +483,7 @@ Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) keep working but use role-
 
 ## External Dependencies
 
-- **Go TOML parser:** `github.com/BurntSushi/toml` or `github.com/pelletier/go-toml/v2` for `.party.toml` parsing
+- **Go TOML parser:** `github.com/BurntSushi/toml` or `github.com/pelletier/go-toml/v2` for user-global config parsing
 - **No new CLI tools required.** Agent CLIs are user-provided.
 
 ## Integration Points
@@ -480,4 +503,4 @@ Transport scripts (`tmux-codex.sh`, `tmux-claude.sh`) keep working but use role-
 | Window constants | `WindowCodex = 0`, `WindowWorkspace = 1` | From role binding `Window` field |
 | Master prompt | `masterSystemPrompt` constant | `agent.MasterPrompt()` per provider |
 | CLI flags | `--resume-claude`, `--resume-codex` | `--resume primary=<id>` (old flags kept as hidden aliases) |
-| Agent selection | N/A (hardcoded) | `--primary <agent>`, `--companion <agent>`, `--no-companion` flags override `.party.toml` per-session |
+| Agent selection | N/A (hardcoded) | `--primary <agent>`, `--companion <agent>`, `--no-companion` flags override user-global config per-session |

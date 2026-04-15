@@ -51,6 +51,7 @@ All work is done on a feature branch: `feature/multi-agent-planning`. PRs from t
 - [ ] [Task 8](./tasks/TASK8-cli-flags-and-compat.md) — Update CLI flags (`--resume-agent`), backward-compatible aliases, settings.json hook paths, and install script (deps: Task 7)
 - [ ] [Task 9](./tasks/TASK9-update-docs-and-skills.md) — Update CLAUDE.md, AGENTS.md, execution-core.md, workflow skill prompts to role-based language (deps: Tasks 2-6)
 - [ ] [Task 10](./tasks/TASK10-tests-and-compat-verification.md) — Extend tests for multi-agent scenarios, verify zero-config backward compatibility, manifest migration (deps: all)
+- [ ] [Task 11](./tasks/TASK11-relocate-config-to-user-global.md) — Relocate config to user-global (`~/.config/party-cli/config.toml`), drop `.party.toml` repo files entirely, add `party-cli config` subcommand (deps: Tasks 1–10)
 
 ## Dependency Graph
 
@@ -87,13 +88,15 @@ Task 10 is the final verification gate.
 | Task 8 | CLI flags updated. Old flags aliased. `settings.json` points to new hooks. Install is agent-aware. |
 | Task 9 | All docs and skill prompts use role-based language. |
 | Task 10 | All tests pass. Zero-config matches today's behavior. Manifest migration verified. |
+| Task 11 | `.party.toml` removed. User-global config at `~/.config/party-cli/config.toml` drives preferences. `party-cli config` subcommand manages it. CI env leak in `TestAgentQuery_NoCompanion` fixed as a side effect. |
 
 ## Definition of Done
 
 - [ ] All task checkboxes complete
 - [ ] Running `party.sh "test"` with NO `.party.toml` works exactly as today (Claude primary + Codex companion)
-- [ ] Running with `.party.toml` setting Codex as primary routes correctly
-- [ ] Running with `.party.toml` omitting companion starts primary-only session
+- [ ] Running with user-global config setting Codex as primary routes correctly
+- [ ] Running with `--no-companion` (or user-global omitting companion) starts primary-only session
+- [ ] No `.party.toml` files created in user repos (config lives at `~/.config/party-cli/config.toml`)
 - [ ] Unified party tracker shows master→worker hierarchy
 - [ ] All Go tests pass (existing + new)
 - [ ] All hook tests pass (renamed)
