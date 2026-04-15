@@ -11,11 +11,10 @@ import (
 
 func newSpawnCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobra.Command {
 	var opts struct {
-		cwd          string
-		layout       string
-		resumeClaude string
-		resumeCodex  string
-		prompt       string
+		cwd        string
+		layout     string
+		agentFlags sessionAgentFlags
+		prompt     string
 	}
 
 	cmd := &cobra.Command{
@@ -53,7 +52,11 @@ it is a master session.`,
 				}
 				registryCwd = masterManifest.Cwd
 			}
-			registry, err := loadSessionRegistry(registryCwd)
+			registry, err := loadSessionRegistryWithOverrides(registryCwd, opts.agentFlags.ConfigOverrides())
+			if err != nil {
+				return err
+			}
+			claudeResumeID, codexResumeID, err := opts.agentFlags.ResolveResumeIDs(registry)
 			if err != nil {
 				return err
 			}
@@ -62,8 +65,8 @@ it is a master session.`,
 				Title:          title,
 				Cwd:            opts.cwd,
 				Layout:         session.LayoutMode(opts.layout),
-				ClaudeResumeID: opts.resumeClaude,
-				CodexResumeID:  opts.resumeCodex,
+				ClaudeResumeID: claudeResumeID,
+				CodexResumeID:  codexResumeID,
 				Prompt:         opts.prompt,
 				Detached:       true, // shell wrappers handle attach
 			})
@@ -78,8 +81,7 @@ it is a master session.`,
 
 	cmd.Flags().StringVar(&opts.cwd, "cwd", "", "working directory (default: master's cwd)")
 	cmd.Flags().StringVar(&opts.layout, "layout", "", "layout mode: classic or sidebar")
-	cmd.Flags().StringVar(&opts.resumeClaude, "resume-claude", "", "Claude session ID to resume")
-	cmd.Flags().StringVar(&opts.resumeCodex, "resume-codex", "", "Codex thread ID to resume")
+	opts.agentFlags.AddFlags(cmd)
 	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for Claude")
 
 	return cmd

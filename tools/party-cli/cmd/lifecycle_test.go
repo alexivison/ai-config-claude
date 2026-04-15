@@ -4,9 +4,12 @@ package cmd
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/anthropics/ai-party/tools/party-cli/internal/state"
 	"github.com/anthropics/ai-party/tools/party-cli/internal/tmux"
 )
 
@@ -47,6 +50,49 @@ func hasSessionRunner(live ...string) *mockRunner {
 	}}
 }
 
+func readOnlyNewManifest(t *testing.T, store *state.Store, exclude ...string) state.Manifest {
+	t.Helper()
+
+	ignored := make(map[string]struct{}, len(exclude))
+	for _, id := range exclude {
+		ignored[id] = struct{}{}
+	}
+
+	var ids []string
+	entries, err := os.ReadDir(store.Root())
+	if err != nil {
+		t.Fatalf("ReadDir(%s): %v", store.Root(), err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		if _, skip := ignored[id]; skip {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) != 1 {
+		t.Fatalf("expected exactly one new manifest, got %v", ids)
+	}
+
+	m, err := store.Read(ids[0])
+	if err != nil {
+		t.Fatalf("Read(%s): %v", ids[0], err)
+	}
+	return m
+}
+
+func manifestResumeID(agents []state.AgentManifest, role string) string {
+	for _, spec := range agents {
+		if spec.Role == role {
+			return spec.ResumeID
+		}
+	}
+	return ""
+}
+
 // ---------------------------------------------------------------------------
 // start command tests
 // ---------------------------------------------------------------------------
@@ -60,6 +106,48 @@ func TestStartCmd_Basic(t *testing.T) {
 	out := runCmd(t, store, allPassRunner(), "start", "--cwd", cwd, "test-title")
 	if !strings.Contains(out, "started") {
 		t.Fatalf("expected 'started' in output, got: %s", out)
+	}
+}
+
+func TestStartCmd_PrimaryOverrideAndNoCompanion(t *testing.T) {
+	t.Parallel()
+	store := setupStore(t)
+	cwd := t.TempDir()
+	writeAgentConfig(t, cwd)
+
+	runCmd(t, store, allPassRunner(), "start", "--cwd", cwd, "--primary", "codex", "--no-companion", "solo")
+
+	m := readOnlyNewManifest(t, store)
+	if len(m.Agents) != 1 {
+		t.Fatalf("expected solo manifest, got %+v", m.Agents)
+	}
+	if m.Agents[0].Role != "primary" || m.Agents[0].Name != "codex" {
+		t.Fatalf("primary agent = %+v, want codex primary", m.Agents[0])
+	}
+}
+
+func TestStartCmd_LegacyResumeFlagsRemainAgentSpecific(t *testing.T) {
+	t.Parallel()
+	store := setupStore(t)
+	cwd := t.TempDir()
+	writeAgentConfig(t, cwd)
+
+	runCmd(t, store, allPassRunner(),
+		"start",
+		"--cwd", cwd,
+		"--primary", "codex",
+		"--companion", "claude",
+		"--resume-claude", "claude-session",
+		"--resume-codex", "codex-thread",
+		"swapped",
+	)
+
+	m := readOnlyNewManifest(t, store)
+	if got := manifestResumeID(m.Agents, "primary"); got != "codex-thread" {
+		t.Fatalf("primary resume = %q, want codex-thread", got)
+	}
+	if got := manifestResumeID(m.Agents, "companion"); got != "claude-session" {
+		t.Fatalf("companion resume = %q, want claude-session", got)
 	}
 }
 
@@ -177,6 +265,33 @@ func TestSpawnCmd_Basic(t *testing.T) {
 	}
 }
 
+func TestSpawnCmd_ResumeAgentUsesResolvedRole(t *testing.T) {
+	t.Parallel()
+	store := setupStore(t)
+	cwd := t.TempDir()
+	writeAgentConfig(t, cwd)
+	createManifest(t, store, "party-master", "orch", cwd, "master")
+
+	runCmd(t, store, allPassRunner(),
+		"spawn",
+		"--cwd", cwd,
+		"--primary", "codex",
+		"--companion", "claude",
+		"--resume-agent", "primary=codex-thread",
+		"--resume-agent", "companion=claude-session",
+		"party-master",
+		"worker-title",
+	)
+
+	m := readOnlyNewManifest(t, store, "party-master")
+	if got := manifestResumeID(m.Agents, "primary"); got != "codex-thread" {
+		t.Fatalf("primary resume = %q, want codex-thread", got)
+	}
+	if got := manifestResumeID(m.Agents, "companion"); got != "claude-session" {
+		t.Fatalf("companion resume = %q, want claude-session", got)
+	}
+}
+
 func TestSpawnCmd_NonMaster(t *testing.T) {
 	t.Parallel()
 	store := setupStore(t)
@@ -185,5 +300,14 @@ func TestSpawnCmd_NonMaster(t *testing.T) {
 	_, err := runCmdErr(t, store, allPassRunner(), "spawn", "party-regular")
 	if err == nil {
 		t.Fatal("expected error spawning from non-master")
+	}
+}
+
+func TestParseResumeFlags_RejectsUnknownRole(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseResumeFlags([]string{"wizard=abc123"})
+	if err == nil {
+		t.Fatal("expected invalid role error")
 	}
 }
