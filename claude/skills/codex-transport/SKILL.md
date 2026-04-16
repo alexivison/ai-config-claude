@@ -34,12 +34,14 @@ This is the default companion transport layer. The companion role is configurabl
 - **For tasks**: When you need the companion to investigate or work on something in parallel
 - **For verdict**: After triaging the companion's findings, signal your decision
 
-## How to contact the Companion
+## How to contact the other agent
 
-Use the transport script:
-```bash
-~/.claude/skills/codex-transport/scripts/tmux-codex.sh <mode> [args...]
-```
+Choose the transport by your current role:
+
+- **Primary role**: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh <mode> [args...]`
+- **Companion role**: `~/.claude/skills/codex-transport/scripts/tmux-claude.sh "<message>"`
+
+Both paths are role-aware. New sessions use `[PRIMARY]` / `[COMPANION]`; legacy sessions still use `[CLAUDE]` / `[CODEX]`.
 
 ## Modes
 

@@ -3,6 +3,8 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -106,10 +108,10 @@ func TestTrackerViewShowsHierarchy(t *testing.T) {
 
 	snapshot := TrackerSnapshot{
 		Sessions: []SessionRow{
-			{ID: "party-1230", Title: "Project Alpha", Status: "active", SessionType: "master", WorkerCount: 2, IsCurrent: true},
-			{ID: "party-1231", Title: "fix-auth", Status: "active", SessionType: "worker", ParentID: "party-1230", PrimaryState: "active", Stage: StageCriticsOK},
-			{ID: "party-1232", Title: "dark-mode", Status: "active", SessionType: "worker", ParentID: "party-1230", PrimaryState: "active", CompanionState: string(CompanionIdle)},
-			{ID: "party-1236", Title: "solo task", Status: "active", SessionType: "standalone", PrimaryState: "active"},
+			{ID: "party-1230", Title: "Project Alpha", Cwd: "/tmp/project-alpha", Status: "active", SessionType: "master", WorkerCount: 2, IsCurrent: true},
+			{ID: "party-1231", Title: "fix-auth", Cwd: "/tmp/fix-auth", Status: "active", SessionType: "worker", ParentID: "party-1230", PrimaryState: "active", Stage: StageCriticsOK},
+			{ID: "party-1232", Title: "dark-mode", Cwd: "/tmp/dark-mode", Status: "active", SessionType: "worker", ParentID: "party-1230", PrimaryState: "active", HasCompanion: true, CompanionState: string(CompanionIdle)},
+			{ID: "party-1236", Title: "solo task", Cwd: "/tmp/solo", Status: "active", SessionType: "standalone", PrimaryState: "active"},
 		},
 		Current: CurrentSessionDetail{
 			ID:              "party-1230",
@@ -128,6 +130,17 @@ func TestTrackerViewShowsHierarchy(t *testing.T) {
 		if !strings.Contains(view, needle) {
 			t.Fatalf("expected %q in view, got:\n%s", needle, view)
 		}
+	}
+	for _, needle := range []string{"party-1231", "/tmp/fix-auth"} {
+		if !strings.Contains(view, needle) {
+			t.Fatalf("expected secondary row detail %q in view, got:\n%s", needle, view)
+		}
+	}
+	if !strings.Contains(view, "│ party-1230") {
+		t.Fatalf("expected master connector on metadata row, got:\n%s", view)
+	}
+	if !strings.Contains(view, "│ party-1231") {
+		t.Fatalf("expected worker connector on metadata row, got:\n%s", view)
 	}
 	if !strings.Contains(view, "●") {
 		t.Fatalf("expected master/standalone glyph in view, got:\n%s", view)
@@ -150,7 +163,7 @@ func TestTrackerViewShowsCurrentSessionDetail(t *testing.T) {
 			Cwd:              "~/Code/project",
 			CompanionName:    "codex",
 			CompanionStatus:  CompanionStatus{State: CompanionIdle, Verdict: "APPROVED"},
-			CompanionSnippet: "last companion line",
+			CompanionSnippet: "review complete",
 			Evidence: []EvidenceEntry{
 				{Type: "code-critic", Result: "APPROVED"},
 				{Type: "minimizer", Result: "APPROVED"},
@@ -161,10 +174,34 @@ func TestTrackerViewShowsCurrentSessionDetail(t *testing.T) {
 	tm := newTestTracker(SessionInfo{ID: "party-2001", SessionType: "worker"}, snapshot, &fakeActions{})
 	view := tm.View()
 
-	for _, needle := range []string{"this session", "companion: codex (idle, APPROVED)", "evidence:", "code-critic", "last companion line"} {
+	for _, needle := range []string{"companion: codex (idle, APPROVED)", "review complete", "evidence:", "code-critic", "─"} {
 		if !strings.Contains(view, needle) {
 			t.Fatalf("expected %q in detail view, got:\n%s", needle, view)
 		}
+	}
+	if strings.Contains(view, "workers:") {
+		t.Fatalf("did not expect worker count in current-session detail, got:\n%s", view)
+	}
+	if strings.Index(view, "companion: codex (idle, APPROVED)") > strings.Index(view, "bugfix") {
+		t.Fatalf("expected current-session detail above the session list, got:\n%s", view)
+	}
+}
+
+func TestTrackerViewFillsPaneHeight(t *testing.T) {
+	t.Parallel()
+
+	tm := newTestTracker(SessionInfo{ID: "party-current"}, TrackerSnapshot{
+		Sessions: []SessionRow{
+			{ID: "party-current", Title: "current", Status: "active", SessionType: "standalone", IsCurrent: true},
+			{ID: "party-other", Title: "other", Status: "active", SessionType: "standalone"},
+		},
+	}, &fakeActions{})
+	tm.width = 70
+	tm.height = 12
+
+	view := tm.View()
+	if got := len(strings.Split(view, "\n")); got != tm.height {
+		t.Fatalf("view line count = %d, want %d\n%s", got, tm.height, view)
 	}
 }
 
@@ -236,5 +273,48 @@ func TestTrackerUpdateRelayIgnoredOutsideCurrentMaster(t *testing.T) {
 	}
 	if len(actions.relayCalls) != 0 {
 		t.Fatalf("expected no relay calls, got %#v", actions.relayCalls)
+	}
+}
+
+func TestTrackerRefreshSessionsPrefersSharedSelection(t *testing.T) {
+	tempDir := t.TempDir()
+
+	tm := NewTrackerModel(SessionInfo{ID: "party-current"}, snapshotFetcher(TrackerSnapshot{
+		Sessions: []SessionRow{
+			{ID: "party-current", Title: "current", Status: "active", SessionType: "standalone", IsCurrent: true},
+			{ID: "party-target", Title: "target", Status: "active", SessionType: "standalone"},
+		},
+	}), &fakeActions{})
+	tm.selectionPath = func() string { return filepath.Join(tempDir, "tracker-selection") }
+	tm.saveSharedSelection("party-target")
+	tm.width = 80
+	tm.height = 24
+	tm.refreshSessions()
+
+	row, ok := tm.selectedSession()
+	if !ok || row.ID != "party-target" {
+		t.Fatalf("expected shared selection to win, got %#v", row)
+	}
+}
+
+func TestTrackerUpdateNavigationWritesSharedSelection(t *testing.T) {
+	tempDir := t.TempDir()
+
+	tm := newTestTracker(SessionInfo{ID: "party-current"}, TrackerSnapshot{
+		Sessions: []SessionRow{
+			{ID: "party-current", Title: "current", Status: "active", SessionType: "standalone", IsCurrent: true},
+			{ID: "party-target", Title: "target", Status: "active", SessionType: "standalone"},
+		},
+	}, &fakeActions{})
+	tm.selectionPath = func() string { return filepath.Join(tempDir, "tracker-selection") }
+
+	tm, _ = tm.Update(keyMsg('j'))
+
+	data, err := os.ReadFile(filepath.Join(tempDir, "tracker-selection"))
+	if err != nil {
+		t.Fatalf("read shared selection: %v", err)
+	}
+	if got := strings.TrimSpace(string(data)); got != "party-target" {
+		t.Fatalf("shared selection = %q, want party-target", got)
 	}
 }

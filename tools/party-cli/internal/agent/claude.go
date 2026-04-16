@@ -13,9 +13,9 @@ import (
 
 const claudeMasterPrompt = "This is a **master session**. Thou art an orchestrator, not an implementor. " +
 	"HARD RULES: (1) Never Edit/Write production code — delegate all changes to workers. " +
-	"(2) Spawn new workers via `/party-dispatch`; relay follow-up instructions to existing workers via `party-relay.sh`. " +
+	"(2) Spawn workers with `party-cli spawn [title]` or `/party-dispatch`; relay follow-up instructions with `party-cli relay <worker-id> \"message\"`, inspect workers with `party-cli workers` or `party-cli read <worker-id>`, and require workers to report back via `party-cli report` from the worker session. " +
 	"(3) Investigation (Read/Grep/Glob/read-only Bash) is fine. " +
-	"See `party-dispatch` skill for orchestration details."
+	"See `party-dispatch` only for multi-item orchestration."
 
 // Claude implements the built-in Claude provider.
 type Claude struct {

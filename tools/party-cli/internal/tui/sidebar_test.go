@@ -164,7 +164,7 @@ func TestDeriveWorkflowStage(t *testing.T) {
 func TestSessionRowActivityLabelFallsBackToCompanionState(t *testing.T) {
 	t.Parallel()
 
-	row := SessionRow{Status: "active", CompanionState: string(CompanionIdle)}
+	row := SessionRow{Status: "active", HasCompanion: true, CompanionState: string(CompanionIdle)}
 	if got := row.activityLabel(); got != "○ idle" {
 		t.Fatalf("expected idle fallback, got %q", got)
 	}

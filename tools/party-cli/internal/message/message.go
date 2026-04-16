@@ -109,6 +109,11 @@ func (s *Service) Read(ctx context.Context, workerID string, lines int) (string,
 		return "", err
 	}
 
+	m, err := s.store.Read(workerID)
+	if err != nil {
+		return "", fmt.Errorf("read manifest: %w", err)
+	}
+
 	target, err := s.client.ResolveRole(ctx, workerID, primaryRole, tmux.WindowWorkspace)
 	if err != nil {
 		return "", fmt.Errorf("resolve primary pane in %q: %w", workerID, err)
@@ -118,7 +123,7 @@ func (s *Service) Read(ctx context.Context, workerID string, lines int) (string,
 	if err != nil {
 		return "", err
 	}
-	filtered := tmux.FilterAgentLines(raw, lines)
+	filtered := filterPrimaryPaneLines(m, raw, lines)
 	return strings.Join(filtered, "\n"), nil
 }
 
@@ -243,4 +248,26 @@ func prepareMessage(msg string) (string, bool, error) {
 		return "", false, err
 	}
 	return relayPointer(path), true, nil
+}
+
+func filterPrimaryPaneLines(m state.Manifest, raw string, lines int) []string {
+	if primaryAgentName(m) == "codex" {
+		return tmux.FilterWizardLines(raw, lines)
+	}
+	return tmux.FilterAgentLines(raw, lines)
+}
+
+func primaryAgentName(m state.Manifest) string {
+	for _, spec := range m.Agents {
+		if spec.Role == primaryRole && spec.Name != "" {
+			return spec.Name
+		}
+	}
+	if m.ExtraString("claude_session_id") != "" || m.ClaudeBin != "" {
+		return "claude"
+	}
+	if m.ExtraString("codex_thread_id") != "" || m.CodexBin != "" {
+		return "codex"
+	}
+	return ""
 }

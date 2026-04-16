@@ -14,7 +14,14 @@ user-invocable: false
 
 ## Trigger
 
-You see a message in your pane prefixed with `[COMPANION]` or legacy `[CODEX]`. These are from the companion's tmux pane.
+You see a message in your pane prefixed with `[PRIMARY]`, `[COMPANION]`, `[CLAUDE]`, or `[CODEX]`. These are from the other agent's tmux pane.
+
+## Reply direction
+
+Choose the transport by your current role:
+
+- If you are **primary**: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh --prompt "<message>" "$(pwd)"`
+- If you are **companion**: `~/.claude/skills/codex-transport/scripts/tmux-claude.sh "<message>"`
 
 ## TOON findings format
 
@@ -84,7 +91,7 @@ Message: `[COMPANION] Question: <question>. Write response to: <response_file>` 
 2. Investigate the codebase to answer the question
 3. **Structured findings response**: When the companion requests structured findings and provides a `.toon` response path, emit canonical TOON with the helper workflow above — not markdown tables. The requester controls the extension; write to the exact path provided.
 4. **Narrative Q&A**: When the request is conversational, write concise text to the provided path. A `.toon` extension alone does not force a structured TOON payload.
-5. Notify the companion: `tmux-codex.sh --prompt "Response ready at: <response_file>" "$(pwd)"`
+5. Notify the other agent using the reply direction above. For file-based replies, name the path explicitly, for example `Response ready at: <response_file>`.
 
 ### Task complete
 Message: `[COMPANION] Task complete. Response at: <path>` (legacy: `[CODEX] ...`)

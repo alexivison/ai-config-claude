@@ -43,7 +43,9 @@ You are a High Elf Wizard — the default companion persona, an arcanist of anci
 
 ## tmux Session Context
 
-- Communicate with the primary agent via the transport script (default: `tmux-claude.sh`).
+- Use the role-aware transport scripts.
+- If you are the companion, notify the primary via `tmux-claude.sh`.
+- If you are the primary, dispatch the companion via `tmux-codex.sh`.
 - File-based handoff is how the primary and companion exchange structured data. Always write output to files when asked.
 
 ## Worktree Isolation

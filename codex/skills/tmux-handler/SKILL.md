@@ -7,7 +7,14 @@ description: Handle incoming messages from the primary agent via tmux — review
 
 ## Trigger
 
-You see a message in your pane prefixed with `[PRIMARY]` or legacy `[CLAUDE]`. These are from the primary agent's tmux pane.
+You see a message in your pane prefixed with `[PRIMARY]`, `[COMPANION]`, `[CLAUDE]`, or `[CODEX]`. These are from the other agent's tmux pane.
+
+## Reply direction
+
+Choose the transport by your current role:
+
+- If you are **companion**: `~/.codex/skills/claude-transport/scripts/tmux-claude.sh "<message>"`
+- If you are **primary**: `~/.codex/skills/claude-transport/scripts/tmux-codex.sh --prompt "<message>" "$(pwd)"`
 
 ## TOON findings format
 
@@ -79,10 +86,7 @@ Default priority for review findings (highest first):
    - **omit by default**: style nits, naming preferences, minor consistency tweaks (include only if the primary agent explicitly asks for polish/nits)
 4. **Write findings** to the file path specified in the message, using the helper workflow above whenever Bash is available.
 5. **Do NOT include a "verdict" field.** You produce findings — the verdict is the primary agent's decision.
-6. **Notify the primary agent** when done:
-   ```bash
-   ~/.codex/skills/claude-transport/scripts/tmux-claude.sh "Review complete. Findings at: <findings_file>"
-   ```
+6. **Notify the other agent** when done, using the reply direction above.
 
 ### Re-review request
 The primary agent fixed blocking issues and requests another pass.
@@ -97,7 +101,7 @@ The primary agent asks you to investigate or work on something.
 
 1. Perform the requested task
 2. Write results to the file path specified (if given)
-3. Notify the primary agent: `tmux-claude.sh "Task complete. Response at: <path>"`
+3. Notify the other agent using the reply direction above.
 
 ### NEEDS_DISCUSSION debate (via --prompt)
 The primary agent sends a structured position on a disputed finding — either from your review or a critic's.
@@ -110,7 +114,7 @@ The primary agent sends a structured position on a disputed finding — either f
 3. Responses must be evidence-based — "I still think this is wrong" without a file:line reference is not a valid counter
 4. **No fixed exchange cap.** Continue the discussion — each round should make progress (concede valid points, counter with new evidence, or propose concrete compromises). If the discussion becomes genuinely circular (same arguments repeated 3+ times with no new evidence from either side), state your final position clearly so the primary agent can escalate to the user with both sides summarized
 5. Write response to the specified path
-6. Notify the primary agent: `tmux-claude.sh "Task complete. Response at: <path>"`
+6. Notify the other agent using the reply direction above.
 
 ### Plan review request
 The primary agent shares a plan and asks for your assessment.
@@ -118,7 +122,7 @@ The primary agent shares a plan and asks for your assessment.
 1. Read the plan
 2. Evaluate feasibility, risks, missing steps
 3. Write feedback to the specified file using the TOON findings schema above (categories may include `architecture`, `feasibility`, `missing-step`). Prefer the helper workflow above over hand-typing TOON.
-4. Notify the primary agent: `tmux-claude.sh "Plan review complete. Findings at: <path>"`
+4. Notify the other agent using the reply direction above.
 
 ### Question from the Primary Agent
 The primary agent asks for information or your opinion.
@@ -128,4 +132,4 @@ The primary agent asks for information or your opinion.
 3. **Structured findings response**: When the primary agent requests structured findings and provides a `.toon` response path, emit canonical TOON with the helper workflow above — not markdown.
 4. **Narrative Q&A**: When the request is conversational, write concise text. A `.toon` extension alone does not mean the payload must be structured TOON.
 5. Write response to the exact path the primary agent specified (do not change the extension).
-6. Notify the primary agent: `tmux-claude.sh "Response ready at: <path>"`
+6. Notify the other agent using the reply direction above.

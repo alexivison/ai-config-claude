@@ -86,6 +86,25 @@ func TestCurrentSessionName_Success(t *testing.T) {
 	}
 }
 
+func TestCurrentSessionName_UsesTMUXPaneTarget(t *testing.T) {
+	t.Setenv("TMUX_PANE", "%42")
+	m := newMock(func(_ context.Context, args ...string) (string, error) {
+		if got := strings.Join(args, " "); !strings.Contains(got, "-t %42") {
+			t.Fatalf("expected TMUX_PANE target in args, got %v", args)
+		}
+		return "party-pane", nil
+	})
+	c := NewClient(m)
+
+	name, err := c.CurrentSessionName(t.Context())
+	if err != nil {
+		t.Fatalf("CurrentSessionName: %v", err)
+	}
+	if name != "party-pane" {
+		t.Fatalf("got %q, want %q", name, "party-pane")
+	}
+}
+
 func TestCurrentSessionName_Error(t *testing.T) {
 	t.Parallel()
 

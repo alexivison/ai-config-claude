@@ -14,6 +14,13 @@ import (
 
 const codexStaleThreshold = 30 * time.Minute
 
+const codexMasterPrompt = "This is a master session. You are an orchestrator, not an implementor. " +
+	"HARD RULES: (1) Never edit or write production code yourself — delegate all code changes to workers. " +
+	"(2) Spawn workers with `party-cli spawn [title]` or `~/Code/ai-party/session/party-relay.sh --spawn [--prompt \"...\"] [title]`. " +
+	"Relay follow-up instructions with `party-cli relay <worker-id> \"message\"`, broadcast with `party-cli broadcast \"message\"`, " +
+	"and inspect workers with `party-cli workers` or the tracker pane. " +
+	"(3) Read-only investigation is fine."
+
 // Codex implements the built-in Codex provider.
 type Codex struct {
 	cli string
@@ -43,13 +50,24 @@ func (c *Codex) BuildCmd(opts CmdOpts) string {
 	if opts.ResumeID != "" {
 		cmd += " resume " + config.ShellQuote(opts.ResumeID)
 	}
+	prompt := opts.Prompt
+	if opts.Master {
+		if prompt == "" {
+			prompt = c.MasterPrompt()
+		} else {
+			prompt = c.MasterPrompt() + "\n\nTask: " + prompt
+		}
+	}
+	if prompt != "" {
+		cmd += " " + config.ShellQuote(prompt)
+	}
 	return cmd
 }
 
 func (c *Codex) ResumeKey() string      { return "codex_thread_id" }
 func (c *Codex) ResumeFileName() string { return "codex-thread-id" }
 func (c *Codex) EnvVar() string         { return "CODEX_THREAD_ID" }
-func (c *Codex) MasterPrompt() string   { return "" }
+func (c *Codex) MasterPrompt() string   { return codexMasterPrompt }
 func (c *Codex) StateFileName() string  { return "codex-status.json" }
 
 func (c *Codex) ReadState(runtimeDir string) (AgentState, error) {

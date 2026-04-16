@@ -261,7 +261,7 @@ func TestClaudeBuildCmd_Master(t *testing.T) {
 		AgentPath: "/tmp/bin:/usr/bin",
 		Master:    true,
 	})
-	want := "export PATH='/tmp/bin:/usr/bin'; unset CLAUDECODE; exec '/usr/local/bin/claude' --permission-mode bypassPermissions --effort high --append-system-prompt 'This is a **master session**. Thou art an orchestrator, not an implementor. HARD RULES: (1) Never Edit/Write production code — delegate all changes to workers. (2) Spawn new workers via `/party-dispatch`; relay follow-up instructions to existing workers via `party-relay.sh`. (3) Investigation (Read/Grep/Glob/read-only Bash) is fine. See `party-dispatch` skill for orchestration details.'"
+	want := "export PATH='/tmp/bin:/usr/bin'; unset CLAUDECODE; exec '/usr/local/bin/claude' --permission-mode bypassPermissions --effort high --append-system-prompt 'This is a **master session**. Thou art an orchestrator, not an implementor. HARD RULES: (1) Never Edit/Write production code — delegate all changes to workers. (2) Spawn workers with `party-cli spawn [title]` or `/party-dispatch`; relay follow-up instructions with `party-cli relay <worker-id> \"message\"`, inspect workers with `party-cli workers` or `party-cli read <worker-id>`, and require workers to report back via `party-cli report` from the worker session. (3) Investigation (Read/Grep/Glob/read-only Bash) is fine. See `party-dispatch` only for multi-item orchestration.'"
 	if got != want {
 		t.Fatalf("BuildCmd(master) = %q, want %q", got, want)
 	}
@@ -292,6 +292,35 @@ func TestCodexBuildCmd(t *testing.T) {
 	}
 }
 
+func TestCodexBuildCmd_WithPrompt(t *testing.T) {
+	t.Parallel()
+
+	codex := NewCodex(AgentConfig{})
+	got := codex.BuildCmd(CmdOpts{
+		Binary:    "/opt/homebrew/bin/codex",
+		AgentPath: "/tmp/bin:/usr/bin",
+		Prompt:    "inspect the workers",
+	})
+	if !strings.HasSuffix(got, " 'inspect the workers'") {
+		t.Fatalf("BuildCmd(prompt) = %q, want prompt suffix", got)
+	}
+}
+
+func TestCodexBuildCmd_Master(t *testing.T) {
+	t.Parallel()
+
+	codex := NewCodex(AgentConfig{})
+	got := codex.BuildCmd(CmdOpts{
+		Binary:    "/opt/homebrew/bin/codex",
+		AgentPath: "/tmp/bin:/usr/bin",
+		Master:    true,
+		Prompt:    "triage the backlog",
+	})
+	if !strings.Contains(got, configShellQuote(codex.MasterPrompt()+"\n\nTask: triage the backlog")) {
+		t.Fatalf("BuildCmd(master) missing combined master prompt: %q", got)
+	}
+}
+
 func TestProviderMetadata(t *testing.T) {
 	t.Parallel()
 
@@ -307,9 +336,13 @@ func TestProviderMetadata(t *testing.T) {
 	if claude.MasterPrompt() == "" {
 		t.Fatal("Claude MasterPrompt() is empty")
 	}
-	if codex.MasterPrompt() != "" {
-		t.Fatalf("Codex MasterPrompt() = %q, want empty", codex.MasterPrompt())
+	if codex.MasterPrompt() == "" {
+		t.Fatal("Codex MasterPrompt() is empty")
 	}
+}
+
+func configShellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
 func TestClaudePreLaunchSetup_UnsetsClaudeCode(t *testing.T) {

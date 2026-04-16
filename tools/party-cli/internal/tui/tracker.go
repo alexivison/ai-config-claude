@@ -3,6 +3,8 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,10 +31,13 @@ const (
 type SessionRow struct {
 	ID               string
 	Title            string
+	Cwd              string
+	PrimaryAgent     string
 	Status           string // "active" or "stopped"
 	SessionType      string // "master", "worker", or "standalone"
 	ParentID         string
 	WorkerCount      int
+	HasCompanion     bool
 	PrimaryState     string
 	CompanionState   string
 	CompanionVerdict string
@@ -86,8 +91,13 @@ type TrackerModel struct {
 	manifestID   string
 	manifestScrl int
 
-	fetcher SessionFetcher
-	actions TrackerActions
+	fetcher       SessionFetcher
+	actions       TrackerActions
+	selectionPath func() string
+}
+
+var defaultTrackerSelectionPath = func() string {
+	return filepath.Join(stateRoot(), "tracker-selection")
 }
 
 // NewTrackerModel creates a tracker with injected dependencies.
@@ -101,6 +111,7 @@ func NewTrackerModel(current SessionInfo, fetcher SessionFetcher, actions Tracke
 		fetcher: fetcher,
 		actions: actions,
 		input:   ti,
+		selectionPath: defaultTrackerSelectionPath,
 	}
 }
 
@@ -119,6 +130,7 @@ func (tm *TrackerModel) refreshSessions() {
 	if row, ok := tm.selectedSession(); ok {
 		selectedID = row.ID
 	}
+	sharedID := tm.loadSharedSelection()
 
 	snapshot, err := tm.fetcher(tm.current)
 	if err != nil {
@@ -131,6 +143,8 @@ func (tm *TrackerModel) refreshSessions() {
 	tm.lastErr = nil
 
 	switch {
+	case sharedID != "":
+		tm.cursor = tm.indexOfSession(sharedID)
 	case selectedID != "":
 		tm.cursor = tm.indexOfSession(selectedID)
 	case tm.current.ID != "":
@@ -174,11 +188,13 @@ func (tm TrackerModel) updateNormal(msg tea.KeyMsg) (TrackerModel, tea.Cmd) {
 	case "j", "down":
 		if tm.cursor < len(tm.sessions)-1 {
 			tm.cursor++
+			tm.persistSelectedSession()
 		}
 
 	case "k", "up":
 		if tm.cursor > 0 {
 			tm.cursor--
+			tm.persistSelectedSession()
 		}
 
 	case "enter":
@@ -321,7 +337,6 @@ func (tm TrackerModel) View() string {
 
 func (tm TrackerModel) viewSessions() string {
 	outerW, outerH := clampDimensions(tm.width, tm.height)
-	outerH--
 
 	compact := outerW > 0 && outerW < compactThreshold
 	innerW := outerW - borderlessMargin
@@ -344,32 +359,31 @@ func (tm TrackerModel) viewSessions() string {
 	}
 
 	var body strings.Builder
-	if len(tm.sessions) == 0 {
-		body.WriteString(dimTextStyle.Render("No sessions."))
-	} else {
-		for i, row := range tm.sessions {
-			if i > 0 {
-				body.WriteString("\n")
-			}
-			body.WriteString(tm.renderSessionRow(row, i, compact, innerW))
-			if !compact && row.Snippet != "" && outerW >= 30 {
-				maxSnip := innerW - 3
-				if maxSnip < 4 {
-					maxSnip = 4
-				}
-				for _, line := range strings.Split(row.Snippet, "\n") {
-					body.WriteString("\n" + snippetStyleWide.Render(truncate(line, maxSnip)))
-				}
-			}
-		}
-	}
-
 	detail := tm.currentDetailView(innerW)
 	if detail != "" {
+		body.WriteString(detail)
+	}
+	if len(tm.sessions) == 0 {
+		if body.Len() > 0 {
+			body.WriteString("\n\n")
+		}
+		body.WriteString(dimTextStyle.Render("No sessions."))
+	} else {
 		if body.Len() > 0 {
 			body.WriteString("\n")
+			body.WriteString(lipgloss.NewStyle().Foreground(DividerBorder).Render(strings.Repeat("─", innerW)))
+			body.WriteString("\n\n")
 		}
-		body.WriteString(detail)
+		for i, row := range tm.sessions {
+			if i > 0 {
+				if compact || sameSessionGroup(tm.sessions[i-1], row) {
+					body.WriteString("\n")
+				} else {
+					body.WriteString("\n\n")
+				}
+			}
+			body.WriteString(tm.renderSessionRow(row, i, compact, innerW))
+		}
 	}
 
 	paneH := outerH
@@ -396,7 +410,6 @@ func (tm TrackerModel) renderSessionRow(row SessionRow, idx int, compact bool, i
 	selected := idx == tm.cursor
 	glyph := row.glyph()
 	activity := row.activityLabel()
-	dot := row.primaryStateDot()
 
 	prefix := "  "
 	titleStyle := sessionTitleStyle
@@ -409,34 +422,44 @@ func (tm TrackerModel) renderSessionRow(row SessionRow, idx int, compact bool, i
 	}
 
 	title := row.displayTitle()
-	suffixParts := make([]string, 0, 4)
-	if !compact && row.ID != title {
-		suffixParts = append(suffixParts, sidebarValueStyle.Render(row.ID))
-	}
-
-	label := row.sessionLabel()
-	if label != "" {
-		suffixParts = append(suffixParts, sidebarValueStyle.Render(label))
-	}
-	if dot != "" {
-		suffixParts = append(suffixParts, dot)
+	statusParts := make([]string, 0, 2)
+	if sessionLabel := row.sessionLabel(); sessionLabel != "" {
+		statusParts = append(statusParts, sidebarValueStyle.Render(sessionLabel))
 	}
 	if activity != "" {
-		suffixParts = append(suffixParts, renderActivityLabel(activity))
+		statusParts = append(statusParts, renderActivityLabel(activity))
 	}
 
 	basePrefix := prefix + glyph + " "
-	suffix := ""
-	if len(suffixParts) > 0 {
-		suffix = "  " + strings.Join(suffixParts, "  ")
-	}
+	suffix := strings.Join(statusParts, "  ")
 
-	maxTitle := innerW - lipgloss.Width(basePrefix) - lipgloss.Width(suffix)
+	maxTitle := innerW - lipgloss.Width(basePrefix)
+	if suffix != "" {
+		maxTitle -= lipgloss.Width("  " + suffix)
+	}
 	if maxTitle < 4 {
 		maxTitle = 4
 	}
-	line := basePrefix + titleStyle.Render(truncate(title, maxTitle)) + suffix
-	return ansi.Truncate(line, innerW, "")
+	firstLine := basePrefix + titleStyle.Render(truncate(title, maxTitle))
+	if suffix != "" {
+		firstLine += "  " + suffix
+	}
+	firstLine = ansi.Truncate(firstLine, innerW, "")
+
+	if compact {
+		return firstLine
+	}
+
+	metaPrefix := strings.Repeat(" ", lipgloss.Width(prefix)+2)
+	if row.SessionType == "worker" || (row.SessionType == "master" && row.WorkerCount > 0) {
+		metaPrefix = strings.Repeat(" ", lipgloss.Width(prefix)) + workerGlyphStyle.Render("│") + " "
+	}
+	metaParts := []string{
+		sidebarValueStyle.Render(truncate(row.ID, max(8, innerW/2))),
+		noteTextStyle.Render(truncate(shortHomePath(row.Cwd), max(8, innerW/2))),
+	}
+	secondLine := metaPrefix + strings.Join(metaParts, "  ")
+	return firstLine + "\n" + ansi.Truncate(secondLine, innerW, "")
 }
 
 func (tm TrackerModel) currentDetailView(innerW int) string {
@@ -445,30 +468,16 @@ func (tm TrackerModel) currentDetailView(innerW int) string {
 	}
 
 	var lines []string
-	lines = append(lines, fitBar("── this session "+strings.Repeat("─", innerW), innerW))
-
 	if tm.detail.ID == "" {
-		lines = append(lines, noteTextStyle.Render("  resolving current session..."))
+		lines = append(lines, noteTextStyle.Render("resolving current session..."))
 		return strings.Join(lines, "\n")
 	}
 
-	summary := []string{tm.detail.ID}
-	if tm.detail.SessionType != "" {
-		summary = append(summary, tm.detail.SessionType)
-	}
-	if tm.detail.Cwd != "" {
-		summary = append(summary, tm.detail.Cwd)
-	}
-	lines = append(lines, truncate(strings.Join(summary, "  "), innerW))
-
-	lines = append(lines, "  "+renderCompanionLine(tm.detail.CompanionName, tm.detail.CompanionStatus, max(1, innerW-2)))
-	lines = append(lines, "  "+renderEvidenceLine(tm.detail.Evidence, max(1, innerW-2)))
-	if tm.detail.SessionType == "master" {
-		lines = append(lines, fitBar(fmt.Sprintf("  workers: %d", tm.detail.WorkerCount), innerW))
-	}
+	lines = append(lines, renderCompanionLine(tm.detail.CompanionName, tm.detail.CompanionStatus, innerW))
 	if snippet := renderSnippetBlock(tm.detail.CompanionSnippet, innerW); snippet != "" {
 		lines = append(lines, snippet)
 	}
+	lines = append(lines, renderEvidenceLine(tm.detail.Evidence, innerW))
 
 	return strings.Join(lines, "\n")
 }
@@ -565,6 +574,14 @@ func (tm TrackerModel) selectedSession() (SessionRow, bool) {
 	return tm.sessions[tm.cursor], true
 }
 
+func (tm TrackerModel) persistSelectedSession() {
+	row, ok := tm.selectedSession()
+	if !ok {
+		return
+	}
+	tm.saveSharedSelection(row.ID)
+}
+
 func (tm TrackerModel) currentIsMaster() bool {
 	return tm.current.SessionType == "master"
 }
@@ -591,11 +608,23 @@ func manifestToSessionRow(id string, m state.Manifest, alive bool) SessionRow {
 	return SessionRow{
 		ID:          id,
 		Title:       m.Title,
+		Cwd:         m.Cwd,
 		Status:      status,
 		SessionType: sessionType,
 		ParentID:    m.ExtraString("parent_session"),
 		WorkerCount: len(m.Workers),
 	}
+}
+
+func shortHomePath(path string) string {
+	if path == "" {
+		return ""
+	}
+	home, _ := os.UserHomeDir()
+	if home != "" && strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
+	}
+	return path
 }
 
 func sessionTypeForManifest(m state.Manifest) string {
@@ -606,6 +635,54 @@ func sessionTypeForManifest(m state.Manifest) string {
 		return "worker"
 	}
 	return "standalone"
+}
+
+func (tm TrackerModel) loadSharedSelection() string {
+	path := tm.sharedSelectionPath()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	id := strings.TrimSpace(string(data))
+	if !state.IsValidPartyID(id) {
+		return ""
+	}
+	return id
+}
+
+func (tm TrackerModel) saveSharedSelection(id string) {
+	if !state.IsValidPartyID(id) {
+		return
+	}
+	path := tm.sharedSelectionPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(id+"\n"), 0o644); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, path)
+}
+
+func (tm TrackerModel) sharedSelectionPath() string {
+	if tm.selectionPath != nil {
+		return tm.selectionPath()
+	}
+	return defaultTrackerSelectionPath()
+}
+
+func sameSessionGroup(prev, next SessionRow) bool {
+	if next.SessionType != "worker" {
+		return false
+	}
+	if next.ParentID == "" {
+		return false
+	}
+	if prev.ID == next.ParentID {
+		return true
+	}
+	return prev.SessionType == "worker" && prev.ParentID == next.ParentID
 }
 
 func renderActivityLabel(label string) string {
@@ -627,14 +704,10 @@ func (s SessionRow) displayTitle() string {
 }
 
 func (s SessionRow) sessionLabel() string {
-	switch s.SessionType {
-	case "master":
-		return fmt.Sprintf("master (%d)", s.WorkerCount)
-	case "worker":
-		return "worker"
-	default:
+	if s.Status != "active" {
 		return s.Status
 	}
+	return ""
 }
 
 func (s SessionRow) glyph() string {
@@ -674,16 +747,24 @@ func (s SessionRow) activityLabel() string {
 	if s.Stage != "" && s.Stage != StageActive {
 		return s.Stage
 	}
+	if !s.HasCompanion {
+		if s.Stage != "" {
+			return s.Stage
+		}
+		return StageActive
+	}
 
 	switch s.CompanionState {
 	case string(CompanionWorking):
 		return "● working"
+	case "waiting":
+		return "◐ waiting"
 	case string(CompanionIdle):
 		return "○ idle"
+	case "done":
+		return "○ done"
 	case string(CompanionError):
 		return StageError
-	case string(CompanionOffline):
-		return "○ offline"
 	}
 
 	if s.Stage != "" {

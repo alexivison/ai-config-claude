@@ -405,6 +405,39 @@ func TestRead_Success(t *testing.T) {
 	}
 }
 
+func TestRead_CodexWorkerUsesWizardFilter(t *testing.T) {
+	t.Parallel()
+	store := setupStore(t)
+	createManifest(t, store, "party-w1", "worker1", "")
+	if err := store.Update("party-w1", func(m *state.Manifest) {
+		m.Agents = []state.AgentManifest{{Name: "codex", Role: "primary", CLI: "/usr/bin/codex", Window: 1}}
+	}); err != nil {
+		t.Fatalf("update manifest: %v", err)
+	}
+
+	runner := &mockRunner{fn: func(_ context.Context, args ...string) (string, error) {
+		if len(args) >= 1 && args[0] == "has-session" {
+			return "", nil
+		}
+		if len(args) >= 1 && args[0] == "list-panes" {
+			return "1 0 primary", nil
+		}
+		if len(args) >= 1 && args[0] == "capture-pane" {
+			return "• I shall inspect the file.\n⏺ Ran rg foo\n⎿ found it\n", nil
+		}
+		return "", &tmux.ExitError{Code: 1}
+	}}
+	svc := newService(store, runner)
+	output, err := svc.Read(t.Context(), "party-w1", 50)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	want := "• I shall inspect the file.\n⏺ Ran rg foo\n⎿ found it"
+	if output != want {
+		t.Fatalf("expected wizard-filtered output %q, got %q", want, output)
+	}
+}
+
 func TestRead_CustomLineCount(t *testing.T) {
 	t.Parallel()
 	store := setupStore(t)

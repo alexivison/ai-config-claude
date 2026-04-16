@@ -88,7 +88,8 @@ party_is_master() {
 }
 
 # Discovers the party session this script is running inside.
-# Uses $TMUX env var to self-discover — no global pointer file needed.
+# Uses the exact pane when available so multi-session tmux clients do not
+# leak messages across party sessions.
 # Sets SESSION_NAME and STATE_DIR. Returns 1 if not inside a party session.
 discover_session() {
   local name
@@ -96,6 +97,8 @@ discover_session() {
   # PARTY_SESSION override for testing (scripts run outside tmux)
   if [[ -n "${PARTY_SESSION:-}" ]]; then
     name="$PARTY_SESSION"
+  elif [[ -n "${TMUX_PANE:-}" ]]; then
+    name=$(tmux display-message -t "$TMUX_PANE" -p '#{session_name}' 2>/dev/null)
   elif [[ -n "${TMUX:-}" ]]; then
     name=$(tmux display-message -p '#{session_name}' 2>/dev/null)
   else
@@ -240,6 +243,23 @@ _party_role_label() {
   esac
 }
 
+_party_other_canonical_role() {
+  case "${1:-}" in
+    primary) printf 'companion\n' ;;
+    companion) printf 'primary\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+_party_has_other_canonical_role() {
+  local session="${1:?Usage: _party_has_other_canonical_role SESSION ROLE}"
+  local role="${2:?Missing role}"
+  local other_role
+  other_role=$(_party_other_canonical_role "$role" 2>/dev/null || true)
+  [[ -n "$other_role" ]] || return 1
+  _party_role_resolve_exact "$session" "$other_role" >/dev/null 2>&1
+}
+
 # Resolve an exact @party_role match without legacy fallback.
 # On success, PARTY_ROLE_TARGET contains the tmux target.
 # On failure, PARTY_ROLE_ERROR contains the human-readable error.
@@ -309,6 +329,11 @@ party_role_pane_target() {
 
   local exact_error="$PARTY_ROLE_ERROR"
   if [[ "$exact_error" == ROLE_NOT_FOUND:* ]]; then
+    if _party_has_other_canonical_role "$session" "$role"; then
+      echo "$exact_error" >&2
+      return 1
+    fi
+
     local fallback_role
     fallback_role=$(_party_role_fallback "$role" 2>/dev/null || true)
     if [[ -n "$fallback_role" ]]; then
@@ -339,6 +364,11 @@ party_role_message_prefix() {
   fi
 
   local fallback_role
+  if _party_has_other_canonical_role "$session" "$role"; then
+    printf '[%s]\n' "$(_party_role_label "$role")"
+    return 0
+  fi
+
   fallback_role=$(_party_role_fallback "$role" 2>/dev/null || true)
   if [[ -n "$fallback_role" ]] && _party_role_resolve_exact "$session" "$fallback_role"; then
     printf '[%s]\n' "$(_party_role_label "$fallback_role")"
@@ -369,15 +399,10 @@ party_primary_pane_target() {
   party_role_pane_target "$session" "primary"
 }
 
-# Resolve the companion pane target, layout-aware.
-# sidebar → always ${session}:0.0 (hidden window 0)
-# classic → role-based resolution via party_role_pane_target
+# Resolve the companion pane target via role metadata.
+# This works across classic/sidebar layouts and rejects no-companion sessions.
 party_companion_pane_target() {
   local session="${1:?Usage: party_companion_pane_target SESSION}"
-  if [[ "$(party_layout_mode)" == "sidebar" ]]; then
-    printf '%s:0.0\n' "$session"
-    return 0
-  fi
   party_role_pane_target "$session" "companion"
 }
 

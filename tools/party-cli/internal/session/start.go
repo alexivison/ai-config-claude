@@ -32,6 +32,9 @@ type StartResult struct {
 	RuntimeDir string
 }
 
+const workerReportContract = "\n\nThis is a worker session. When thou hast a result for the master, report back via `party-cli report \"<result>\"`.\n" +
+	"For small deliverables, include the actual answer in the report. For larger tasks, send a one-line summary and keep supporting detail in this pane."
+
 // Start creates and launches a new party session.
 func (s *Service) Start(ctx context.Context, opts StartOpts) (StartResult, error) {
 	cwd := opts.Cwd
@@ -71,6 +74,11 @@ func (s *Service) Start(ctx context.Context, opts StartOpts) (StartResult, error
 	manifestAgents := make([]state.AgentManifest, 0, len(bindings))
 	resumeMap := legacyResumeMap(opts.ClaudeResumeID, opts.CodexResumeID)
 
+	initialPrompt := opts.Prompt
+	if opts.MasterID != "" {
+		initialPrompt = augmentWorkerPrompt(opts.Prompt)
+	}
+
 	for _, binding := range bindings {
 		provider := binding.Agent
 		cli, ok := resolveAgentBinary(provider)
@@ -83,11 +91,15 @@ func (s *Service) Start(ctx context.Context, opts StartOpts) (StartResult, error
 		}
 
 		resumeID := resumeMap[provider.Name()]
+		prompt := ""
+		if binding.Role == agent.RolePrimary {
+			prompt = initialPrompt
+		}
 		agentCmds[binding.Role] = provider.BuildCmd(agent.CmdOpts{
 			Binary:    cli,
 			AgentPath: agentPath,
 			ResumeID:  resumeID,
-			Prompt:    opts.Prompt,
+			Prompt:    prompt,
 			Title:     opts.Title,
 			Master:    opts.Master && binding.Role == agent.RolePrimary,
 		})
@@ -103,8 +115,12 @@ func (s *Service) Start(ctx context.Context, opts StartOpts) (StartResult, error
 			Role:     string(binding.Role),
 			CLI:      cli,
 			ResumeID: resumeID,
-			Window:   agentWindow(layout, opts.Master, binding.Role),
 		})
+	}
+
+	hasCompanion := agentCmds[agent.RoleCompanion] != ""
+	for i := range manifestAgents {
+		manifestAgents[i].Window = agentWindow(layout, opts.Master, agent.Role(manifestAgents[i].Role), hasCompanion)
 	}
 
 	// Atomic create-or-retry: claim an ID via Store.Create (flock-protected).
@@ -176,6 +192,16 @@ func (s *Service) Start(ctx context.Context, opts StartOpts) (StartResult, error
 	}
 
 	return StartResult{SessionID: sessionID, RuntimeDir: runtimeDir}, nil
+}
+
+func augmentWorkerPrompt(prompt string) string {
+	if prompt == "" {
+		return strings.TrimSpace(workerReportContract)
+	}
+	if strings.Contains(prompt, "party-cli report") || strings.Contains(prompt, "party-relay.sh --report") {
+		return prompt
+	}
+	return prompt + workerReportContract
 }
 
 // claimSessionID generates a unique session ID and atomically creates its
@@ -319,11 +345,11 @@ func sessionBindings(registry *agent.Registry, master bool) ([]*agent.RoleBindin
 	return []*agent.RoleBinding{binding}, nil
 }
 
-func agentWindow(layout LayoutMode, master bool, role agent.Role) int {
+func agentWindow(layout LayoutMode, master bool, role agent.Role, hasCompanion bool) int {
 	if master {
 		return 0
 	}
-	if layout == LayoutSidebar && role == agent.RolePrimary {
+	if layout == LayoutSidebar && role == agent.RolePrimary && hasCompanion {
 		return 1
 	}
 	return 0

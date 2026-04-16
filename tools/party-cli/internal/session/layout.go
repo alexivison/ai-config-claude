@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/anthropics/ai-party/tools/party-cli/internal/agent"
 )
@@ -37,6 +38,41 @@ func roleCmd(cmds map[agent.Role]string, role agent.Role) string {
 	return cmds[role]
 }
 
+func layoutResizeCmd(leftTarget, shellTarget string) string {
+	parts := make([]string, 0, 2)
+	if leftTarget != "" {
+		parts = append(parts, fmt.Sprintf("tmux resize-pane -t %s -x %s", leftTarget, leftPaneWidth))
+	}
+	if shellTarget != "" {
+		parts = append(parts, fmt.Sprintf("tmux resize-pane -t %s -x %s", shellTarget, shellPaneWidth))
+	}
+	return strings.Join(parts, " && ")
+}
+
+func layoutRetryCmd(cmd string) string {
+	if cmd == "" {
+		return ""
+	}
+	return fmt.Sprintf(`%s; for delay in 0.15 0.35 0.75 1.5 3; do sleep "$delay"; %s; done`, cmd, cmd)
+}
+
+func (s *Service) applyLayoutResizes(ctx context.Context, session, leftTarget, shellTarget string) error {
+	cmd := layoutResizeCmd(leftTarget, shellTarget)
+	if cmd == "" {
+		return nil
+	}
+
+	if err := s.Client.RunShell(ctx, session, layoutRetryCmd(cmd)); err != nil {
+		return err
+	}
+
+	hookCmd := fmt.Sprintf(`run-shell -b "%s"`, cmd)
+	if err := s.Client.SetHook(ctx, session, "client-attached", hookCmd); err != nil {
+		return err
+	}
+	return s.Client.SetHook(ctx, session, "client-resized", hookCmd)
+}
+
 // launchClassic sets up the single-window layout: Companion | Primary | Shell.
 func (s *Service) launchClassic(ctx context.Context, session, cwd string, cmds map[agent.Role]string) error {
 	primaryCmd := roleCmd(cmds, agent.RolePrimary)
@@ -69,8 +105,7 @@ func (s *Service) launchClassic(ctx context.Context, session, cwd string, cmds m
 			return fmt.Errorf("classic options batch: %w", err)
 		}
 
-		resizeCmd := fmt.Sprintf("sleep 0.3 && tmux resize-pane -t %s -x %s", p1, shellPaneWidth)
-		return s.Client.RunShell(ctx, session, resizeCmd)
+		return s.applyLayoutResizes(ctx, session, "", p1)
 	}
 
 	if err := s.Client.RespawnPane(ctx, p0, cwd, companionCmd); err != nil {
@@ -106,8 +141,7 @@ func (s *Service) launchClassic(ctx context.Context, session, cwd string, cmds m
 		return fmt.Errorf("classic options batch: %w", err)
 	}
 
-	resizeCmd := fmt.Sprintf("sleep 0.3 && tmux resize-pane -t %s -x %s && tmux resize-pane -t %s -x %s", p0, leftPaneWidth, p2, shellPaneWidth)
-	return s.Client.RunShell(ctx, session, resizeCmd)
+	return s.applyLayoutResizes(ctx, session, p0, p2)
 }
 
 // launchSidebar sets up the dual-window layout:
@@ -185,6 +219,7 @@ func (s *Service) launchSidebar(ctx context.Context, session, cwd, title string,
 		setPaneOption(w1p1, "@party_role", "primary"),
 		setPaneOption(w1p2, "@party_role", "shell"),
 		themeCmd(workspaceWindow),
+		[]string{"select-pane", "-t", w1p0, "-T", "Tracker"},
 		[]string{"select-window", "-t", workspaceWindow},
 		[]string{"select-pane", "-t", w1p1},
 	); err != nil {
@@ -192,8 +227,7 @@ func (s *Service) launchSidebar(ctx context.Context, session, cwd, title string,
 	}
 
 	// Deferred resize — immediate resize gets overridden by agent startup.
-	resizeCmd := fmt.Sprintf("sleep 0.3 && tmux resize-pane -t %s -x %s && tmux resize-pane -t %s -x %s", w1p0, leftPaneWidth, w1p2, shellPaneWidth)
-	return s.Client.RunShell(ctx, session, resizeCmd)
+	return s.applyLayoutResizes(ctx, session, w1p0, w1p2)
 }
 
 // launchMaster sets up the master layout: Tracker | Primary | Shell.
@@ -230,13 +264,13 @@ func (s *Service) launchMaster(ctx context.Context, session, cwd string, cmds ma
 		setPaneOption(p1, "@party_role", "primary"),
 		setPaneOption(p2, "@party_role", "shell"),
 		themeCmd(w0),
+		[]string{"select-pane", "-t", p0, "-T", "Tracker"},
 		[]string{"select-pane", "-t", p1},
 	); err != nil {
 		return fmt.Errorf("master options batch: %w", err)
 	}
 
-	resizeCmd := fmt.Sprintf("sleep 0.3 && tmux resize-pane -t %s -x %s && tmux resize-pane -t %s -x %s", p0, leftPaneWidth, p2, shellPaneWidth)
-	return s.Client.RunShell(ctx, session, resizeCmd)
+	return s.applyLayoutResizes(ctx, session, p0, p2)
 }
 
 // Resize resets the pane layout to canonical widths for the given session.

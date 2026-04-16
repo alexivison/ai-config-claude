@@ -74,6 +74,16 @@ result=$(party_role_pane_target "party-test" "companion")
 assert "role resolver: companion resolves directly on new sessions" \
   '[ "$result" = "party-test:0.0" ]'
 
+MOCK_PANE_DATA=$'0 tracker\n1 primary\n2 shell'
+
+if party_role_pane_target "party-test" "companion" 2>/dev/null; then
+  FAIL=$((FAIL + 1))
+  echo "  [FAIL] role resolver: no-companion sessions reject companion lookups"
+else
+  PASS=$((PASS + 1))
+  echo "  [PASS] role resolver: no-companion sessions reject companion lookups"
+fi
+
 # Missing role → ROLE_NOT_FOUND
 if party_role_pane_target "party-test" "missing" 2>/dev/null; then
   FAIL=$((FAIL + 1))

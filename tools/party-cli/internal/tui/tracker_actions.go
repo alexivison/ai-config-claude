@@ -129,7 +129,9 @@ func NewLiveSessionFetcher(tmuxClient *tmux.Client, store *state.Store) SessionF
 		if err != nil {
 			return TrackerSnapshot{}, fmt.Errorf("discover sessions: %w", err)
 		}
-		state.SortByMtime(manifests, store.Root())
+		sort.SliceStable(manifests, func(i, j int) bool {
+			return stableSessionOrderKey(manifests[i]) > stableSessionOrderKey(manifests[j])
+		})
 
 		ctx := context.Background()
 		rows := make([]SessionRow, 0, len(manifests))
@@ -149,11 +151,15 @@ func NewLiveSessionFetcher(tmuxClient *tmux.Client, store *state.Store) SessionF
 
 			runtimeDir := fmt.Sprintf("/tmp/%s", manifest.PartyID)
 			primaryAgent, companionAgent := resolveSessionAgents(manifest, nil)
+			if primaryAgent != nil {
+				row.PrimaryAgent = primaryAgent.Name()
+			}
+			row.HasCompanion = companionAgent != nil
 			if primaryAgent != nil && primaryAgent.Name() == "claude" {
 				row.PrimaryState = ReadPrimaryState(runtimeDir)
 			}
 			if companionAgent != nil {
-				status, _ := ReadCompanionStatus(runtimeDir, companionAgent.StateFileName())
+				status := readCompanionAgentStatus(runtimeDir, companionAgent)
 				row.CompanionState = string(status.State)
 				row.CompanionVerdict = status.Verdict
 			}
@@ -170,6 +176,13 @@ func NewLiveSessionFetcher(tmuxClient *tmux.Client, store *state.Store) SessionF
 			Current:  buildCurrentSessionDetail(ctx, current, manifestByID, tmuxClient),
 		}, nil
 	}
+}
+
+func stableSessionOrderKey(manifest state.Manifest) string {
+	if manifest.CreatedAt != "" {
+		return manifest.CreatedAt + "|" + manifest.PartyID
+	}
+	return manifest.PartyID
 }
 
 func buildCurrentSessionDetail(
@@ -212,7 +225,7 @@ func buildCurrentSessionDetail(
 	}
 
 	runtimeDir := fmt.Sprintf("/tmp/%s", current.ID)
-	status, _ := ReadCompanionStatus(runtimeDir, companionAgent.StateFileName())
+	status := readCompanionAgentStatus(runtimeDir, companionAgent)
 	detail.CompanionName = companionAgent.Name()
 	detail.CompanionStatus = status
 	detail.CompanionSnippet = captureRoleSnippet(ctx, tmuxClient, current.ID, "companion", tmux.WindowCompanion, companionAgent, 8)
@@ -280,12 +293,6 @@ func resolveManifestAgent(manifest state.Manifest, role agent.Role, registry *ag
 		}
 	}
 
-	if registry != nil {
-		if binding, err := registry.ForRole(role); err == nil {
-			return binding.Agent
-		}
-	}
-
 	switch role {
 	case agent.RolePrimary:
 		if manifest.ExtraString("claude_session_id") != "" || manifest.ClaudeBin != "" {
@@ -301,6 +308,31 @@ func resolveManifestAgent(manifest state.Manifest, role agent.Role, registry *ag
 	}
 
 	return nil
+}
+
+func readCompanionAgentStatus(runtimeDir string, companion agent.Agent) CompanionStatus {
+	if companion == nil {
+		return CompanionStatus{State: CompanionOffline}
+	}
+
+	state, err := companion.ReadState(runtimeDir)
+	if err != nil {
+		return CompanionStatus{
+			State: CompanionError,
+			Error: err.Error(),
+		}
+	}
+	if state.State == "" {
+		state.State = string(CompanionOffline)
+	}
+
+	return CompanionStatus{
+		State:   CompanionState(state.State),
+		Target:  state.Target,
+		Mode:    state.Mode,
+		Verdict: state.Verdict,
+		Error:   state.Error,
+	}
 }
 
 func lookupAgent(name string, registry *agent.Registry) agent.Agent {

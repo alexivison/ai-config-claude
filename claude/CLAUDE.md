@@ -60,21 +60,20 @@ Keep context window clean. One task per sub-agent.
 
 Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 
-## The Companion
+## Inter-Agent Transport
 
-Communicate via the companion transport skill only (default: `codex-transport` via `tmux-codex.sh`; never raw tmux commands — blocked by hook). Dispatch the companion FIRST, then launch sub-agents — keep working in parallel while the companion thinks. `[COMPANION]` messages are the role-based prefix for new sessions; `[CODEX]` remains the legacy default prefix. Handle both via `tmux-handler`. You decide verdicts; the companion produces findings.
+Use the role-aware transport scripts only; never raw tmux commands. If you are the primary agent, dispatch the companion via `codex-transport` / `tmux-codex.sh` and keep working in parallel. If you are the companion agent, notify the primary via `tmux-claude.sh`. `[PRIMARY]` / `[COMPANION]` are the canonical prefixes for new sessions; `[CLAUDE]` / `[CODEX]` remain legacy fallbacks. Handle inbound transport via `tmux-handler`.
 
 ### When to Dispatch
 
-See `codex-transport` for dispatch guidelines (mandatory and proactive triggers). It remains the default companion transport skill for backward compatibility.
+When acting as primary, see `codex-transport` for dispatch guidelines (mandatory and proactive triggers). It remains the default companion transport skill for backward compatibility.
 
 ### Transport
 
-Default script: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh`
-
-- Modes: `--review`, `--plan-review`, `--prompt` — all require `work_dir` as last arg
-- All dispatches are non-blocking — keep working after sending
-- See `codex-transport` for full mode reference
+- Primary → companion: `~/.claude/skills/codex-transport/scripts/tmux-codex.sh`
+- Companion → primary: `~/.codex/skills/claude-transport/scripts/tmux-claude.sh`
+- Dispatch modes (`--review`, `--plan-review`, `--prompt`) are non-blocking and require `work_dir` as the last arg
+- See `codex-transport` and `claude-transport` for the full mode references
 
 ## Master Session Mode
 

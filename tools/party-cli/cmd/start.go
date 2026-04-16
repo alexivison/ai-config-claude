@@ -75,7 +75,7 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 	cmd.Flags().BoolVar(&opts.master, "master", false, "start as a master session")
 	cmd.Flags().StringVar(&opts.masterID, "master-id", "", "parent master session ID (for worker spawn)")
 	opts.agentFlags.AddFlags(cmd)
-	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for Claude")
+	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for the primary agent")
 	cmd.Flags().BoolVar(&opts.attach, "attach", false, "attach to session after creation")
 	// Note: by default, attach behavior is handled by shell wrappers (party.sh).
 	// Use --attach to have party-cli attach directly after creating the session.

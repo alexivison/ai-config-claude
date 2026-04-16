@@ -44,7 +44,12 @@ it is a master session.`,
 				masterID = id
 			}
 
-			registry, err := loadSessionRegistryWithOverrides(opts.agentFlags.ConfigOverrides())
+			masterManifest, err := store.Read(masterID)
+			if err != nil {
+				return fmt.Errorf("read master manifest: %w", err)
+			}
+
+			registry, err := session.WorkerSpawnRegistry(masterManifest, opts.agentFlags.ConfigOverrides())
 			if err != nil {
 				return err
 			}
@@ -61,6 +66,7 @@ it is a master session.`,
 				CodexResumeID:  codexResumeID,
 				Prompt:         opts.prompt,
 				Detached:       true, // shell wrappers handle attach
+				Registry:       registry,
 			})
 			if err != nil {
 				return err
@@ -74,7 +80,7 @@ it is a master session.`,
 	cmd.Flags().StringVar(&opts.cwd, "cwd", "", "working directory (default: master's cwd)")
 	cmd.Flags().StringVar(&opts.layout, "layout", "", "layout mode: classic or sidebar")
 	opts.agentFlags.AddFlags(cmd)
-	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for Claude")
+	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for the primary agent")
 
 	return cmd
 }

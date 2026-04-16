@@ -206,6 +206,7 @@
   "enabledPlugins": {
     "skill-creator@claude-plugins-official": true
   },
+  "awaySummaryEnabled": false,
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "in-process"
 }

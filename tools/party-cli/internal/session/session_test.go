@@ -49,6 +49,7 @@ type mockRunner struct {
 	fn          func(ctx context.Context, args ...string) (string, error)
 	sessions    map[string]bool
 	paneRoles   map[string]string // target → role
+	paneTitles  map[string]string // target → title
 	envVars     map[string]string // session:key → value
 	windowNames map[string]string // target → name
 }
@@ -57,6 +58,7 @@ func newMockRunner() *mockRunner {
 	r := &mockRunner{
 		sessions:    make(map[string]bool),
 		paneRoles:   make(map[string]string),
+		paneTitles:  make(map[string]string),
 		envVars:     make(map[string]string),
 		windowNames: make(map[string]string),
 	}
@@ -164,6 +166,16 @@ func (m *mockRunner) defaultHandler(ctx context.Context, args ...string) (string
 	case "display-message":
 		if len(args) > 0 && args[len(args)-1] == "#{pane_in_mode}" {
 			return "0", nil
+		}
+		return "", nil
+
+	case "select-pane":
+		target := flagVal(args, "-t")
+		for i, arg := range args {
+			if arg == "-T" && i+1 < len(args) {
+				m.paneTitles[target] = args[i+1]
+				break
+			}
 		}
 		return "", nil
 
@@ -394,6 +406,9 @@ func TestStart_Master(t *testing.T) {
 	if runner.paneRoles[result.SessionID+":0.0"] != "tracker" {
 		t.Fatalf("expected tracker in pane 0.0, got %q", runner.paneRoles[result.SessionID+":0.0"])
 	}
+	if runner.paneTitles[result.SessionID+":0.0"] != "Tracker" {
+		t.Fatalf("expected tracker title in pane 0.0, got %q", runner.paneTitles[result.SessionID+":0.0"])
+	}
 }
 
 func TestStart_Worker(t *testing.T) {
@@ -429,6 +444,27 @@ func TestStart_Worker(t *testing.T) {
 	}
 	if len(workers) != 1 || workers[0] != workerResult.SessionID {
 		t.Fatalf("expected worker %s, got %v", workerResult.SessionID, workers)
+	}
+}
+
+func TestStart_SidebarSetsTrackerPaneTitle(t *testing.T) {
+	t.Parallel()
+	svc, runner := setupService(t)
+	svc.Now = func() int64 { return 4242 }
+
+	result, err := svc.Start(t.Context(), StartOpts{
+		Title: "tracker-title",
+		Cwd:   t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	if runner.paneRoles[result.SessionID+":1.0"] != "tracker" {
+		t.Fatalf("expected tracker role in pane 1.0, got %q", runner.paneRoles[result.SessionID+":1.0"])
+	}
+	if runner.paneTitles[result.SessionID+":1.0"] != "Tracker" {
+		t.Fatalf("expected tracker title in pane 1.0, got %q", runner.paneTitles[result.SessionID+":1.0"])
 	}
 }
 
@@ -1017,6 +1053,45 @@ func TestSpawn_FromMaster(t *testing.T) {
 	}
 }
 
+func TestSpawn_FromMasterInheritsPrimaryAgentWithoutCompanion(t *testing.T) {
+	t.Parallel()
+	svc, _ := setupService(t)
+	counter := int64(6000)
+	svc.Now = func() int64 { counter++; return counter }
+
+	cwd := t.TempDir()
+	createTestManifest(t, svc.Store, "party-master", "orch", cwd, "master")
+	if err := svc.Store.Update("party-master", func(m *state.Manifest) {
+		m.Agents = []state.AgentManifest{{
+			Name:   "codex",
+			Role:   "primary",
+			CLI:    "/bin/sh",
+			Window: 0,
+		}}
+		m.ClaudeBin = ""
+		m.CodexBin = "/bin/sh"
+		m.Extra = nil
+	}); err != nil {
+		t.Fatalf("update master manifest: %v", err)
+	}
+
+	result, err := svc.Spawn(t.Context(), "party-master", SpawnOpts{Title: "wizard-worker"})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+
+	wm, err := svc.Store.Read(result.SessionID)
+	if err != nil {
+		t.Fatalf("read worker manifest: %v", err)
+	}
+	if len(wm.Agents) != 1 {
+		t.Fatalf("expected single-agent worker, got %+v", wm.Agents)
+	}
+	if wm.Agents[0].Role != "primary" || wm.Agents[0].Name != "codex" {
+		t.Fatalf("expected codex primary worker, got %+v", wm.Agents[0])
+	}
+}
+
 func TestSpawn_FromNonMaster(t *testing.T) {
 	t.Parallel()
 	svc, _ := setupService(t)
@@ -1532,6 +1607,118 @@ func TestStart_CodexPrimaryRegistry(t *testing.T) {
 	}
 }
 
+func TestStart_CodexPrimaryMasterIncludesPrompt(t *testing.T) {
+	t.Parallel()
+	svc, runner := setupService(t)
+	svc.Now = func() int64 { return 7788 }
+	root := t.TempDir()
+	codexCLI := filepath.Join(root, "codex-bin")
+	if err := os.WriteFile(codexCLI, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write %s: %v", codexCLI, err)
+	}
+
+	registry, err := agent.NewRegistry(&agent.Config{
+		Agents: map[string]agent.AgentConfig{
+			"codex": {CLI: codexCLI},
+		},
+		Roles: agent.RolesConfig{
+			Primary: &agent.RoleConfig{Agent: "codex", Window: 0},
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	svc.Registry = registry
+
+	if _, err := svc.Start(t.Context(), StartOpts{
+		Title:  "codex-master",
+		Cwd:    t.TempDir(),
+		Master: true,
+		Prompt: "triage the backlog",
+	}); err != nil {
+		t.Fatalf("start master: %v", err)
+	}
+
+	wantPrompt := agent.NewCodex(agent.AgentConfig{}).MasterPrompt() + "\n\nTask: triage the backlog"
+	foundMasterCmd := false
+	for _, call := range runner.calls {
+		if len(call.args) >= 1 && call.args[0] == "split-window" && strings.Contains(call.args[len(call.args)-1], codexCLI) {
+			foundMasterCmd = true
+			if !strings.Contains(call.args[len(call.args)-1], wantPrompt) {
+				t.Fatalf("master Codex command missing prompt %q in %q", wantPrompt, call.args[len(call.args)-1])
+			}
+		}
+	}
+	if !foundMasterCmd {
+		t.Fatal("expected master primary pane to launch Codex command")
+	}
+}
+
+func TestStart_PromptGoesOnlyToPrimary(t *testing.T) {
+	t.Parallel()
+	svc, runner := setupService(t)
+	svc.Now = func() int64 { return 8899 }
+
+	prompt := "investigate one narrow bug"
+	if _, err := svc.Start(t.Context(), StartOpts{
+		Title:  "prompted",
+		Cwd:    t.TempDir(),
+		Layout: LayoutClassic,
+		Prompt: prompt,
+	}); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	var hits int
+	for _, call := range runner.calls {
+		for _, arg := range call.args {
+			if strings.Contains(arg, prompt) {
+				hits++
+			}
+		}
+	}
+	if hits != 1 {
+		t.Fatalf("expected prompt to appear exactly once in tmux launch commands, got %d", hits)
+	}
+}
+
+func TestStart_WorkerPromptIncludesReportContract(t *testing.T) {
+	t.Parallel()
+	svc, runner := setupService(t)
+	svc.Now = func() int64 { return 9901 }
+	createTestManifest(t, svc.Store, "party-master", "master", t.TempDir(), "master")
+
+	task := "Deliver a short joke to the master session."
+	if _, err := svc.Start(t.Context(), StartOpts{
+		Title:    "jester",
+		Cwd:      t.TempDir(),
+		Layout:   LayoutClassic,
+		MasterID: "party-master",
+		Prompt:   task,
+	}); err != nil {
+		t.Fatalf("start worker: %v", err)
+	}
+
+	var launch string
+	for _, call := range runner.calls {
+		for _, arg := range call.args {
+			if strings.Contains(arg, task) {
+				launch = arg
+				break
+			}
+		}
+	}
+	if launch == "" {
+		t.Fatal("expected worker launch command containing task prompt")
+	}
+	if !strings.Contains(launch, `party-cli report`) {
+		t.Fatalf("expected worker report contract in launch command, got %q", launch)
+	}
+	if strings.Count(launch, task) != 1 {
+		t.Fatalf("expected task prompt once in launch command, got %q", launch)
+	}
+}
+
 func TestStart_NoCompanionRegistry(t *testing.T) {
 	t.Parallel()
 	svc, runner := setupService(t)
@@ -1853,6 +2040,17 @@ func TestLaunchSidebar_NoCompanion(t *testing.T) {
 	}
 }
 
+func TestAgentWindow_NoCompanionSidebarUsesWindowZero(t *testing.T) {
+	t.Parallel()
+
+	if got := agentWindow(LayoutSidebar, false, agent.RolePrimary, false); got != 0 {
+		t.Fatalf("expected sidebar primary window 0 without companion, got %d", got)
+	}
+	if got := agentWindow(LayoutSidebar, false, agent.RolePrimary, true); got != 1 {
+		t.Fatalf("expected sidebar primary window 1 with companion, got %d", got)
+	}
+}
+
 func TestResize_UsesCompanionPane(t *testing.T) {
 	t.Parallel()
 	svc, runner := setupService(t)
@@ -1868,6 +2066,26 @@ func TestResize_UsesCompanionPane(t *testing.T) {
 	}
 	if !runner.hasCall("resize-pane", "-t", "party-r:0.2", "-x", shellPaneWidth) {
 		t.Fatalf("expected shell pane resize, calls=%v", runner.calls)
+	}
+}
+
+func TestApplyLayoutResizes_InstallsRetryAndHooks(t *testing.T) {
+	t.Parallel()
+	svc, runner := setupService(t)
+	runner.sessions["party-hooks"] = true
+
+	if err := svc.applyLayoutResizes(t.Context(), "party-hooks", "party-hooks:1.0", "party-hooks:1.2"); err != nil {
+		t.Fatalf("applyLayoutResizes: %v", err)
+	}
+
+	if !runner.hasCall("run-shell", "-t", "party-hooks", "-b") {
+		t.Fatalf("expected background resize retry, calls=%v", runner.calls)
+	}
+	if !runner.hasCall("set-hook", "-t", "party-hooks", "client-attached") {
+		t.Fatalf("expected client-attached resize hook, calls=%v", runner.calls)
+	}
+	if !runner.hasCall("set-hook", "-t", "party-hooks", "client-resized") {
+		t.Fatalf("expected client-resized resize hook, calls=%v", runner.calls)
 	}
 }
 

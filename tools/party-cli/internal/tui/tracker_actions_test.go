@@ -284,3 +284,87 @@ func TestLiveSessionFetcherLeavesNonClaudePrimaryStateEmpty(t *testing.T) {
 		t.Fatalf("expected empty primary state for non-Claude primary, got %q", snapshot.Sessions[0].PrimaryState)
 	}
 }
+
+func TestLiveSessionFetcherDoesNotInventCompanionFromRegistry(t *testing.T) {
+	t.Parallel()
+
+	store, err := state.NewStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	client := tmux.NewClient(runnerWithLiveSessions(map[string]bool{"party-codex": true}))
+
+	manifest := state.Manifest{
+		PartyID: "party-codex",
+		Agents: []state.AgentManifest{
+			{Name: "codex", Role: "primary"},
+		},
+	}
+	if err := store.Create(manifest); err != nil {
+		t.Fatalf("create manifest: %v", err)
+	}
+
+	registry, err := agent.NewRegistry(agent.DefaultConfig())
+	if err != nil {
+		t.Fatalf("new registry: %v", err)
+	}
+
+	fetcher := NewLiveSessionFetcher(client, store)
+	snapshot, err := fetcher(SessionInfo{ID: "party-codex", SessionType: "standalone", Manifest: manifest, Registry: registry})
+	if err != nil {
+		t.Fatalf("fetch sessions: %v", err)
+	}
+
+	if snapshot.Current.CompanionName != "" {
+		t.Fatalf("expected no companion for no-companion session, got %q", snapshot.Current.CompanionName)
+	}
+	if snapshot.Sessions[0].HasCompanion {
+		t.Fatal("expected row to report no companion")
+	}
+}
+
+func TestLiveSessionFetcherReadsClaudeCompanionState(t *testing.T) {
+	t.Parallel()
+
+	store, err := state.NewStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	client := tmux.NewClient(runnerWithLiveSessions(map[string]bool{"party-swap": true}))
+
+	manifest := state.Manifest{
+		PartyID: "party-swap",
+		Agents: []state.AgentManifest{
+			{Name: "codex", Role: "primary"},
+			{Name: "claude", Role: "companion"},
+		},
+	}
+	if err := store.Create(manifest); err != nil {
+		t.Fatalf("create manifest: %v", err)
+	}
+
+	runtimeDir := filepath.Join("/tmp", "party-swap")
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		t.Fatalf("mkdir runtime: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(runtimeDir) })
+	if err := os.WriteFile(filepath.Join(runtimeDir, "claude-state.json"), []byte(`{"state":"waiting"}`), 0o644); err != nil {
+		t.Fatalf("write claude status: %v", err)
+	}
+
+	fetcher := NewLiveSessionFetcher(client, store)
+	snapshot, err := fetcher(SessionInfo{ID: "party-swap", SessionType: "standalone", Manifest: manifest})
+	if err != nil {
+		t.Fatalf("fetch sessions: %v", err)
+	}
+
+	if snapshot.Current.CompanionName != "claude" {
+		t.Fatalf("expected claude companion, got %q", snapshot.Current.CompanionName)
+	}
+	if snapshot.Current.CompanionStatus.State != CompanionState("waiting") {
+		t.Fatalf("expected waiting companion state, got %q", snapshot.Current.CompanionStatus.State)
+	}
+	if snapshot.Sessions[0].CompanionState != "waiting" {
+		t.Fatalf("expected row waiting state, got %q", snapshot.Sessions[0].CompanionState)
+	}
+}

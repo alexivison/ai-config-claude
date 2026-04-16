@@ -79,7 +79,7 @@ func (s *Service) Continue(ctx context.Context, sessionID string) (ContinueResul
 
 	for _, binding := range bindings {
 		provider := binding.Agent
-		agentState, ok := manifestAgent(m.Agents, binding.Role, provider.Name())
+		agentState, _ := manifestAgent(m.Agents, binding.Role, provider.Name())
 
 		cli := agentState.CLI
 		if cli == "" {
@@ -114,17 +114,19 @@ func (s *Service) Continue(ctx context.Context, sessionID string) (ContinueResul
 			}
 		}
 
-		window := agentState.Window
-		if !ok {
-			window = agentWindow(resolveLayout(), m.SessionType == "master", binding.Role)
-		}
 		manifestAgents = append(manifestAgents, state.AgentManifest{
 			Name:     provider.Name(),
 			Role:     string(binding.Role),
 			CLI:      cli,
 			ResumeID: resumeID,
-			Window:   window,
+			Window:   agentState.Window,
 		})
+	}
+
+	layout := resolveLayout()
+	hasCompanion := agentCmds[agent.RoleCompanion] != ""
+	for i := range manifestAgents {
+		manifestAgents[i].Window = agentWindow(layout, m.SessionType == "master", agent.Role(manifestAgents[i].Role), hasCompanion)
 	}
 
 	rtDir, err := ensureRuntimeDir(sessionID)

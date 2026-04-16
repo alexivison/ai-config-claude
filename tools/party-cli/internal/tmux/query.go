@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -85,7 +86,12 @@ func (c *Client) SessionCwd(ctx context.Context, sessionID string) (string, erro
 // CurrentSessionName returns the name of the tmux session this process is attached to.
 // Only meaningful when the TMUX env var is set (i.e., running inside tmux).
 func (c *Client) CurrentSessionName(ctx context.Context) (string, error) {
-	out, err := c.runner.Run(ctx, "display-message", "-p", "#{session_name}")
+	args := []string{"display-message"}
+	if pane := os.Getenv("TMUX_PANE"); pane != "" {
+		args = append(args, "-t", pane)
+	}
+	args = append(args, "-p", "#{session_name}")
+	out, err := c.runner.Run(ctx, args...)
 	if err != nil {
 		return "", fmt.Errorf("current session name: %w", err)
 	}
