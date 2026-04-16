@@ -3,8 +3,6 @@ package tui
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -360,45 +358,20 @@ func TestTrackerFooterShowsStopDeleteOutsideMaster(t *testing.T) {
 	}
 }
 
-func TestTrackerRefreshSessionsPrefersSharedSelection(t *testing.T) {
-	tempDir := t.TempDir()
+func TestTrackerViewShowsCurrentIndicator(t *testing.T) {
+	t.Parallel()
 
-	tm := NewTrackerModel(SessionInfo{ID: "party-current"}, snapshotFetcher(TrackerSnapshot{
+	snapshot := TrackerSnapshot{
 		Sessions: []SessionRow{
 			{ID: "party-current", Title: "current", Status: "active", SessionType: "standalone", IsCurrent: true},
-			{ID: "party-target", Title: "target", Status: "active", SessionType: "standalone"},
+			{ID: "party-other", Title: "other", Status: "active", SessionType: "standalone"},
 		},
-	}), &fakeActions{})
-	tm.selectionPath = func() string { return filepath.Join(tempDir, "tracker-selection") }
-	tm.saveSharedSelection("party-target")
-	tm.width = 80
-	tm.height = 24
-	tm.refreshSessions()
-
-	row, ok := tm.selectedSession()
-	if !ok || row.ID != "party-target" {
-		t.Fatalf("expected shared selection to win, got %#v", row)
 	}
-}
 
-func TestTrackerUpdateNavigationWritesSharedSelection(t *testing.T) {
-	tempDir := t.TempDir()
+	tm := newTestTracker(SessionInfo{ID: "party-current"}, snapshot, &fakeActions{})
+	view := tm.View()
 
-	tm := newTestTracker(SessionInfo{ID: "party-current"}, TrackerSnapshot{
-		Sessions: []SessionRow{
-			{ID: "party-current", Title: "current", Status: "active", SessionType: "standalone", IsCurrent: true},
-			{ID: "party-target", Title: "target", Status: "active", SessionType: "standalone"},
-		},
-	}, &fakeActions{})
-	tm.selectionPath = func() string { return filepath.Join(tempDir, "tracker-selection") }
-
-	tm, _ = tm.Update(keyMsg('j'))
-
-	data, err := os.ReadFile(filepath.Join(tempDir, "tracker-selection"))
-	if err != nil {
-		t.Fatalf("read shared selection: %v", err)
-	}
-	if got := strings.TrimSpace(string(data)); got != "party-target" {
-		t.Fatalf("shared selection = %q, want party-target", got)
+	if !strings.Contains(view, "◀") {
+		t.Fatalf("expected current-session indicator ◀ in view, got:\n%s", view)
 	}
 }
