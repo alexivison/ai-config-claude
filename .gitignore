@@ -10,5 +10,4 @@ codex/plugins/
 codex/installation_id
 
 # Go build artifacts
-tools/party-tracker/party-tracker
 tools/party-cli/party-cli
