@@ -66,36 +66,35 @@ func (c *Codex) FilterPaneLines(raw string, max int) []string {
 	return tmux.FilterWizardLines(raw, max)
 }
 
-// TranscriptPath returns the live session JSONL rollout Codex appends to at
-// ~/.codex/sessions/YYYY/MM/DD/rollout-*<thread-id>*.jsonl. The cwd is
-// unused — Codex's rollouts are indexed by date + thread ID, not by working
-// directory. When multiple rollouts match (e.g. resumed threads), the
-// freshest by mtime wins.
-func (c *Codex) TranscriptPath(_, resumeID string) (string, error) {
+// IsActive reports whether Codex is currently producing output for this
+// thread. It checks the freshest rollout JSONL under
+// ~/.codex/sessions/YYYY/MM/DD/ whose filename contains the thread ID.
+// Rollouts are indexed by date + thread, not cwd, so cwd is ignored.
+func (c *Codex) IsActive(_, resumeID string) (bool, error) {
 	if resumeID == "" {
-		return "", nil
+		return false, nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("user home: %w", err)
+		return false, fmt.Errorf("user home: %w", err)
 	}
-	pattern := filepath.Join(home, ".codex", "sessions", "*", "*", "*", "rollout-*"+resumeID+"*.jsonl")
+	pattern := filepath.Join(home, ".codex", "sessions", "*", "*", "*", "rollout-*"+resumeID+".jsonl")
 	matches, _ := filepath.Glob(pattern)
 	if len(matches) == 0 {
-		return "", nil
+		return false, nil
 	}
 	freshest := matches[0]
-	freshestMod := mtime(freshest)
+	freshestMod := statMTime(freshest)
 	for _, m := range matches[1:] {
-		if mt := mtime(m); mt.After(freshestMod) {
+		if mt := statMTime(m); mt.After(freshestMod) {
 			freshest = m
 			freshestMod = mt
 		}
 	}
-	return freshest, nil
+	return transcriptActive(freshest)
 }
 
-func mtime(path string) (t time.Time) {
+func statMTime(path string) (t time.Time) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return t

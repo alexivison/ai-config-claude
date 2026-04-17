@@ -36,4 +36,4 @@ func (s *Stub) FilterPaneLines(raw string, max int) []string {
 	return tmux.FilterAgentLines(raw, max)
 }
 
-func (s *Stub) TranscriptPath(string, string) (string, error) { return "", nil }
+func (s *Stub) IsActive(string, string) (bool, error) { return false, nil }

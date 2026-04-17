@@ -8,7 +8,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/anthropics/ai-party/tools/party-cli/internal/agent"
 	"github.com/anthropics/ai-party/tools/party-cli/internal/message"
@@ -157,9 +156,9 @@ func NewLiveSessionFetcher(tmuxClient *tmux.Client, store *state.Store) SessionF
 			row.HasCompanion = companionAgent != nil
 			if row.Status == "active" {
 				row.Snippet = captureRoleSnippet(ctx, tmuxClient, manifest.PartyID, "primary", tmux.WindowWorkspace, primaryAgent, 4)
-				row.PrimaryActive = transcriptActive(primaryAgent, manifest)
+				row.PrimaryActive = agentActive(primaryAgent, manifest)
 				if companionAgent != nil {
-					row.CompanionActive = transcriptActive(companionAgent, manifest)
+					row.CompanionActive = agentActive(companionAgent, manifest)
 				}
 			}
 
@@ -338,16 +337,10 @@ func evidenceLookupID(sessionID string, manifest state.Manifest, primaryAgent ag
 	return sessionID
 }
 
-// transcriptActivityWindow is how recently an agent's session transcript
-// must have been written for us to flag the agent as "currently generating".
-// Each JSON event (message delta, tool call, tool result) bumps the file's
-// mtime, so the check fires as often as the agent produces output.
-const transcriptActivityWindow = 5 * time.Second
-
-// transcriptActive reports whether the agent's live session transcript was
-// modified within transcriptActivityWindow. Returns false when the agent
-// does not expose a transcript path or when the file cannot be stat'd.
-func transcriptActive(a agent.Agent, manifest state.Manifest) bool {
+// agentActive queries the agent for its own activity signal. The agent
+// owns the heuristic (typically a live-transcript mtime check) so the
+// TUI is not coupled to any on-disk layout.
+func agentActive(a agent.Agent, manifest state.Manifest) bool {
 	if a == nil {
 		return false
 	}
@@ -355,15 +348,11 @@ func transcriptActive(a agent.Agent, manifest state.Manifest) bool {
 	if resumeID == "" {
 		return false
 	}
-	path, err := a.TranscriptPath(manifest.Cwd, resumeID)
-	if err != nil || path == "" {
-		return false
-	}
-	info, err := os.Stat(path)
+	active, err := a.IsActive(manifest.Cwd, resumeID)
 	if err != nil {
 		return false
 	}
-	return time.Since(info.ModTime()) < transcriptActivityWindow
+	return active
 }
 
 // resumeIDFor pulls the agent's resume ID from the manifest — first from

@@ -68,19 +68,19 @@ func (c *Claude) FilterPaneLines(raw string, max int) []string {
 	return tmux.FilterAgentLines(raw, max)
 }
 
-// TranscriptPath returns the live session JSONL Claude Code appends to at
-// ~/.claude/projects/<cwd-slug>/<session-uuid>.jsonl. The slug replaces every
-// "/" in the absolute cwd with "-", producing a leading dash (e.g.
-// /home/user/ai-party → -home-user-ai-party).
-func (c *Claude) TranscriptPath(cwd, resumeID string) (string, error) {
+// IsActive reports whether Claude Code is currently producing output for
+// this session. It checks the live JSONL transcript Claude appends to at
+// ~/.claude/projects/<cwd-slug>/<session-uuid>.jsonl.
+func (c *Claude) IsActive(cwd, resumeID string) (bool, error) {
 	if resumeID == "" || cwd == "" {
-		return "", nil
+		return false, nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("user home: %w", err)
+		return false, fmt.Errorf("user home: %w", err)
 	}
-	return filepath.Join(home, ".claude", "projects", claudeProjectSlug(cwd), resumeID+".jsonl"), nil
+	path := filepath.Join(home, ".claude", "projects", claudeProjectSlug(cwd), resumeID+".jsonl")
+	return transcriptActive(path)
 }
 
 // claudeProjectSlug mirrors Claude Code's own project-directory naming:

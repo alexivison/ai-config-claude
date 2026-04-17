@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestNewRegistry_DefaultConfig(t *testing.T) {
@@ -420,80 +421,136 @@ func (c *recordingTmuxClient) UnsetEnvironment(_ context.Context, session, key s
 	return nil
 }
 
-func TestClaudeTranscriptPath_SlugifiesCwd(t *testing.T) {
+func TestClaudeProjectSlug(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct{ cwd, slug string }{
+		{"/home/user/ai-party", "-home-user-ai-party"},
+		{"/home/user/my.project", "-home-user-my-project"},
+		{"/Users/alice/code/ai_party", "-Users-alice-code-ai-party"},
+		{"/tmp/my project", "-tmp-my-project"},
+		{"/home/user/.config/app", "-home-user--config-app"},
+	}
+	for _, tc := range cases {
+		if got := claudeProjectSlug(tc.cwd); got != tc.slug {
+			t.Errorf("claudeProjectSlug(%q) = %q, want %q", tc.cwd, got, tc.slug)
+		}
+	}
+}
+
+func writeTranscript(t *testing.T, path string, ageBelowWindow time.Duration) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("{}\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	mtime := time.Now().Add(-ageBelowWindow)
+	if err := os.Chtimes(path, mtime, mtime); err != nil {
+		t.Fatalf("chtimes: %v", err)
+	}
+}
+
+func TestClaudeIsActive(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
+	transcript := filepath.Join(home, ".claude", "projects", "-cwd", "sess-1.jsonl")
+
 	cases := []struct {
 		name string
-		cwd  string
-		slug string
+		age  time.Duration // mtime = now - age; negative = no file
+		want bool
 	}{
-		{"plain path", "/home/user/ai-party", "-home-user-ai-party"},
-		{"dotted dir", "/home/user/my.project", "-home-user-my-project"},
-		{"underscore dir", "/Users/alice/code/ai_party", "-Users-alice-code-ai-party"},
-		{"space in dir", "/tmp/my project", "-tmp-my-project"},
-		{"dotfile cwd", "/home/user/.config/app", "-home-user--config-app"},
+		{"fresh write inside window", ActivityWindow / 2, true},
+		{"just outside window", ActivityWindow + time.Second, false},
+		{"no transcript yet", -1, false},
 	}
 	for _, tc := range cases {
-		got, err := NewClaude(AgentConfig{}).TranscriptPath(tc.cwd, "abc-123")
-		if err != nil {
-			t.Fatalf("%s: TranscriptPath: %v", tc.name, err)
+		_ = os.Remove(transcript)
+		if tc.age >= 0 {
+			writeTranscript(t, transcript, tc.age)
 		}
-		want := filepath.Join(home, ".claude", "projects", tc.slug, "abc-123.jsonl")
-		if got != want {
-			t.Errorf("%s: got %q, want %q", tc.name, got, want)
+		got, err := NewClaude(AgentConfig{}).IsActive("/cwd", "sess-1")
+		if err != nil {
+			t.Fatalf("%s: IsActive: %v", tc.name, err)
+		}
+		if got != tc.want {
+			t.Errorf("%s: IsActive = %v, want %v", tc.name, got, tc.want)
 		}
 	}
 }
 
-func TestClaudeTranscriptPath_EmptyInputs(t *testing.T) {
+func TestClaudeIsActive_EmptyInputsReturnFalse(t *testing.T) {
 	t.Parallel()
 
 	c := NewClaude(AgentConfig{})
-	if got, _ := c.TranscriptPath("", "abc"); got != "" {
-		t.Errorf("empty cwd: got %q, want empty", got)
-	}
-	if got, _ := c.TranscriptPath("/cwd", ""); got != "" {
-		t.Errorf("empty resumeID: got %q, want empty", got)
+	for _, tc := range []struct{ cwd, resume string }{
+		{"", "sess"},
+		{"/cwd", ""},
+		{"", ""},
+	} {
+		if got, err := c.IsActive(tc.cwd, tc.resume); err != nil || got {
+			t.Errorf("IsActive(%q,%q) = %v,%v; want false,nil", tc.cwd, tc.resume, got, err)
+		}
 	}
 }
 
-func TestCodexTranscriptPath_GlobsByThreadID(t *testing.T) {
+func TestCodexIsActive(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
 	dayDir := filepath.Join(home, ".codex", "sessions", "2026", "04", "17")
-	if err := os.MkdirAll(dayDir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
+	freshMatch := filepath.Join(dayDir, "rollout-2026-04-17T14-00-00-thr-xyz.jsonl")
+	unrelated := filepath.Join(dayDir, "rollout-2026-04-17T13-00-00-thr-other.jsonl")
+
+	writeTranscript(t, freshMatch, ActivityWindow/2)
+	writeTranscript(t, unrelated, time.Hour) // unrelated thread ID, should not match
+
+	// 1. Fresh match → active.
+	got, err := NewCodex(AgentConfig{}).IsActive("/ignored", "thr-xyz")
+	if err != nil {
+		t.Fatalf("IsActive: %v", err)
 	}
-	match := filepath.Join(dayDir, "rollout-2026-04-17T14-00-00-thr-xyz.jsonl")
-	if err := os.WriteFile(match, []byte("{}\n"), 0o644); err != nil {
-		t.Fatalf("write rollout: %v", err)
-	}
-	unrelated := filepath.Join(dayDir, "rollout-2026-04-17T14-00-00-thr-other.jsonl")
-	if err := os.WriteFile(unrelated, []byte("{}\n"), 0o644); err != nil {
-		t.Fatalf("write unrelated: %v", err)
+	if !got {
+		t.Fatal("expected fresh rollout to count as active")
 	}
 
-	got, err := NewCodex(AgentConfig{}).TranscriptPath("/any", "thr-xyz")
-	if err != nil {
-		t.Fatalf("TranscriptPath: %v", err)
+	// 2. Age the match out of the window → inactive.
+	old := time.Now().Add(-(ActivityWindow + time.Second))
+	if err := os.Chtimes(freshMatch, old, old); err != nil {
+		t.Fatalf("chtimes: %v", err)
 	}
-	if got != match {
-		t.Fatalf("TranscriptPath = %q, want %q", got, match)
+	got, err = NewCodex(AgentConfig{}).IsActive("/ignored", "thr-xyz")
+	if err != nil || got {
+		t.Errorf("expected stale rollout to be inactive, got %v / err=%v", got, err)
+	}
+
+	// 3. Thread ID with no match → inactive, no error.
+	got, err = NewCodex(AgentConfig{}).IsActive("/ignored", "thr-missing")
+	if err != nil || got {
+		t.Errorf("expected missing rollout to be inactive, got %v / err=%v", got, err)
 	}
 }
 
-func TestCodexTranscriptPath_NoMatch(t *testing.T) {
+func TestCodexIsActive_FreshestWinsAcrossDays(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	got, err := NewCodex(AgentConfig{}).TranscriptPath("", "thr-missing")
+	oldDay := filepath.Join(home, ".codex", "sessions", "2026", "04", "10")
+	newDay := filepath.Join(home, ".codex", "sessions", "2026", "04", "17")
+	oldRollout := filepath.Join(oldDay, "rollout-2026-04-10T00-00-00-thr-resumed.jsonl")
+	newRollout := filepath.Join(newDay, "rollout-2026-04-17T14-00-00-thr-resumed.jsonl")
+
+	writeTranscript(t, oldRollout, time.Hour)          // stale
+	writeTranscript(t, newRollout, ActivityWindow/2) // fresh
+
+	got, err := NewCodex(AgentConfig{}).IsActive("/ignored", "thr-resumed")
 	if err != nil {
-		t.Fatalf("TranscriptPath: %v", err)
+		t.Fatalf("IsActive: %v", err)
 	}
-	if got != "" {
-		t.Fatalf("expected empty path when no rollout matches, got %q", got)
+	if !got {
+		t.Fatal("expected freshest rollout across days to drive IsActive, not the oldest match")
 	}
 }
