@@ -77,6 +77,7 @@ it is a master session.`,
 
 	cmd.Flags().StringVar(&opts.cwd, "cwd", "", "working directory (default: master's cwd)")
 	opts.agentFlags.AddFlags(cmd)
+	addDeprecatedLayoutFlag(cmd)
 	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for the primary agent")
 
 	return cmd

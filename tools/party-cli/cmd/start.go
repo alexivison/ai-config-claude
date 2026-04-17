@@ -85,8 +85,18 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 	cmd.Flags().BoolVar(&opts.attach, "attach", false, "attach to session after creation")
 	// Note: by default, attach behavior is handled by shell wrappers (party.sh).
 	// Use --attach to have party-cli attach directly after creating the session.
+	addDeprecatedLayoutFlag(cmd)
 
 	return cmd
+}
+
+// addDeprecatedLayoutFlag keeps older scripts that pass --layout working.
+// The sidebar layout is now the only layout, so the value is swallowed.
+func addDeprecatedLayoutFlag(cmd *cobra.Command) {
+	var layout string
+	cmd.Flags().StringVar(&layout, "layout", "", "deprecated (ignored — sidebar is the only layout)")
+	_ = cmd.Flags().MarkHidden("layout")
+	_ = cmd.Flags().MarkDeprecated("layout", "sidebar is the only layout; the flag is ignored")
 }
 
 func loadSessionRegistry() (*agent.Registry, error) {
