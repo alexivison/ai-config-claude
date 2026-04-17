@@ -449,7 +449,7 @@ func (s SessionRow) activityDot(blinkOn bool) string {
 		return stoppedGlyphStyle.Render("○")
 	}
 	if s.isGenerating() && !blinkOn {
-		return primaryStateDimStyle.Render("●")
+		return dimActivityStyle.Render("●")
 	}
 	return identityStyle(s.SessionType).Render("●")
 }
