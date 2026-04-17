@@ -57,7 +57,19 @@ func (s *Service) Promote(ctx context.Context, sessionID string) error {
 		_ = s.Client.UnsetEnvironment(ctx, sessionID, envVar)
 	}
 
-	winTarget := tmux.WindowTarget(sessionID, tmux.WindowWorkspace)
+	// Detect live legacy classic-layout sessions (single window, no
+	// tracker pane) so we don't try to rename or kill a window that
+	// never existed. Everything new is sidebar.
+	panes, err := s.Client.ListPanes(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("list panes: %w", err)
+	}
+	workspaceIdx := tmux.WindowWorkspace
+	if !hasWorkspaceWindow(panes) {
+		workspaceIdx = tmux.WindowCompanion
+	}
+
+	winTarget := tmux.WindowTarget(sessionID, workspaceIdx)
 	if err := s.Client.RenameWindow(ctx, winTarget, newWinName); err != nil {
 		return fmt.Errorf("rename window: %w", err)
 	}
@@ -76,7 +88,39 @@ func (s *Service) Promote(ctx context.Context, sessionID string) error {
 		cwd = "."
 	}
 
+	if workspaceIdx == tmux.WindowCompanion {
+		return s.promoteLegacyClassic(ctx, sessionID, cwd, cliCmd)
+	}
 	return s.promoteSidebar(ctx, sessionID, cwd, cliCmd)
+}
+
+// hasWorkspaceWindow reports whether any pane lives in the sidebar's
+// workspace window. Legacy classic sessions only have window 0, so this
+// returns false for them.
+func hasWorkspaceWindow(panes []tmux.Pane) bool {
+	for _, p := range panes {
+		if p.WindowIndex == tmux.WindowWorkspace {
+			return true
+		}
+	}
+	return false
+}
+
+// promoteLegacyClassic promotes a single-window session (pre-sidebar
+// layout) to master: replace the companion pane in place with the
+// tracker. No window-kill — there is only one window.
+func (s *Service) promoteLegacyClassic(ctx context.Context, sessionID, cwd, cliCmd string) error {
+	companionPane, err := s.Client.ResolveRole(ctx, sessionID, string(agent.RoleCompanion), int(tmux.WindowCompanion))
+	if err != nil {
+		return fmt.Errorf("find companion pane in legacy session: %w", err)
+	}
+	if err := s.Client.RespawnPane(ctx, companionPane, cwd, cliCmd); err != nil {
+		return fmt.Errorf("respawn tracker in legacy session: %w", err)
+	}
+	if err := s.Client.SetPaneOption(ctx, companionPane, tmux.PaneRoleOption, tmux.RoleTracker); err != nil {
+		return err
+	}
+	return s.Client.SelectPaneTitle(ctx, companionPane, "Tracker")
 }
 
 func companionEnvVars(m state.Manifest, registry *agent.Registry) []string {

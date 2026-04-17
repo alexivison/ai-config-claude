@@ -946,6 +946,43 @@ func TestPromote_Sidebar(t *testing.T) {
 	}
 }
 
+// TestPromote_LegacyClassicSession exercises the fallback path for
+// sessions still running the pre-sidebar single-window layout. The
+// workspace window doesn't exist there, so Promote must replace the
+// companion pane in place in window 0 without killing it.
+func TestPromote_LegacyClassicSession(t *testing.T) {
+	t.Parallel()
+	svc, runner := setupService(t)
+
+	runner.sessions["party-legacy"] = true
+	createTestManifest(t, svc.Store, "party-legacy", "legacy", t.TempDir(), "")
+
+	// Classic layout: companion | primary | shell all in window 0.
+	runner.paneRoles["party-legacy:0.0"] = "companion"
+	runner.paneRoles["party-legacy:0.1"] = "primary"
+	runner.paneRoles["party-legacy:0.2"] = "shell"
+
+	if err := svc.Promote(t.Context(), "party-legacy"); err != nil {
+		t.Fatalf("promote legacy: %v", err)
+	}
+
+	// Companion pane in window 0 should become the tracker — in place.
+	if runner.paneRoles["party-legacy:0.0"] != "tracker" {
+		t.Fatalf("expected tracker in 0.0, got %q", runner.paneRoles["party-legacy:0.0"])
+	}
+	// Primary and shell panes in window 0 must survive.
+	if runner.paneRoles["party-legacy:0.1"] != "primary" {
+		t.Fatalf("expected primary to survive in 0.1, got %q", runner.paneRoles["party-legacy:0.1"])
+	}
+	if runner.paneRoles["party-legacy:0.2"] != "shell" {
+		t.Fatalf("expected shell to survive in 0.2, got %q", runner.paneRoles["party-legacy:0.2"])
+	}
+	// Window 0 must be renamed, not killed.
+	if got := runner.windowNames["party-legacy:0"]; got != "party (legacy) [master]" {
+		t.Errorf("expected window 0 renamed, got %q", got)
+	}
+}
+
 func TestPromote_ClearsAgentAgnosticCompanionEnv(t *testing.T) {
 	t.Parallel()
 
