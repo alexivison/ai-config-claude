@@ -111,7 +111,7 @@ func (c *Client) CurrentSessionName(ctx context.Context) (string, error) {
 func (c *Client) ListPanes(ctx context.Context, sessionID string) ([]Pane, error) {
 	out, err := c.runner.Run(ctx,
 		"list-panes", "-s", "-t", sessionID,
-		"-F", "#{window_index} #{pane_index} #{@party_role}",
+		"-F", "#{window_index} #{pane_index} #{"+PaneRoleOption+"}",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list panes for %s: %w", sessionID, err)

@@ -68,7 +68,7 @@ func (s *Service) Promote(ctx context.Context, sessionID string) error {
 	if layout == "sidebar" {
 		winIdx = tmux.WindowWorkspace
 	}
-	winTarget := fmt.Sprintf("%s:%d", sessionID, winIdx)
+	winTarget := tmux.WindowTarget(sessionID, winIdx)
 	if err := s.Client.RenameWindow(ctx, winTarget, newWinName); err != nil {
 		return fmt.Errorf("rename window: %w", err)
 	}
@@ -164,7 +164,7 @@ func (s *Service) promoteClassic(ctx context.Context, sessionID, cwd, cliCmd str
 	if err := s.Client.RespawnPane(ctx, companionPane, cwd, cliCmd); err != nil {
 		return fmt.Errorf("respawn tracker: %w", err)
 	}
-	if err := s.Client.SetPaneOption(ctx, companionPane, "@party_role", "tracker"); err != nil {
+	if err := s.Client.SetPaneOption(ctx, companionPane, tmux.PaneRoleOption, tmux.RoleTracker); err != nil {
 		return err
 	}
 	return s.Client.SelectPaneTitle(ctx, companionPane, "Tracker")
@@ -173,12 +173,12 @@ func (s *Service) promoteClassic(ctx context.Context, sessionID, cwd, cliCmd str
 // promoteSidebar replaces the sidebar pane (window 1, pane 0) with the tracker
 // and kills the hidden companion window (window 0) — master mode has no Wizard.
 func (s *Service) promoteSidebar(ctx context.Context, sessionID, cwd, cliCmd string) error {
-	sidebarTarget := fmt.Sprintf("%s:%d.0", sessionID, tmux.WindowWorkspace)
+	sidebarTarget := tmux.PaneTarget(sessionID, tmux.WindowWorkspace, 0)
 
 	if err := s.Client.RespawnPane(ctx, sidebarTarget, cwd, cliCmd); err != nil {
 		return fmt.Errorf("respawn tracker in sidebar: %w", err)
 	}
-	if err := s.Client.SetPaneOption(ctx, sidebarTarget, "@party_role", "tracker"); err != nil {
+	if err := s.Client.SetPaneOption(ctx, sidebarTarget, tmux.PaneRoleOption, tmux.RoleTracker); err != nil {
 		return err
 	}
 	if err := s.Client.SelectPaneTitle(ctx, sidebarTarget, "Tracker"); err != nil {
@@ -186,6 +186,6 @@ func (s *Service) promoteSidebar(ctx context.Context, sessionID, cwd, cliCmd str
 	}
 
 	// Kill the hidden companion window — master mode doesn't use the Wizard.
-	companionWindow := fmt.Sprintf("%s:%d", sessionID, tmux.WindowCompanion)
+	companionWindow := tmux.WindowTarget(sessionID, tmux.WindowCompanion)
 	return s.Client.KillWindow(ctx, companionWindow)
 }
