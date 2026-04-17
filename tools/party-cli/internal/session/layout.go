@@ -100,74 +100,6 @@ func (s *Service) applyLayoutResizes(ctx context.Context, session, leftTarget, s
 	return s.Client.SetHook(ctx, session, "client-resized", hookCmd)
 }
 
-// launchClassic sets up the single-window layout: Companion | Primary | Shell.
-func (s *Service) launchClassic(ctx context.Context, session, cwd string, cmds map[agent.Role]string) error {
-	primaryCmd := roleCmd(cmds, agent.RolePrimary)
-	if primaryCmd == "" {
-		return fmt.Errorf("classic primary pane: primary agent command not configured")
-	}
-	companionCmd := roleCmd(cmds, agent.RoleCompanion)
-	p0 := tmux.PaneTarget(session, tmux.WindowCompanion, 0)
-
-	if companionCmd == "" {
-		if err := s.Client.RespawnPane(ctx, p0, cwd, primaryCmd); err != nil {
-			return fmt.Errorf("classic primary pane: %w", err)
-		}
-		if err := s.setRemainOnExit(ctx, p0); err != nil {
-			return err
-		}
-
-		p1 := tmux.PaneTarget(session, tmux.WindowCompanion, 1)
-		if err := s.Client.SplitWindow(ctx, p0, cwd, "", true, 43); err != nil {
-			return fmt.Errorf("classic shell pane: %w", err)
-		}
-
-		if _, err := s.Client.RunBatch(ctx,
-			setPaneOption(p0, tmux.PaneRoleOption, tmux.RolePrimary),
-			setPaneOption(p1, tmux.PaneRoleOption, tmux.RoleShell),
-			themeCmd(session),
-			[]string{"select-pane", "-t", p0},
-		); err != nil {
-			return fmt.Errorf("classic options batch: %w", err)
-		}
-
-		return s.applyLayoutResizes(ctx, session, "", p1)
-	}
-
-	if err := s.Client.RespawnPane(ctx, p0, cwd, companionCmd); err != nil {
-		return fmt.Errorf("classic companion pane: %w", err)
-	}
-	if err := s.setRemainOnExit(ctx, p0); err != nil {
-		return err
-	}
-
-	p1 := tmux.PaneTarget(session, tmux.WindowCompanion, 1)
-	if err := s.Client.SplitWindow(ctx, p0, cwd, primaryCmd, true, 82); err != nil { // companion 15%, primary+shell 85%
-		return fmt.Errorf("classic primary pane: %w", err)
-	}
-	if err := s.setRemainOnExit(ctx, p1); err != nil {
-		return err
-	}
-
-	p2 := tmux.PaneTarget(session, tmux.WindowCompanion, 2)
-	if err := s.Client.SplitWindow(ctx, p1, cwd, "", true, 50); err != nil { // shell 43% of total (50% of remaining 85%)
-		return fmt.Errorf("classic shell pane: %w", err)
-	}
-
-	// Batch remaining pane metadata, theme, and focus.
-	if _, err := s.Client.RunBatch(ctx,
-		setPaneOption(p0, tmux.PaneRoleOption, tmux.RoleCompanion),
-		setPaneOption(p1, tmux.PaneRoleOption, tmux.RolePrimary),
-		setPaneOption(p2, tmux.PaneRoleOption, tmux.RoleShell),
-		themeCmd(session),
-		[]string{"select-pane", "-t", p1},
-	); err != nil {
-		return fmt.Errorf("classic options batch: %w", err)
-	}
-
-	return s.applyLayoutResizes(ctx, session, p0, p2)
-}
-
 // launchSidebar sets up the dual-window layout:
 // Window 0 (hidden, optional): Companion
 // Workspace window: tracker | primary | shell
@@ -329,8 +261,8 @@ func (s *Service) launchMaster(ctx context.Context, session, cwd string, cmds ma
 }
 
 // Resize resets the pane layout to canonical widths for the given session.
-// Finds the left pane (tracker, companion, or legacy equivalents) and shell pane by role,
-// then resizes left to leftPaneWidth and shell to shellPaneWidth.
+// Finds the left pane (tracker or companion) and the shell pane by role, then
+// resizes left to leftPaneWidth and shell to shellPaneWidth.
 func (s *Service) Resize(ctx context.Context, sessionID string) error {
 	panes, err := s.Client.ListPanes(ctx, sessionID)
 	if err != nil {
@@ -338,13 +270,13 @@ func (s *Service) Resize(ctx context.Context, sessionID string) error {
 	}
 
 	// Priority order when picking the "left" pane to resize.
-	leftRolePriority := []string{tmux.RoleTracker, "sidebar", tmux.RoleCompanion, "codex", tmux.RolePrimary}
+	leftRolePriority := []string{tmux.RoleTracker, tmux.RoleCompanion}
 
-	var leftRole, leftTarget, shellTarget string
+	var leftTarget, shellTarget string
 	leftTargets := make(map[string]string, len(leftRolePriority))
 	for _, p := range panes {
 		switch p.Role {
-		case tmux.RoleTracker, "sidebar", tmux.RoleCompanion, "codex", tmux.RolePrimary:
+		case tmux.RoleTracker, tmux.RoleCompanion:
 			if _, ok := leftTargets[p.Role]; !ok {
 				leftTargets[p.Role] = p.Target()
 			}
@@ -357,17 +289,13 @@ func (s *Service) Resize(ctx context.Context, sessionID string) error {
 
 	for _, role := range leftRolePriority {
 		if target := leftTargets[role]; target != "" {
-			leftRole = role
 			leftTarget = target
 			break
 		}
 	}
 
-	if leftRole == tmux.RolePrimary && len(panes) == 2 {
-		return fmt.Errorf("no left pane found (2-pane layout) in session %s", sessionID)
-	}
 	if leftTarget == "" {
-		return fmt.Errorf("no left pane (tracker/sidebar/companion/codex/primary) found in session %s", sessionID)
+		return fmt.Errorf("no left pane (tracker/companion) found in session %s", sessionID)
 	}
 	if shellTarget == "" {
 		return fmt.Errorf("no shell pane found in session %s", sessionID)

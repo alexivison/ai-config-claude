@@ -45,14 +45,6 @@ func NewService(store *state.Store, client *tmux.Client, repoRoot string, regist
 	return svc
 }
 
-// LayoutMode is the session pane layout style.
-type LayoutMode string
-
-const (
-	LayoutClassic LayoutMode = "classic"
-	LayoutSidebar LayoutMode = "sidebar"
-)
-
 // runtimeDir returns the runtime directory path for a session.
 // Uses /tmp/ (not os.TempDir()) to match party-lib.sh and the cleanup script,
 // which both hardcode /tmp/. On macOS, os.TempDir() returns /var/folders/...

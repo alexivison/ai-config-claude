@@ -14,7 +14,6 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 	var opts struct {
 		title      string
 		cwd        string
-		layout     string
 		master     bool
 		masterID   string
 		agentFlags sessionAgentFlags
@@ -52,7 +51,6 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 			result, err := svc.Start(cmd.Context(), session.StartOpts{
 				Title:          opts.title,
 				Cwd:            opts.cwd,
-				Layout:         session.LayoutMode(opts.layout),
 				Master:         opts.master,
 				MasterID:       opts.masterID,
 				ClaudeResumeID: claudeResumeID,
@@ -80,7 +78,6 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 	}
 
 	cmd.Flags().StringVar(&opts.cwd, "cwd", "", "working directory (default: current)")
-	cmd.Flags().StringVar(&opts.layout, "layout", "", "layout mode: classic or sidebar (default: from PARTY_LAYOUT)")
 	cmd.Flags().BoolVar(&opts.master, "master", false, "start as a master session")
 	cmd.Flags().StringVar(&opts.masterID, "master-id", "", "parent master session ID (for worker spawn)")
 	opts.agentFlags.AddFlags(cmd)

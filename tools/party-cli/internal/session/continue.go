@@ -123,10 +123,9 @@ func (s *Service) Continue(ctx context.Context, sessionID string) (ContinueResul
 		})
 	}
 
-	layout := resolveLayout()
 	hasCompanion := agentCmds[agent.RoleCompanion] != ""
 	for i := range manifestAgents {
-		manifestAgents[i].Window = agentWindow(layout, m.SessionType == "master", agent.Role(manifestAgents[i].Role), hasCompanion)
+		manifestAgents[i].Window = agentWindow(m.SessionType == "master", agent.Role(manifestAgents[i].Role), hasCompanion)
 	}
 
 	rtDir, err := ensureRuntimeDir(sessionID)
