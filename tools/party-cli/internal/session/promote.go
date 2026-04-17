@@ -13,8 +13,8 @@ import (
 // Replaces the sidebar pane in window 1 with the tracker and kills the hidden
 // companion window — master mode has no Wizard.
 func (s *Service) Promote(ctx context.Context, sessionID string) error {
-	if !state.IsValidPartyID(sessionID) {
-		return fmt.Errorf("invalid session name %q (must start with party-)", sessionID)
+	if err := validateSessionID(sessionID); err != nil {
+		return err
 	}
 
 	m, err := s.Store.Read(sessionID)

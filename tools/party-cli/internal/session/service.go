@@ -2,6 +2,7 @@
 package session
 
 import (
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -111,4 +112,19 @@ func (s *Service) agentRegistry() (*agent.Registry, error) {
 	}
 	s.Registry = registry
 	return registry, nil
+}
+
+// validateSessionID rejects IDs that don't match the canonical party- pattern.
+func validateSessionID(sessionID string) error {
+	if !state.IsValidPartyID(sessionID) {
+		return fmt.Errorf("invalid session name %q (must start with party-)", sessionID)
+	}
+	return nil
+}
+
+// isManifestNotFound returns true if the error indicates the manifest
+// doesn't exist. This is expected during cleanup (hook or another process
+// already removed it) and should not be treated as a failure.
+func isManifestNotFound(err error) bool {
+	return errors.Is(err, state.ErrManifestNotFound)
 }
