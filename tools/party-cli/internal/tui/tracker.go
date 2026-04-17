@@ -47,14 +47,6 @@ type SessionRow struct {
 	IsCurrent        bool
 }
 
-// Primary state dot indicators.
-const (
-	PrimaryStateDotActive  = "▸"
-	PrimaryStateDotWaiting = "◐"
-	PrimaryStateDotIdle    = "◌"
-	PrimaryStateDotDone    = "✔"
-)
-
 // TrackerSnapshot is the full rendered data set for one refresh tick.
 type TrackerSnapshot struct {
 	Sessions []SessionRow
@@ -876,40 +868,6 @@ func (s SessionRow) displayTitle() string {
 		return s.Title
 	}
 	return s.ID
-}
-
-func (s SessionRow) glyph() string {
-	if s.Status != "active" {
-		return stoppedGlyphStyle.Render("○")
-	}
-
-	switch s.SessionType {
-	case "master":
-		return masterGlyphStyle.Render("●")
-	case "worker":
-		return workerGlyphStyle.Render("│")
-	default:
-		return standaloneGlyphStyle.Render("●")
-	}
-}
-
-func (s SessionRow) primaryStateDot() string {
-	return renderPrimaryStateDot(s.PrimaryState)
-}
-
-func renderPrimaryStateDot(state string) string {
-	switch state {
-	case "active":
-		return primaryStateActiveStyle.Render(PrimaryStateDotActive)
-	case "waiting":
-		return primaryStateWaitingStyle.Render(PrimaryStateDotWaiting)
-	case "idle":
-		return primaryStateDimStyle.Render(PrimaryStateDotIdle)
-	case "done":
-		return primaryStateDimStyle.Render(PrimaryStateDotDone)
-	default:
-		return ""
-	}
 }
 
 func verdictStatusLabel(verdict string) string {

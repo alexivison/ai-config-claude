@@ -102,11 +102,6 @@ var (
 	snippetStyleNarrow = lipgloss.NewStyle().Faint(true).PaddingLeft(2)
 )
 
-// Legacy aliases — keep existing code compiling where the new names are not material.
-var (
-	inactiveWorkerTitleStyle = sessionTitleStyle
-)
-
 // Width and height thresholds.
 const (
 	compactThreshold       = 50
