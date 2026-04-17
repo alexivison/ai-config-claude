@@ -114,6 +114,13 @@ func (s *Service) agentRegistry() (*agent.Registry, error) {
 	return registry, nil
 }
 
+// TODO(layering): these two helpers are free functions parked in
+// service.go because they're shared across session operations but belong
+// to neither the Service type nor any single caller. Move to a
+// session/errors.go file once there's a third helper worth grouping, or
+// push validateSessionID down to the state package next to
+// IsValidPartyID (the canonical source of the rule).
+
 // validateSessionID rejects IDs that don't match the canonical party- pattern.
 func validateSessionID(sessionID string) error {
 	if !state.IsValidPartyID(sessionID) {

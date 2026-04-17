@@ -94,6 +94,12 @@ func (c *Codex) IsActive(_, resumeID string) (bool, error) {
 	return transcriptActive(freshest)
 }
 
+// statMTime returns a file's modification time, or the zero time when
+// the file cannot be stat'd.
+//
+// TODO(dedup): state/discovery.go has a near-identical fileModTime.
+// Move both into an internal/fsutil package (or export one) once we
+// have a third caller — not worth a new package for two.
 func statMTime(path string) (t time.Time) {
 	info, err := os.Stat(path)
 	if err != nil {
