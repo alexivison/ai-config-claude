@@ -366,19 +366,8 @@ party_role_message_prefix() {
 }
 
 # ---------------------------------------------------------------------------
-# Layout mode helpers
+# Pane resolution helpers
 # ---------------------------------------------------------------------------
-
-# Returns the active layout mode: "sidebar" or "classic".
-# sidebar: hidden companion window 0 + workspace window 1 (tracker | primary | shell)
-# classic: single window with companion | primary | shell (original layout)
-party_layout_mode() {
-  local mode="${PARTY_LAYOUT:-sidebar}"
-  case "$mode" in
-    sidebar) echo "sidebar" ;;
-    *)       echo "classic" ;;
-  esac
-}
 
 # Resolve the primary pane target in a session.
 party_primary_pane_target() {
@@ -387,7 +376,7 @@ party_primary_pane_target() {
 }
 
 # Resolve the companion pane target via role metadata.
-# This works across classic/sidebar layouts and rejects no-companion sessions.
+# Rejects lookups in no-companion sessions.
 party_companion_pane_target() {
   local session="${1:?Usage: party_companion_pane_target SESSION}"
   party_role_pane_target "$session" "companion"
