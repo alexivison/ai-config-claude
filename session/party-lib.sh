@@ -21,7 +21,8 @@ party_runtime_dir() {
 }
 
 # Write the companion status file atomically via .tmp + mv.
-# The Codex runtime still owns codex-status.json, so companion helpers write that file.
+# The filename is codex-status.json for historical reasons — the tracker and
+# hook consumers key off that path. Primary write path for companion status.
 # Usage: write_codex_status RUNTIME_DIR STATE [TARGET] [MODE] [VERDICT] [ERROR]
 write_codex_status() {
   local runtime_dir="${1:?Usage: write_codex_status RUNTIME_DIR STATE [TARGET] [MODE] [VERDICT] [ERROR]}"
@@ -75,14 +76,12 @@ party_transport_response_completion_message() {
 }
 
 # Return 0 when the message is a recognized transport completion notice.
-# Legacy "Response ready at:" remains accepted for compatibility.
 party_transport_is_completion_message() {
   local message="${1:?Usage: party_transport_is_completion_message MESSAGE}"
   case "$message" in
     "Review complete. Findings at: "*|\
     "Plan review complete. Findings at: "*|\
-    "Task complete. Response at: "*|\
-    "Response ready at: "*)
+    "Task complete. Response at: "*)
       return 0
       ;;
   esac
@@ -101,9 +100,6 @@ party_transport_completion_path() {
       ;;
     "Task complete. Response at: "*)
       printf '%s\n' "${message#Task complete. Response at: }"
-      ;;
-    "Response ready at: "*)
-      printf '%s\n' "${message#Response ready at: }"
       ;;
     *)
       return 1
@@ -238,7 +234,7 @@ tmux_send() {
     tmux send-keys -t "$target" Enter
 
     # Verify: check pane buffer for the message using grep -F
-    # (not glob match — text contains [CODEX]/[CLAUDE] brackets)
+    # (not glob match — text contains [PRIMARY]/[COMPANION] brackets)
     sleep 0.2
     local verify_text="${text:0:40}"
     local buffer
@@ -286,43 +282,14 @@ tmux_send() {
 # Role-based pane routing
 # ---------------------------------------------------------------------------
 
-# Map canonical role names to their legacy pane tags.
-_party_role_fallback() {
-  case "${1:-}" in
-    primary) printf 'claude\n' ;;
-    companion) printf 'codex\n' ;;
-    *) return 1 ;;
-  esac
-}
-
 _party_role_label() {
   case "${1:-}" in
     primary) printf 'PRIMARY\n' ;;
     companion) printf 'COMPANION\n' ;;
-    claude) printf 'CLAUDE\n' ;;
-    codex) printf 'CODEX\n' ;;
     *) printf '%s\n' "${1^^}" ;;
   esac
 }
 
-_party_other_canonical_role() {
-  case "${1:-}" in
-    primary) printf 'companion\n' ;;
-    companion) printf 'primary\n' ;;
-    *) return 1 ;;
-  esac
-}
-
-_party_has_other_canonical_role() {
-  local session="${1:?Usage: _party_has_other_canonical_role SESSION ROLE}"
-  local role="${2:?Missing role}"
-  local other_role
-  other_role=$(_party_other_canonical_role "$role" 2>/dev/null || true)
-  [[ -n "$other_role" ]] || return 1
-  _party_role_resolve_exact "$session" "$other_role" >/dev/null 2>&1
-}
-
-# Resolve an exact @party_role match without legacy fallback.
 # On success, PARTY_ROLE_TARGET contains the tmux target.
 # On failure, PARTY_ROLE_ERROR contains the human-readable error.
 _party_role_resolve_exact() {
@@ -375,8 +342,7 @@ _party_role_resolve_exact() {
   return 1
 }
 
-# Resolve a pane target by @party_role metadata, accepting canonical role names
-# with legacy fallback for sessions still tagged claude/codex.
+# Resolve a pane target by @party_role metadata.
 # Usage: party_role_pane_target SESSION ROLE
 # stdout: target pane (e.g. "session:0.1")
 # exit 0: resolved | exit 1: not found or ambiguous
@@ -389,54 +355,14 @@ party_role_pane_target() {
     return 0
   fi
 
-  local exact_error="$PARTY_ROLE_ERROR"
-  if [[ "$exact_error" == ROLE_NOT_FOUND:* ]]; then
-    if _party_has_other_canonical_role "$session" "$role"; then
-      echo "$exact_error" >&2
-      return 1
-    fi
-
-    local fallback_role
-    fallback_role=$(_party_role_fallback "$role" 2>/dev/null || true)
-    if [[ -n "$fallback_role" ]]; then
-      if _party_role_resolve_exact "$session" "$fallback_role"; then
-        printf '%s\n' "$PARTY_ROLE_TARGET"
-        return 0
-      fi
-      if [[ "$PARTY_ROLE_ERROR" == ROLE_AMBIGUOUS:* ]]; then
-        echo "$PARTY_ROLE_ERROR" >&2
-        return 1
-      fi
-    fi
-  fi
-
-  echo "${exact_error:-ROLE_NOT_FOUND: No pane with @party_role='$role' in session '$session'}" >&2
+  echo "$PARTY_ROLE_ERROR" >&2
   return 1
 }
 
-# Return the transport prefix for messages sent by the given logical role.
-# New sessions use [PRIMARY]/[COMPANION]; legacy sessions keep [CLAUDE]/[CODEX].
+# Return the transport prefix [PRIMARY]/[COMPANION] for messages sent by the given role.
 party_role_message_prefix() {
   local session="${1:?Usage: party_role_message_prefix SESSION ROLE}"
   local role="${2:?Missing role}"
-
-  if _party_role_resolve_exact "$session" "$role"; then
-    printf '[%s]\n' "$(_party_role_label "$role")"
-    return 0
-  fi
-
-  local fallback_role
-  if _party_has_other_canonical_role "$session" "$role"; then
-    printf '[%s]\n' "$(_party_role_label "$role")"
-    return 0
-  fi
-
-  fallback_role=$(_party_role_fallback "$role" 2>/dev/null || true)
-  if [[ -n "$fallback_role" ]] && _party_role_resolve_exact "$session" "$fallback_role"; then
-    printf '[%s]\n' "$(_party_role_label "$fallback_role")"
-    return 0
-  fi
-
   printf '[%s]\n' "$(_party_role_label "$role")"
 }
 

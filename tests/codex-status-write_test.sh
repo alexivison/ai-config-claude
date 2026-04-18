@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for the companion status write side (`tmux-companion.sh` + `tmux-primary.sh`).
-# The Codex runtime still owns codex-status.json.
+# Output path is codex-status.json for historical compatibility with tracker/hooks.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
