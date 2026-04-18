@@ -21,7 +21,8 @@ party_runtime_dir() {
 }
 
 # Write the companion status file atomically via .tmp + mv.
-# The Codex runtime still owns codex-status.json, so companion helpers write that file.
+# The filename is codex-status.json for historical reasons — the tracker and
+# hook consumers key off that path. Primary write path for companion status.
 # Usage: write_codex_status RUNTIME_DIR STATE [TARGET] [MODE] [VERDICT] [ERROR]
 write_codex_status() {
   local runtime_dir="${1:?Usage: write_codex_status RUNTIME_DIR STATE [TARGET] [MODE] [VERDICT] [ERROR]}"

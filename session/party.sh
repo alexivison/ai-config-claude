@@ -3,7 +3,7 @@
 # party-lib.sh is retained only for the role-based transport layer
 # (tmux-companion.sh, tmux-primary.sh).
 #
-# Usage: party.sh [--detached] [--prompt "text"] [--primary AGENT] [--companion AGENT] [--no-companion] [--resume-agent ROLE=ID] [--resume-claude ID] [--resume-codex ID] [TITLE]
+# Usage: party.sh [--detached] [--prompt "text"] [--primary AGENT] [--companion AGENT] [--no-companion] [--resume-agent ROLE=ID] [TITLE]
 #        party.sh --switch | --continue <party-id> | --stop [name] | --list | --install-tpm
 set -euo pipefail
 
@@ -35,7 +35,7 @@ PARTY_CLI_CMD=()
 party_usage() {
   cat <<'EOF'
 Usage:
-  party.sh [--detached] [--prompt "text"] [--primary AGENT] [--companion AGENT] [--no-companion] [--resume-agent ROLE=ID] [--resume-claude ID] [--resume-codex ID] [TITLE]
+  party.sh [--detached] [--prompt "text"] [--primary AGENT] [--companion AGENT] [--no-companion] [--resume-agent ROLE=ID] [TITLE]
   party.sh --master [--detached] [--prompt "text"] [--primary AGENT] [--resume-agent ROLE=ID] [TITLE]
   party.sh --master-id <master-id> [--detached] [--prompt "text"] [--primary AGENT] [--companion AGENT] [--no-companion] [--resume-agent ROLE=ID] [TITLE]
 
@@ -80,8 +80,6 @@ party_install_tpm() {
 # ---------------------------------------------------------------------------
 # Parse arguments and delegate
 # ---------------------------------------------------------------------------
-_party_resume_claude=""
-_party_resume_codex=""
 _party_resume_agents=()
 _party_title=""
 _party_detached=0
@@ -174,8 +172,6 @@ while [[ $# -gt 0 ]]; do
     --companion) _party_companion="${2:?--companion requires an agent name}"; shift 2 ;;
     --no-companion) _party_no_companion=1; shift ;;
     --resume-agent) _party_resume_agents+=("${2:?--resume-agent requires ROLE=ID}"); shift 2 ;;
-    --resume-claude) _party_resume_claude="${2:?--resume-claude requires a session ID}"; shift 2 ;;
-    --resume-codex)  _party_resume_codex="${2:?--resume-codex requires a session ID}"; shift 2 ;;
     --master) _party_master=1; shift ;;
     --master-id) _party_master_id="${2:?--master-id requires a session ID}"; shift 2 ;;
 
@@ -207,8 +203,6 @@ start_args=(start --cwd "$PWD")
 for ra in "${_party_resume_agents[@]}"; do
   start_args+=(--resume-agent "$ra")
 done
-[[ -n "$_party_resume_claude" ]] && start_args+=(--resume-claude "$_party_resume_claude")
-[[ -n "$_party_resume_codex" ]]  && start_args+=(--resume-codex "$_party_resume_codex")
 
 # Use --attach when not detached to let party-cli handle attach directly.
 if [[ "$_party_detached" -eq 0 ]]; then

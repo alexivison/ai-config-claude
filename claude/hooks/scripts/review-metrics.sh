@@ -13,7 +13,7 @@
 #   review-metrics.sh --export    <session>
 #   review-metrics.sh --report-all              (all sessions)
 #
-# Usage: Called by Claude during triage, or by hooks during agent-stop/codex-trace.
+# Usage: Called by Claude during triage, or by hooks during agent-stop/companion-trace.
 
 set -euo pipefail
 

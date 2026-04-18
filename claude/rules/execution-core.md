@@ -80,7 +80,7 @@ Create the commit before running `/pre-pr-verification`. The PR gate checks evid
 
 Per-session JSONL log at `/tmp/claude-evidence-{session_id}.jsonl`. Each entry records a `diff_hash` (SHA-256 of branch diff from merge-base). Gates only accept evidence with matching hash — editing code auto-invalidates prior evidence.
 
-`codex-gate.sh` blocks only `--approve` (self-approval); all other default companion transport commands pass freely. Approval flows through `--review-complete`.
+`companion-gate.sh` blocks only `--approve` (self-approval); all other default companion transport commands pass freely. Approval flows through `--review-complete`.
 
 **Oscillation detection** (`agent-trace-stop.sh`): Same-hash alternation (3 alternating verdicts → auto-triage-override). Cross-hash repeated findings (minimizer only, 3+ hashes → override; code-critic exempt).
 
@@ -166,7 +166,7 @@ Evidence before claims. No assertions without proof (test output, file:line, gre
 
 ## PR Gate
 
-`pr-gate.sh` is the single enforcement point — requires all tier-specific evidence at current diff_hash (see § Tiered Execution for per-tier requirements). Evidence created by `agent-trace-stop.sh`, `codex-trace.sh`, `skill-marker.sh`, and workflow skills.
+`pr-gate.sh` is the single enforcement point — requires all tier-specific evidence at current diff_hash (see § Tiered Execution for per-tier requirements). Evidence created by `agent-trace-stop.sh`, `companion-trace.sh`, `skill-marker.sh`, and workflow skills.
 
 **Post-PR:** Changes in same branch → re-run /pre-pr-verification → amend + force-push with `--force-with-lease`.
 

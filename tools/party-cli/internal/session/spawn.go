@@ -10,13 +10,13 @@ import (
 
 // SpawnOpts configures a worker session spawned from a master.
 type SpawnOpts struct {
-	Title          string
-	Cwd            string
-	ClaudeResumeID string
-	CodexResumeID  string
-	Prompt         string
-	Detached       bool
-	Registry       *agent.Registry
+	Title    string
+	Cwd      string
+	// ResumeIDs maps agent name → resume ID.
+	ResumeIDs map[string]string
+	Prompt    string
+	Detached  bool
+	Registry  *agent.Registry
 }
 
 // Spawn creates a new worker session owned by the given master.
@@ -53,9 +53,8 @@ func (s *Service) Spawn(ctx context.Context, masterID string, opts SpawnOpts) (S
 	return child.Start(ctx, StartOpts{
 		Title:          opts.Title,
 		Cwd:            cwd,
-		MasterID:       masterID,
-		ClaudeResumeID: opts.ClaudeResumeID,
-		CodexResumeID:  opts.CodexResumeID,
+		MasterID:  masterID,
+		ResumeIDs: opts.ResumeIDs,
 		Prompt:         opts.Prompt,
 		Detached:       opts.Detached,
 	})

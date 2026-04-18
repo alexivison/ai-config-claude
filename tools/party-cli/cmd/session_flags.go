@@ -33,19 +33,18 @@ func (f sessionAgentFlags) ConfigOverrides() *agent.ConfigOverrides {
 	}
 }
 
-func (f sessionAgentFlags) ResolveResumeIDs(registry *agent.Registry) (string, string, error) {
+func (f sessionAgentFlags) ResolveResumeIDs(registry *agent.Registry) (map[string]string, error) {
 	resumeByAgent := map[string]string{}
 	roleResume, err := parseResumeFlags(f.ResumeAgents)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	for _, binding := range registry.Bindings() {
 		if resumeID := roleResume[binding.Role]; resumeID != "" {
 			resumeByAgent[binding.Agent.Name()] = resumeID
 		}
 	}
-
-	return resumeByAgent["claude"], resumeByAgent["codex"], nil
+	return resumeByAgent, nil
 }
 
 func parseResumeFlags(values []string) (map[agent.Role]string, error) {

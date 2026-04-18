@@ -1571,11 +1571,10 @@ func TestStart_WithResumeAndPrompt(t *testing.T) {
 	svc.Now = func() int64 { return 8888 }
 
 	result, err := svc.Start(t.Context(), StartOpts{
-		Title:          "test",
-		Cwd:            t.TempDir(),
-		ClaudeResumeID: "claude-sess-1",
-		CodexResumeID:  "codex-thread-1",
-		Prompt:         "fix the bug",
+		Title:     "test",
+		Cwd:       t.TempDir(),
+		ResumeIDs: map[string]string{"claude": "claude-sess-1", "codex": "codex-thread-1"},
+		Prompt:    "fix the bug",
 	})
 	if err != nil {
 		t.Fatalf("start: %v", err)
