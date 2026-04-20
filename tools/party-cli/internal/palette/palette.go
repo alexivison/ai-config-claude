@@ -17,7 +17,7 @@ const (
 	DividerFg  lipgloss.Color = "240"
 	BrightText lipgloss.Color = "15"
 
-	MasterRole lipgloss.Color = "#ffd700"
+	MasterRole lipgloss.Color = "#d0a647"
 	// WorkerRole is the picker-reference worker identity color; tracker worker
 	// dots and headers share it so the two UIs stay aligned.
 	WorkerRole     lipgloss.Color = Warn
@@ -25,10 +25,10 @@ const (
 	TmuxRole       lipgloss.Color = Accent
 	OrphanRole     lipgloss.Color = Muted
 
-	DividerBorder lipgloss.Color = "#484f58"
+	DividerBorder lipgloss.Color = "#444c56"
 	// PickerDividerLine intentionally stays darker than DividerBorder to
 	// preserve the picker's existing section-separator contrast.
-	PickerDividerLine lipgloss.Color = "#2e3440"
+	PickerDividerLine lipgloss.Color = "#1c2128"
 	// PickerVerticalDivider intentionally stays brighter than DividerBorder so
 	// the split between the list and preview panes remains legible.
 	PickerVerticalDivider lipgloss.Color = "#555555"
