@@ -260,13 +260,19 @@ func (c *claudeTodoCache) Fetch(baseDir, sessionID string) (claudetodos.State, b
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	entry := c.entries[sessionID]
 	path := claudetodos.Path(baseDir, sessionID)
 	fi, err := os.Stat(path)
 	if err != nil {
+		// File briefly missing (atomic rename-replace): return last good
+		// state to avoid overlay flicker. No cache bump so the next tick
+		// will stat again.
+		if entry.valid {
+			return entry.state, true
+		}
 		return claudetodos.State{}, false
 	}
 
-	entry := c.entries[sessionID]
 	mtime := fi.ModTime().UnixNano()
 	if entry.mtimeUnixNano != mtime {
 		data, readErr := os.ReadFile(path)

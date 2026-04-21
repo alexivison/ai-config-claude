@@ -419,9 +419,27 @@ func TestClaudeTodoCache(t *testing.T) {
 		t.Fatalf("repair state = %+v", state4)
 	}
 
+	// File briefly disappears (atomic rename-replace in progress): last
+	// good state stays in the cache, no flicker.
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	state5, ok := cache.Fetch(base, sessionID)
+	if !ok {
+		t.Fatalf("expected hit when file vanishes transiently")
+	}
+	if state5.Counts != state4.Counts {
+		t.Fatalf("transient stat failure must preserve last good, got %+v want %+v", state5.Counts, state4.Counts)
+	}
+
 	// Empty session ID → miss.
 	if _, ok := cache.Fetch(base, ""); ok {
 		t.Fatalf("expected miss for empty session id")
+	}
+
+	// Fresh cache + missing file → miss (no prior good state to keep).
+	if _, ok := newClaudeTodoCache().Fetch(base, "never-seen"); ok {
+		t.Fatalf("expected miss for fresh cache with absent file")
 	}
 }
 
