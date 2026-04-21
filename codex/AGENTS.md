@@ -10,7 +10,7 @@
 
 You are Codex CLI. You default to the companion role but may be configured as primary — check the table above for current assignment.
 
-- As the default companion, perform deep reasoning, reviews, and planning; defer implementation to the primary. When roles are swapped (see below), run the full execution-core pipeline.
+- As the default companion, perform deep reasoning, reviews, and planning; defer implementation to the primary. When roles are swapped (see below), execute the workflow preset the user asked for.
 - Be concise and direct. No preamble, no hedging, no filler.
 
 ## General Guidelines
@@ -23,14 +23,19 @@ You are Codex CLI. You default to the companion role but may be configured as pr
 
 - **Simplicity + Minimal Impact**: Smallest possible change. No over-engineering.
 - **No Laziness**: Root causes only. Senior developer standards.
-- **Clean Code**: Apply LoB (Locality of Behavior), SRP, YAGNI, DRY, KISS. Self-check every function.
+- **Clean Code**: Apply LoB (Locality of Behavior), SRP, YAGNI, DRY, KISS — see `shared/clean-code.md`.
 - **Elegance check**: For non-trivial analysis, pause and ask: is there a more elegant framing? Skip for straightforward reviews.
 
-## Workflow Selection
+## Default Mode: Direct Editing
 
-All implementation follows the execution-core pipeline regardless of what triggered it — planned tasks, external planning tools, or direct user instructions. The planning source determines where scope and requirements come from, not whether the pipeline applies.
+**The default session mode is direct editing.** As the default companion, you typically do not implement; you respond to `[PRIMARY]` requests. If you are acting as primary (role swapped) and the user has not invoked a workflow skill, just do the work — read files, make changes, run commands. When a workflow skill is invoked, execution-core is active for Codex too. Claude records that via an `execution-preset` marker; Codex has no local preset hook, so it must self-enforce the same recipe.
 
-The pipeline: RED test (for behaviour change) → implement → source-file updates → critics (code review + minimizer) → companion review → commit → verification → PR. Commit MUST precede verification — the PR gate records evidence against the committed `diff_hash`, which does not exist until the commit is made. Gates in order: pre-implementation (worktree + scope + RED), minimality + scope, critics (2-pass cap), companion (no cap — APPROVE or escalate), commit, verification, PR gate. A disputed finding is never a pause condition; debate with evidence or escalate to the user.
+When a workflow is active, follow `shared/execution-core.md` end-to-end. The presets are:
+
+- `task-workflow` → preset=task (full pipeline with requirements audit)
+- `bugfix-workflow` → preset=bugfix (full pipeline without requirements audit)
+- `quick-fix-workflow` → preset=quick (critic + verification only)
+- `openspec-workflow` → preset=spec (CI-review driven)
 
 As the default companion, you typically run one of:
 
@@ -38,11 +43,27 @@ As the default companion, you typically run one of:
 - **Reviewing a primary-authored change** → respond per the incoming `[PRIMARY]` message via `tmux-handler`
 - **Investigation or delegated analysis** → answer the `--prompt` request, write the response file, notify the primary
 
-When acting as primary (role swapped via `party-cli config`), run the same pipeline the primary runs: RED test → implement → source-file updates → critics → companion review → commit → verification → PR. Replay the pipeline stages directly if primary-only workflow skills are not available in your skill set.
+## Stage Bindings
 
-## Autonomous Flow (CRITICAL)
+Shared workflow skills describe logical stages. This section binds each stage to the concrete mechanism Codex uses when acting as primary. Codex does not have Claude-style `subagent_type` sub-agents, so bindings run inline shell commands and inline review passes.
 
-**Do NOT stop between steps.** Follow the execution-core pipeline (described above) for sequence, gates, decision matrix, and pause conditions.
+| Stage | Codex binding |
+|-------|---------------|
+| `write-tests` | Write tests using the repo's conventions, then run the repo's test command inline via shell (e.g. `pnpm test`, `go test ./...`). Observe RED before implementation. |
+| `code-critic` | Review the diff inline for SRP, DRY, correctness, regressions, test gaps, and security using `shared/skills/companion-review/SKILL.md` plus `shared/clean-code.md`. |
+| `minimizer` | Review the diff inline for locality, simplicity, YAGNI, and bloat using `shared/clean-code.md`. |
+| `requirements-auditor` | For `task-workflow` only, compare the diff and tests against the stated requirements. Flag missing, partial, or untested requirements. |
+| `companion-review` | Dispatch the configured companion via `~/.codex/skills/agent-transport/scripts/tmux-companion.sh --review` when a companion exists. Record the verdict with `--review-complete`. Skip with a note if no companion is configured. |
+| `pre-pr-verification` | Run the repo's test, lint, and typecheck commands inline via shell. Do NOT invent commands — discover them from package.json scripts, Makefile targets, or repo README. |
+
+Inline critic contract:
+
+- The critics stage is `code-critic + minimizer`; add `requirements-auditor` when `task-workflow` supplied requirements.
+- Emit one report per inline critic with `Summary`, `Findings`, and `Verdict`.
+- Every finding must include a concrete `file:line` reference, the violated principle/category, and why it matters.
+- `Verdict` must be exactly one of `APPROVE`, `REQUEST_CHANGES`, or `NEEDS_DISCUSSION`.
+
+Codex does not have a local hook chain yet; hard PR-gate enforcement remains on Claude. When Codex is primary, treat the preset and evidence list as a self-enforced workflow contract rather than a hard local gate.
 
 ## Inter-Agent Transport
 
@@ -58,7 +79,7 @@ Use the role-aware transport scripts only; never raw tmux commands. As companion
 ### Transport
 
 - Companion → primary: `~/.codex/skills/agent-transport/scripts/tmux-primary.sh`
-- Primary → companion: `tmux-companion.sh` in the primary agent's own `agent-transport` skill dir (path depends on the primary; e.g. under a Codex-as-primary swap, it is `~/.codex/skills/agent-transport/scripts/tmux-companion.sh`).
+- Primary → companion: `~/.codex/skills/agent-transport/scripts/tmux-companion.sh` (when Codex is primary). If Claude is primary, it dispatches via its own `~/.claude/skills/agent-transport/scripts/tmux-companion.sh`.
 - See `agent-transport` for the full mode reference and the TOON findings format.
 
 File-based handoff is the canonical channel for structured data. Always write output to the path the primary specified.
@@ -83,6 +104,8 @@ After ANY correction from the user or the primary agent:
 - `planning` — use when asked to plan a feature, produce SPEC/DESIGN/PLAN/TASK docs, or break work into tasks.
 - `tmux-handler` — use whenever a `[PRIMARY]` or `[COMPANION]` message appears in your pane.
 - `pr-descriptions` — use when writing or refining PR descriptions.
+
+Shared workflow skills are symlinked into `~/.codex/skills/` — invoke them when a workflow preset applies (`task-workflow`, `bugfix-workflow`, `quick-fix-workflow`, `openspec-workflow`, `write-tests`, `pre-pr-verification`, `companion-review`).
 
 ## Development Rules
 

@@ -10,7 +10,7 @@ fi
 PASS=0
 FAIL=0
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-HELPER="$REPO_ROOT/shared/references/agent-transport/scripts/toon-transport.sh"
+HELPER="$REPO_ROOT/claude/skills/agent-transport/scripts/toon-transport.sh"
 
 assert() {
   local desc="$1" condition="$2"

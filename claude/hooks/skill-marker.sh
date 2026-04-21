@@ -24,20 +24,24 @@ if [ "$TOOL" != "Skill" ]; then
   exit 0
 fi
 
-# --- Tier assignment (convention: only this hook writes execution-tier) ---
-# Workflow skills set the PR gate tier. Utility skills (pre-pr-verification,
-# write-tests, etc.) are not listed and leave the current tier unchanged.
-declare -A SKILL_TIERS=(
-  ["openspec-workflow"]="ci-gate"
-  ["task-workflow"]="full"
-  ["bugfix-workflow"]="full"
-  ["quick-fix-workflow"]="full"
+# --- Preset assignment (convention: only this hook writes execution-preset) ---
+# Workflow skills opt a session into a preset, which drives the PR gate
+# evidence requirements. Without a preset the gate allows PR creation — the
+# default is direct editing with no enforcement.
+#
+# Append semantics are replace-only: get_session_preset reads the last entry,
+# so later workflow invocations override earlier ones without explicit merge.
+declare -A SKILL_PRESETS=(
+  ["task-workflow"]="task"
+  ["bugfix-workflow"]="bugfix"
+  ["quick-fix-workflow"]="quick"
+  ["openspec-workflow"]="spec"
 )
 
-tier="${SKILL_TIERS[$SKILL]:-}"
-if [ -n "$tier" ]; then
-  append_evidence "$SESSION_ID" "execution-tier" "$tier" "$CWD"
-  hook_log "skill-marker" "$SESSION_ID" "tier" "skill=$SKILL tier=$tier"
+preset="${SKILL_PRESETS[$SKILL]:-}"
+if [ -n "$preset" ]; then
+  append_evidence "$SESSION_ID" "execution-preset" "$preset" "$CWD"
+  hook_log "skill-marker" "$SESSION_ID" "preset" "skill=$SKILL preset=$preset"
 fi
 
 # --- Evidence creation for enforced skills ---

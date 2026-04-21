@@ -95,7 +95,7 @@ Multiple reviewers often flag the same issue. When findings overlap:
 
 ### Severity Classification
 
-Severity labels (`[must]`/`[q]`/`[nit]`): see `~/.claude/reference/severity-verdict.md`.
+Severity labels (`[must]`/`[q]`/`[nit]`): see `shared/reference/severity-verdict.md`.
 
 When reviewers disagree on severity, use your judgment. Downgrade non-blocking findings mislabeled as `[must]`. Drop out-of-scope findings (pre-existing issues in untouched code).
 

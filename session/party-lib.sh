@@ -366,6 +366,38 @@ party_role_message_prefix() {
   printf '[%s]\n' "$(_party_role_label "$role")"
 }
 
+party_role_agent_name() {
+  local session="${1:?Usage: party_role_agent_name SESSION ROLE}"
+  local role="${2:?Missing role}"
+  local file
+  file="$(party_state_file "$session")"
+  [[ -f "$file" ]] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  jq -r --arg role "$role" '.agents[] | select(.role == $role) | .name // empty' "$file" 2>/dev/null | head -n 1
+}
+
+party_transport_notify_script_for_role() {
+  local session="${1:?Usage: party_transport_notify_script_for_role SESSION ROLE LOCAL_AGENT}"
+  local role="${2:?Missing role}"
+  local local_agent="${3:-}"
+  local agent_name=""
+
+  agent_name="$(party_role_agent_name "$session" "$role" 2>/dev/null || true)"
+  if [[ -z "$agent_name" ]]; then
+    case "$role:$local_agent" in
+      primary:codex) agent_name="codex" ;;
+      primary:claude) agent_name="claude" ;;
+      companion:codex) agent_name="claude" ;;
+      companion:claude) agent_name="codex" ;;
+      primary:*) agent_name="claude" ;;
+      companion:*) agent_name="codex" ;;
+      *) return 1 ;;
+    esac
+  fi
+
+  printf '%s/.%s/skills/agent-transport/scripts/tmux-primary.sh\n' "$HOME" "$agent_name"
+}
+
 # ---------------------------------------------------------------------------
 # Pane resolution helpers
 # ---------------------------------------------------------------------------

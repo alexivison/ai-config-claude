@@ -3,7 +3,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TRANSPORT_SCRIPT="$SCRIPT_DIR/../scripts/tmux-companion.sh"
 TEMPLATE_DIR="$SCRIPT_DIR/../templates"
 TMPDIR_TEST=$(mktemp -d)
 trap 'rm -rf "$TMPDIR_TEST"' EXIT

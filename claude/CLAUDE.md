@@ -24,7 +24,7 @@ You are Claude Code. You default to the primary role but may be configured as co
 
 - **Simplicity + Minimal Impact**: Smallest possible change. No over-engineering.
 - **No Laziness**: Root causes only. Senior developer standards.
-- **Clean Code**: Follow `clean-code.md` (LoB, SRP, YAGNI, DRY, KISS). Self-check every function.
+- **Clean Code**: Follow `shared/clean-code.md` (LoB, SRP, YAGNI, DRY, KISS). Self-check every function.
 
 ## Daily Context
 
@@ -34,29 +34,46 @@ Derive `<repo-name>` from the repo you're working in.
 - **Use it for orientation only** — ticket scope and implementation details come from the ticket itself.
 - Previous days' files are available for reference when you need context on recent work.
 
-## Workflow Selection
+## Default Mode: Direct Editing
 
-All implementation follows `execution-core.md` regardless of what triggered it — planned tasks, external planning tools, or direct user instructions. The planning source determines where scope and requirements come from, not whether the execution pipeline applies.
+**The default session mode is direct editing.** If the user has not invoked a workflow skill, just do the work — read files, make changes, run commands. The PR gate stays out of the way until a workflow skill opts the session into an execution preset.
 
-- **Planned work** (TASK files, external planning tool output, or any source providing scope + requirements) → `task-workflow`
-- **Bug fix / debugging** → `bugfix-workflow`
-- **Quick fixes / small or straightforward changes** → `quick-fix-workflow`
+Invoke a workflow skill when the request matches the preset:
 
-## Autonomous Flow (CRITICAL)
+- **Planned work** (TASK files, external planning tool output, or any source providing scope + requirements) → `/task-workflow`
+- **Bug fix / debugging** → `/bugfix-workflow`
+- **Quick fixes / small or straightforward changes** → `/quick-fix-workflow`
+- **OpenSpec repos with CI review bots** → `/openspec-workflow`
 
-**Do NOT stop between steps.** Follow `execution-core.md` for sequence, gates, decision matrix, and pause conditions. Companion review is NEVER a pause condition or skippable — see execution-core § Review Governance.
+Each workflow skill writes an `execution-preset` marker via `skill-marker.sh`. That marker is what makes the PR gate enforce the preset's evidence set. See `shared/execution-core.md § Opt-In Presets` for the preset-to-evidence mapping.
+Claude-specific hook paths, evidence storage, override knobs, and review metrics live in `claude/rules/execution-core-claude-internals.md`.
 
-## Sub-Agents
+When a workflow is active, **do NOT stop between steps.** Follow `shared/execution-core.md` for sequence, gates, decision matrix, and pause conditions. Companion review is NEVER a pause condition or skippable — see execution-core § Review Governance.
+
+## Stage Bindings
+
+Workflow skills describe logical stages; this section binds each stage to the concrete mechanism Claude uses.
+
+| Stage | Claude binding |
+|-------|----------------|
+| `write-tests` | Dispatch the `test-runner` sub-agent via the Task tool (both RED and GREEN). |
+| `critics` | Dispatch `code-critic` + `minimizer` (+ `requirements-auditor` when requirements are provided) in parallel via the Task tool. |
+| `companion-review` | Dispatch the configured companion via `~/.claude/skills/agent-transport/scripts/tmux-companion.sh --review`, then record the verdict with `--review-complete`. |
+| `pre-pr-verification` | Dispatch `test-runner` + `check-runner` in parallel via the Task tool. |
+
+Claude-specific sub-agents live under `claude/agents/`:
 
 - **test-runner** — run tests
 - **check-runner** — run typecheck/lint
-- **code-critic + minimizer** — after implementing (MANDATORY, parallel)
+- **code-critic** — SRP/DRY/correctness review
+- **minimizer** — locality/simplicity/bloat review
+- **requirements-auditor** — requirements coverage
+- **deep-reviewer** — adversarial architecture review (advisory)
+- **daily-helper** — daily ops utility
 
-**NEVER run tests or checks via Bash directly.** Always delegate to test-runner / check-runner sub-agents — they discover and run the full suite regardless of project. This applies across all projects and repos.
+**NEVER run tests or checks via Bash directly.** When a workflow is active, always delegate verification to `test-runner` / `check-runner` via the Task tool — they discover and run the full suite regardless of project.
 
-Any code change must follow the execution-core sequence and gates. No exceptions.
-
-Keep context window clean. One task per sub-agent.
+Keep the main context clean. One task per sub-agent.
 
 Save investigation findings to `~/.claude/investigations/<issue-slug>.md`.
 
@@ -81,17 +98,11 @@ See `party-dispatch` skill for master session rules.
 
 ## Verification Principle
 
-Evidence before claims. Code edits invalidate prior results. Never mark complete without proof (tests, logs, diff). See execution-core § Verification Principle.
+Evidence before claims. Code edits invalidate prior results. Never mark complete without proof (tests, logs, diff). See `shared/execution-core.md § Verification Principle`.
 
 ## Self-Improvement
 
 After ANY user correction: identify the pattern, write a preventive rule, save to auto-memory (`~/.claude/projects/.../memory/`).
-
-## Skills (Mandatory)
-
-- `/write-tests` — ALWAYS use when writing or modifying tests.
-- `/pre-pr-verification` — ALWAYS run before any PR.
-- `/code-review` — ALWAYS use when user says "review".
 
 ## Development Rules
 

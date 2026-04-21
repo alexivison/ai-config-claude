@@ -13,9 +13,9 @@ user-invocable: true
 # OpenSpec Workflow
 
 Two-phase workflow for repos where CI-based review bots replace the local
-review cascade. The PR gate runs in `ci-gate` tier (pr-verified +
-test-runner + check-runner only) — the hook assigns this automatically
-when this skill is invoked.
+review cascade. Invoking this skill opts the session into the `spec`
+execution-preset — the PR gate then requires only `pr-verified` evidence,
+leaving test/check/review enforcement to CI.
 
 ## Modes
 
@@ -104,14 +104,14 @@ Prerequisite: Phase 1 spec review is APPROVED and all checks are green.
 5. **Verify** — run test-runner and check-runner in parallel via
    sub-agents. Never run tests or lint via Bash directly.
 
-6. **Pre-PR verification** — invoke `/pre-pr-verification`.
-
-7. **Commit** — create the commit before the PR.
-
-8. **Archive** — move the OpenSpec change to archive so openspec-hygiene
+6. **Archive** — move the OpenSpec change to archive so openspec-hygiene
    CI passes. Follow the repo's AGENTS.md archive instructions (move
    directory, copy co-located tests to maintained specs, fix paths,
    verify tests pass). Commit the archive in the same branch.
+
+7. **Commit** — create the commit after implementation + archive updates and before `/pre-pr-verification`.
+
+8. **Pre-PR verification** — invoke `/pre-pr-verification` against that committed diff.
 
 9. **Push and PR** — push the branch. If reusing Phase 1's draft PR, mark
    it ready for review. Otherwise create a new PR.

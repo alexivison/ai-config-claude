@@ -1,32 +1,50 @@
 #!/usr/bin/env bash
-# PR Gate Hook - Enforces workflow completion before PR creation
+# PR Gate Hook — Enforces workflow completion before PR creation
 # Uses JSONL evidence log with diff_hash matching (stale evidence auto-ignored).
 #
-# Three tiers (checked in priority order):
-#   - CI-gate tier: hook-assigned via skill-marker.sh SKILL_TIERS mapping.
-#     Requires: pr-verified + test-runner + check-runner. For repos with CI review bots.
-#   - Quick tier: requires explicit "quick-tier" evidence
-#     + code-critic + test-runner + check-runner.
-#   - Full tier (default): pr-verified, code-critic, minimizer, codex, test-runner, check-runner
-#
-# The quick tier ONLY activates when quick-tier evidence exists — size alone is
-# insufficient.
+# Opt-in model:
+#   - Default: direct editing. No workflow skill invoked → no preset evidence →
+#     gate allows PR creation.
+#   - A workflow skill writes execution-preset (task|bugfix|quick|spec) via
+#     skill-marker.sh. The preset maps to a required evidence set.
+#   - `cfg.Evidence.Required` in party-cli config overrides the preset mapping
+#     when explicitly configured.
+#   - Docs-only PRs still bypass the gate regardless of preset.
 #
 # Triggered: PreToolUse on Bash tool
-# Fails open on errors (allows operation if hook can't determine state)
+# Fails open on errors (allows operation if hook can't determine state).
 
 source "$(dirname "$0")/lib/evidence.sh"
 source "$(dirname "$0")/lib/party-cli.sh"
 
-required_evidence_types() {
-  local required
-  required=$(party_cli_query "$CWD" "evidence-required" 2>/dev/null || true)
-  if [ -n "$required" ]; then
-    echo "$required"
-    return 0
-  fi
-
-  echo "pr-verified code-critic minimizer codex test-runner check-runner"
+# Evidence set keyed by preset. Companion type comes from party-cli config
+# — empty when no companion role is configured, so task/bugfix presets omit
+# the companion evidence requirement.
+preset_evidence_types() {
+  local preset="$1"
+  local companion
+  companion=$(party_cli_query "$CWD" "companion-name" 2>/dev/null | head -n 1 | tr -d '[:space:]')
+  case "$preset" in
+    task)
+      printf 'code-critic minimizer requirements-auditor'
+      [ -n "$companion" ] && printf ' %s' "$companion"
+      printf ' pr-verified test-runner check-runner'
+      ;;
+    bugfix)
+      printf 'code-critic minimizer'
+      [ -n "$companion" ] && printf ' %s' "$companion"
+      printf ' pr-verified test-runner check-runner'
+      ;;
+    quick)
+      echo "code-critic pr-verified test-runner check-runner"
+      ;;
+    spec)
+      echo "pr-verified"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 INPUT=$(cat)
@@ -40,14 +58,14 @@ if [ -z "$SESSION_ID" ]; then
   exit 0
 fi
 
-# Only check PR creation (not git push - allow pushing during development)
-# Note: Don't anchor with ^ since command may be chained (e.g., "cd ... && gh pr create")
+# Only check PR creation (not git push — allow pushing during development).
+# Don't anchor with ^ since command may be chained (e.g., "cd ... && gh pr create")
 if echo "$COMMAND" | grep -qE 'gh pr create'; then
-  # Check if this is a docs/config-only PR (no implementation files in full branch diff)
   CWD=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
   CWD=$(_resolve_cwd "$SESSION_ID" "$CWD")
-  # Fail closed: assume code PR unless we can prove docs-only
-  # Use working-tree diff (no ..HEAD) to match evidence.sh scope
+
+  # Docs-only bypass: assume code PR unless we can prove docs-only.
+  # Use working-tree diff (no ..HEAD) to match evidence.sh scope.
   IMPL_FILES="unknown"
   if [ -n "$CWD" ]; then
     if ! _resolve_merge_base "$CWD"; then
@@ -65,19 +83,28 @@ if echo "$COMMAND" | grep -qE 'gh pr create'; then
     exit 0
   fi
 
-  # Tier selection: hook-assigned tier > quick-tier > full
-  # get_session_tier is hash-independent (session-level decision, not code-state).
-  TIER=$(get_session_tier "$SESSION_ID" 2>/dev/null || echo "")
-
-  if [ "$TIER" = "ci-gate" ]; then
-    # CI-gate tier: repo has CI-based review bots — local critics/codex skipped
-    REQUIRED="pr-verified test-runner check-runner"
-  elif check_evidence "$SESSION_ID" "quick-tier" "$CWD" 2>/dev/null; then
-    # Quick tier: explicit quick-tier evidence opts the session into the lighter gate.
-    REQUIRED="quick-tier code-critic test-runner check-runner"
+  # Evidence resolution: config override > preset > allow
+  # cfg.Evidence.Required in party-cli config overrides preset when set.
+  REQUIRED=""
+  CONFIG_REQUIRED=$(party_cli_query "$CWD" "evidence-required" 2>/dev/null || true)
+  if [ -n "$CONFIG_REQUIRED" ]; then
+    REQUIRED=$(echo "$CONFIG_REQUIRED" | tr '\n' ' ')
+    hook_log "pr-gate" "$SESSION_ID" "config-override" "required=$REQUIRED"
   else
-    # No tier evidence — full gate requires all evidence at current hash
-    REQUIRED=$(required_evidence_types)
+    PRESET=$(get_session_preset "$SESSION_ID" 2>/dev/null || echo "")
+    if [ -z "$PRESET" ]; then
+      # Opt-in default: no workflow skill invoked → no enforcement.
+      hook_log "pr-gate" "$SESSION_ID" "allow" "no preset — opt-in default"
+      echo '{}'
+      exit 0
+    fi
+    REQUIRED=$(preset_evidence_types "$PRESET" || true)
+    if [ -z "$REQUIRED" ]; then
+      hook_log "pr-gate" "$SESSION_ID" "allow" "unknown preset '$PRESET' — fail open"
+      echo '{}'
+      exit 0
+    fi
+    hook_log "pr-gate" "$SESSION_ID" "preset" "preset=$PRESET required=$REQUIRED"
   fi
 
   DIAG_FILE=$(mktemp 2>/dev/null || echo "/tmp/pr-gate-diag-$$")

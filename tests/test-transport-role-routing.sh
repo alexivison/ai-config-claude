@@ -109,6 +109,22 @@ export PATH="$MOCK_DIR:$PATH"
 export MOCK_TMUX_LOG="$MOCK_LOG"
 export TMUX_SEND_FORCE=1
 export PARTY_REPO_ROOT="$REPO_ROOT"
+export PARTY_STATE_ROOT="$MOCK_DIR/state"
+mkdir -p "$PARTY_STATE_ROOT"
+
+write_manifest() {
+  local session="$1"
+  local primary_agent="$2"
+  local companion_agent="$3"
+  cat > "$PARTY_STATE_ROOT/$session.json" <<EOF
+{
+  "agents": [
+    {"name": "$primary_agent", "role": "primary", "window": 1},
+    {"name": "$companion_agent", "role": "companion", "window": 0}
+  ]
+}
+EOF
+}
 
 run_and_capture() {
   local session="$1"
@@ -148,15 +164,18 @@ assert_log_contains() {
 echo "--- test-transport-role-routing.sh ---"
 
 SESSION_NEW="party-transport-new-$$"
+SESSION_SWAPPED="party-transport-swapped-$$"
+write_manifest "$SESSION_NEW" "claude" "codex"
+write_manifest "$SESSION_SWAPPED" "codex" "claude"
 
-assert "claude agent-transport companion script is a symlink" \
-  '[ -L "$REPO_ROOT/claude/skills/agent-transport/scripts/tmux-companion.sh" ]'
-assert "claude agent-transport primary script is a symlink" \
-  '[ -L "$REPO_ROOT/claude/skills/agent-transport/scripts/tmux-primary.sh" ]'
-assert "codex agent-transport companion script is a symlink" \
-  '[ -L "$REPO_ROOT/codex/skills/agent-transport/scripts/tmux-companion.sh" ]'
-assert "codex agent-transport primary script is a symlink" \
-  '[ -L "$REPO_ROOT/codex/skills/agent-transport/scripts/tmux-primary.sh" ]'
+assert "claude agent-transport companion script is a regular file" \
+  '[ -f "$REPO_ROOT/claude/skills/agent-transport/scripts/tmux-companion.sh" ] && [ ! -L "$REPO_ROOT/claude/skills/agent-transport/scripts/tmux-companion.sh" ]'
+assert "claude agent-transport primary script is a regular file" \
+  '[ -f "$REPO_ROOT/claude/skills/agent-transport/scripts/tmux-primary.sh" ] && [ ! -L "$REPO_ROOT/claude/skills/agent-transport/scripts/tmux-primary.sh" ]'
+assert "codex agent-transport companion script is a regular file" \
+  '[ -f "$REPO_ROOT/codex/skills/agent-transport/scripts/tmux-companion.sh" ] && [ ! -L "$REPO_ROOT/codex/skills/agent-transport/scripts/tmux-companion.sh" ]'
+assert "codex agent-transport primary script is a regular file" \
+  '[ -f "$REPO_ROOT/codex/skills/agent-transport/scripts/tmux-primary.sh" ] && [ ! -L "$REPO_ROOT/codex/skills/agent-transport/scripts/tmux-primary.sh" ]'
 
 echo ""
 echo "  === tmux-primary.sh ==="
@@ -191,6 +210,14 @@ prompt_output="$(PARTY_SESSION="$SESSION_NEW" bash "$REPO_ROOT/claude/skills/age
 assert_log "${SESSION_NEW}:0.0" "[PRIMARY] cd '/tmp/work' && inspect this"
 assert "primary prompt output tells requester not to poll" \
   'printf "%s" "$prompt_output" | grep -Fq "Do not poll the response file. Wait for '\''[COMPANION] Task complete. Response at:"'
+assert_log_contains '/.codex/skills/agent-transport/scripts/tmux-primary.sh'
+
+> "$MOCK_LOG"
+prompt_output_swapped="$(PARTY_SESSION="$SESSION_SWAPPED" bash "$REPO_ROOT/codex/skills/agent-transport/scripts/tmux-companion.sh" --prompt "inspect swapped" /tmp/work)"
+assert_log "${SESSION_SWAPPED}:0.0" "[PRIMARY] cd '/tmp/work' && inspect swapped"
+assert "swapped-role prompt output tells requester not to poll" \
+  'printf "%s" "$prompt_output_swapped" | grep -Fq "Do not poll the response file. Wait for '\''[COMPANION] Task complete. Response at:"'
+assert_log_contains '/.claude/skills/agent-transport/scripts/tmux-primary.sh'
 
 export TMUX_PANE="%41"
 export MOCK_CURRENT_ROLE="companion"

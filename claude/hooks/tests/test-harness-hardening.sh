@@ -148,6 +148,8 @@ cleanup
 setup_repo
 echo "impl3" > impl3.sh
 git add impl3.sh && git commit -q -m "add impl3"
+# Opt into enforcement so pr-gate checks evidence instead of allowing by default.
+append_evidence "$SESSION" "execution-preset" "task" "$TMPDIR_BASE"
 # Create all evidence at current hash
 for type in pr-verified code-critic minimizer codex test-runner check-runner; do
   append_evidence "$SESSION" "$type" "PASS" "$TMPDIR_BASE"

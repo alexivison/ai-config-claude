@@ -272,19 +272,23 @@ append_triage_override() {
 }
 
 # ── Session-level readers (hash-independent) ──
-# Some evidence types (e.g., execution-tier) are session-level decisions that
+# Some evidence types (e.g., execution-preset) are session-level decisions that
 # should not be invalidated when code changes. These readers ignore diff_hash.
+#
+# execution-preset is replace-only by semantics: each workflow skill writes a
+# single string; readers take the last entry so newer writes override older
+# ones without needing special merge logic.
 
-get_session_tier() {
+get_session_preset() {
   local session_id="$1"
   local file
   file=$(evidence_file "$session_id")
   [ ! -f "$file" ] && return 1
 
-  local tier
-  tier=$(jq -rs '[.[] | select(.type == "execution-tier")] | last | .result // empty' "$file" 2>/dev/null)
-  if [ -n "$tier" ]; then
-    echo "$tier"
+  local preset
+  preset=$(jq -rs '[.[] | select(.type == "execution-preset")] | last | .result // empty' "$file" 2>/dev/null)
+  if [ -n "$preset" ]; then
+    echo "$preset"
     return 0
   fi
   return 1

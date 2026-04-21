@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests for pr-gate.sh
-# Covers: full gate, quick tier, docs-only bypass, stale evidence
+# Covers: opt-in default (no preset), preset-driven requirements (task / bugfix /
+# quick / spec), config override, docs-only bypass, stale evidence.
 #
 # Usage: bash ~/.claude/hooks/tests/test-pr-gate.sh
 
@@ -9,6 +10,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GATE="$SCRIPT_DIR/../pr-gate.sh"
 source "$SCRIPT_DIR/../lib/evidence.sh"
+
+# Ensure the gate uses THIS worktree's party-cli source via go run, not any
+# pre-installed (possibly stale) binary on PATH. Prepending a dummy dir that
+# does not contain `party-cli` would still fall through to the original PATH;
+# instead, shadow it with a stub that always fails so party_cli_query falls
+# back to go run from the repo.
+_PARTY_STUB_DIR=$(mktemp -d)
+cat > "$_PARTY_STUB_DIR/party-cli" <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+chmod +x "$_PARTY_STUB_DIR/party-cli"
+export PATH="$_PARTY_STUB_DIR:$PATH"
+_stub_cleanup() { rm -rf "$_PARTY_STUB_DIR"; }
 
 PASS=0
 FAIL=0
@@ -51,6 +66,7 @@ clean_evidence() {
 
 full_cleanup() {
   clean_evidence
+  _stub_cleanup
   unset XDG_CONFIG_HOME
   if [ -n "$TMPDIR_BASE" ] && [ -d "$TMPDIR_BASE" ]; then
     rm -rf "$TMPDIR_BASE"
@@ -65,10 +81,35 @@ gate_input() {
     '{tool_input:{command:"gh pr create --title test"},session_id:$sid,cwd:$cwd}'
 }
 
-add_all_evidence() {
+set_preset() {
+  append_evidence "$SESSION_ID" "execution-preset" "$1" "$TMPDIR_BASE"
+}
+
+# party-cli's default config resolves companion-name to "codex", so the task
+# and bugfix presets require a `codex` evidence entry unless the test
+# overrides the config to remove the companion role. Helpers include codex
+# for convenience; the "with configured companion" tests below exercise the
+# resolution path explicitly via `write_companion_config`.
+add_all_evidence_for_task() {
+  for type in pr-verified code-critic minimizer requirements-auditor codex test-runner check-runner; do
+    append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
+  done
+}
+
+add_all_evidence_for_bugfix() {
   for type in pr-verified code-critic minimizer codex test-runner check-runner; do
     append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
   done
+}
+
+add_all_evidence_for_quick() {
+  for type in pr-verified code-critic test-runner check-runner; do
+    append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
+  done
+}
+
+add_companion_evidence() {
+  append_evidence "$SESSION_ID" "$1" "APPROVED" "$TMPDIR_BASE"
 }
 
 write_custom_evidence_config() {
@@ -76,6 +117,16 @@ write_custom_evidence_config() {
   cat > "$(config_path)" <<'EOF'
 [evidence]
 required = ["pr-verified", "test-runner", "check-runner"]
+EOF
+}
+
+write_companion_config() {
+  mkdir -p "$(dirname "$(config_path)")"
+  cat > "$(config_path)" <<'EOF'
+[roles.primary]
+agent = "claude"
+[roles.companion]
+agent = "codex"
 EOF
 }
 
@@ -102,212 +153,225 @@ OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
 assert "Docs PR with .svg allowed without evidence" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-echo "=== Docs-only bypass: .png + .txt + .csv + .drawio files ==="
-setup_repo
-clean_evidence
-echo "img" > screenshot.png
-echo "notes" > notes.txt
-echo "a,b" > data.csv
-echo "<mxfile>" > arch.drawio
-git add screenshot.png notes.txt data.csv arch.drawio && git commit -q -m "add misc doc artifacts"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Docs PR with .png/.txt/.csv/.drawio allowed without evidence" \
-  '! echo "$OUTPUT" | grep -q "deny"'
-
-echo "=== Docs-only bypass: .sh file still requires evidence ==="
+echo "=== Docs-only bypass: .sh file still requires evidence when preset set ==="
 setup_repo
 clean_evidence
 echo "docs" > readme.md
 echo "#!/bin/bash" > script.sh
 git add readme.md script.sh && git commit -q -m "add docs and script"
+set_preset task
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "PR with .sh file requires evidence" \
+assert "PR with .sh file + preset requires evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
 
-echo "=== Docs-only bypass: Dockerfile requires evidence ==="
+echo "=== Docs-only bypass: Dockerfile requires evidence when preset set ==="
 setup_repo
 clean_evidence
 echo "FROM alpine" > Dockerfile
 git add Dockerfile && git commit -q -m "add Dockerfile"
+set_preset task
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "PR with Dockerfile requires evidence" \
+assert "PR with Dockerfile + preset requires evidence" \
   'echo "$OUTPUT" | grep -q "deny"'
 
-echo "=== Docs-only bypass: Makefile requires evidence ==="
-setup_repo
-clean_evidence
-echo "all:" > Makefile
-git add Makefile && git commit -q -m "add Makefile"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "PR with Makefile requires evidence" \
-  'echo "$OUTPUT" | grep -q "deny"'
+# ═══ Opt-in default: no preset → allow ════════════════════════════════════
 
-echo "=== Docs-only bypass: go.mod requires evidence ==="
-setup_repo
-clean_evidence
-echo "module example.com/foo" > go.mod
-git add go.mod && git commit -q -m "add go.mod"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "PR with go.mod requires evidence" \
-  'echo "$OUTPUT" | grep -q "deny"'
-
-echo "=== Docs-only bypass: package-lock.json requires evidence ==="
-setup_repo
-clean_evidence
-echo '{"lockfileVersion":3}' > package-lock.json
-git add package-lock.json && git commit -q -m "add lockfile"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "PR with package-lock.json requires evidence" \
-  'echo "$OUTPUT" | grep -q "deny"'
-
-echo "=== Docs-only bypass: requirements.txt requires evidence ==="
-setup_repo
-clean_evidence
-echo "flask==2.0" > requirements.txt
-git add requirements.txt && git commit -q -m "add requirements.txt"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "PR with requirements.txt requires evidence" \
-  'echo "$OUTPUT" | grep -q "deny"'
-
-# ═══ Full gate tests ════════════════════════════════════════════════════════
-
-echo "=== Full gate: blocks when evidence missing ==="
+echo "=== Opt-in default: code PR with no preset is allowed ==="
 setup_repo
 clean_evidence
 echo "change" >> file.sh
 git add file.sh && git commit -q -m "code change"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Full gate blocks without evidence" \
-  'echo "$OUTPUT" | grep -q "deny"'
-
-echo "=== Full gate: allows when all evidence present ==="
-clean_evidence
-add_all_evidence
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Full gate allows with all evidence" \
+assert "No preset evidence → code PR allowed" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-echo "=== Full gate: blocks on stale diff_hash ==="
+# ═══ task preset ══════════════════════════════════════════════════════════
+
+echo "=== task preset: blocks when evidence missing ==="
+setup_repo
 clean_evidence
-add_all_evidence
-cd "$TMPDIR_BASE"
+echo "change" >> file.sh
+git add file.sh && git commit -q -m "code change"
+set_preset task
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "task preset + no evidence → blocked" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== task preset: allows when full task evidence present ==="
+clean_evidence
+set_preset task
+add_all_evidence_for_task
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "task preset + full evidence → allowed" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== task preset: missing requirements-auditor still blocks ==="
+clean_evidence
+set_preset task
+for type in pr-verified code-critic minimizer codex test-runner check-runner; do
+  append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
+done
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "task preset without requirements-auditor blocked" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== task preset: blocks on stale diff_hash ==="
+setup_repo
+clean_evidence
+echo "change" >> file.sh
+git add file.sh && git commit -q -m "code change"
+set_preset task
+add_all_evidence_for_task
 echo "stale" >> file.sh
 git add file.sh && git commit -q -m "stale edit"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Full gate blocks stale evidence" \
+assert "task preset stale evidence → blocked" \
   'echo "$OUTPUT" | grep -q "deny"'
 
-echo "=== Full gate: small diff still requires full evidence ==="
+# ═══ bugfix preset ════════════════════════════════════════════════════════
+
+echo "=== bugfix preset: allows without requirements-auditor ==="
 setup_repo
 clean_evidence
-echo "tiny fix" >> file.sh
-git add file.sh && git commit -q -m "tiny fix"
-# Only provide test-runner + check-runner (not full set)
+echo "fix" >> file.sh
+git add file.sh && git commit -q -m "bug fix"
+set_preset bugfix
+add_all_evidence_for_bugfix
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "bugfix preset + full bugfix evidence → allowed" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== bugfix preset: missing minimizer blocks ==="
+clean_evidence
+set_preset bugfix
+for type in pr-verified code-critic codex test-runner check-runner; do
+  append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
+done
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "bugfix preset without minimizer blocked" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+# ═══ Companion inclusion path ═════════════════════════════════════════════
+# When a companion role is configured, the gate must require the configured
+# companion's name as an additional evidence type for task and bugfix presets.
+
+echo "=== task preset with configured companion: requires companion evidence ==="
+setup_repo
+clean_evidence
+write_companion_config
+echo "with companion" >> file.sh
+git add file.sh && git commit -q -m "configured companion"
+set_preset task
+for type in pr-verified code-critic minimizer requirements-auditor test-runner check-runner; do
+  append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
+done
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "task preset with companion configured but no companion evidence → blocked" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== task preset with configured companion + companion evidence → allowed ==="
+add_companion_evidence codex
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "task preset with companion evidence → allowed" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== bugfix preset with configured companion: requires companion evidence ==="
+setup_repo
+clean_evidence
+write_companion_config
+echo "bug fix with companion" >> file.sh
+git add file.sh && git commit -q -m "bugfix with companion"
+set_preset bugfix
+for type in pr-verified code-critic minimizer test-runner check-runner; do
+  append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
+done
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "bugfix preset with companion configured but no companion evidence → blocked" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== bugfix preset with companion + companion evidence → allowed ==="
+add_companion_evidence codex
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "bugfix preset with companion evidence → allowed" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+# ═══ quick preset ═════════════════════════════════════════════════════════
+
+echo "=== quick preset: code-critic + runners + pr-verified → allowed ==="
+setup_repo
+clean_evidence
+echo "quick change" >> file.sh
+git add file.sh && git commit -q -m "quick fix"
+set_preset quick
+add_all_evidence_for_quick
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "quick preset + quick evidence → allowed" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== quick preset: skips companion and minimizer ==="
+clean_evidence
+set_preset quick
+append_evidence "$SESSION_ID" "pr-verified" "PASS" "$TMPDIR_BASE"
+append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Small diff with partial evidence blocked" \
+assert "quick preset without companion/minimizer → allowed" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== quick preset: missing code-critic blocks ==="
+clean_evidence
+set_preset quick
+for type in pr-verified test-runner check-runner; do
+  append_evidence "$SESSION_ID" "$type" "PASS" "$TMPDIR_BASE"
+done
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "quick preset without code-critic blocked" \
   'echo "$OUTPUT" | grep -q "deny"'
 
-echo "=== Full gate: custom evidence-required config drives requirements ==="
+# ═══ spec preset ══════════════════════════════════════════════════════════
+
+echo "=== spec preset: pr-verified alone passes ==="
+setup_repo
+clean_evidence
+echo "spec code" >> file.sh
+git add file.sh && git commit -q -m "spec-driven update"
+set_preset spec
+append_evidence "$SESSION_ID" "pr-verified" "PASS" "$TMPDIR_BASE"
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "spec preset + pr-verified → allowed" \
+  '! echo "$OUTPUT" | grep -q "deny"'
+
+echo "=== spec preset: missing pr-verified blocks ==="
+clean_evidence
+set_preset spec
+OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
+assert "spec preset without pr-verified blocked" \
+  'echo "$OUTPUT" | grep -q "deny"'
+
+# ═══ Config override ══════════════════════════════════════════════════════
+
+echo "=== Config override: cfg.Evidence.Required overrides preset ==="
 setup_repo
 clean_evidence
 write_custom_evidence_config
 echo "configurable" >> file.sh
 git add file.sh && git commit -q -m "configurable gate"
+# Deliberately no preset set — config override alone should be enough.
 append_evidence "$SESSION_ID" "pr-verified" "PASS" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Custom evidence list allows without critic/minimizer/companion evidence" \
+assert "Config override applied with only the three required evidence types" \
   '! echo "$OUTPUT" | grep -q "deny"'
 
-echo "=== Full gate: missing party-cli falls back to default evidence list ==="
-setup_repo
+echo "=== Config override: missing one required type blocks ==="
 clean_evidence
 write_custom_evidence_config
-echo "fallback" >> file.sh
-git add file.sh && git commit -q -m "fallback gate"
 append_evidence "$SESSION_ID" "pr-verified" "PASS" "$TMPDIR_BASE"
 append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
-OUTPUT=$(echo "$(gate_input)" | PARTY_CLI_DISABLE_GO_FALLBACK=1 PATH="/usr/bin:/bin:/usr/sbin:/sbin" bash "$GATE")
-assert "Missing party-cli restores default full gate" \
-  'echo "$OUTPUT" | grep -q "deny"'
-
-# ═══ Quick tier tests ════════════════════════════════════════════════════════
-
-echo "=== Quick tier: explicit quick-tier evidence → passes with quick evidence ==="
-setup_repo
-clean_evidence
-echo "small edit" >> file.sh
-git add file.sh && git commit -q -m "small edit"
-append_evidence "$SESSION_ID" "quick-tier" "AUTHORIZED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
 OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Quick tier: explicit quick-tier + critic + runners passes" \
-  '! echo "$OUTPUT" | grep -q "deny"'
-
-echo "=== Quick tier: size alone insufficient without quick-tier evidence ==="
-setup_repo
-clean_evidence
-echo "small edit" >> file.sh
-git add file.sh && git commit -q -m "small edit"
-# No quick-tier evidence — only critic + runners
-append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Quick tier: no quick-tier evidence → full gate → blocked" \
-  'echo "$OUTPUT" | grep -q "deny"'
-
-echo "=== Quick tier: quick-tier evidence with large diff still passes quick gate ==="
-setup_repo
-clean_evidence
-for i in $(seq 1 40); do echo "line $i" >> file.sh; done
-git add file.sh && git commit -q -m "big edit"
-append_evidence "$SESSION_ID" "quick-tier" "AUTHORIZED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Quick tier: large diff with quick-tier evidence passes" \
-  '! echo "$OUTPUT" | grep -q "deny"'
-
-echo "=== Quick tier: quick-tier evidence with new file still passes quick gate ==="
-setup_repo
-clean_evidence
-echo "new" > new.sh
-git add new.sh && git commit -q -m "new file"
-append_evidence "$SESSION_ID" "quick-tier" "AUTHORIZED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Quick tier: new file with quick-tier evidence passes" \
-  '! echo "$OUTPUT" | grep -q "deny"'
-
-# ═══ Full gate: stale critics blocked (no phase-2 relaxation) ═════════════
-
-echo "=== Full gate: stale critics at old hash + codex at current → blocked ==="
-setup_repo
-clean_evidence
-cd "$TMPDIR_BASE"
-echo "impl code" > impl.sh && git add impl.sh && git commit -q -m "impl"
-# Critics approve at hash_A
-append_evidence "$SESSION_ID" "code-critic" "APPROVED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "minimizer" "APPROVED" "$TMPDIR_BASE"
-# Fix commit → hash_B (critics now at stale hash)
-echo "codex fix" >> impl.sh && git add impl.sh && git commit -q -m "codex fix"
-# Codex approves at hash_B, plus other required evidence at hash_B
-append_evidence "$SESSION_ID" "codex" "APPROVED" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "pr-verified" "PASS" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "test-runner" "PASS" "$TMPDIR_BASE"
-append_evidence "$SESSION_ID" "check-runner" "PASS" "$TMPDIR_BASE"
-OUTPUT=$(echo "$(gate_input)" | bash "$GATE")
-assert "Stale critics at old hash + codex at current → blocked" \
+assert "Config override missing check-runner blocks" \
   'echo "$OUTPUT" | grep -q "deny"'
 
 # ═══ Non-PR commands pass through ═══════════════════════════════════════════
