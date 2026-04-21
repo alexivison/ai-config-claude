@@ -569,7 +569,7 @@ var (
 	pickerFooterStyle      = lipgloss.NewStyle().Faint(true)
 	pickerDividerLineStyle = lipgloss.NewStyle().Foreground(palette.DividerFg)
 	pickerVertDividerStyle = lipgloss.NewStyle().Foreground(palette.PickerVerticalDivider)
-	pickerSelectedStyle    = lipgloss.NewStyle().Reverse(true)
+	pickerSelectedStyle    = lipgloss.NewStyle().Background(palette.SelectedRowBg)
 	pickerCwdStyle         = lipgloss.NewStyle().Faint(true)
 	pickerAgentStyle       = lipgloss.NewStyle().Bold(true)
 

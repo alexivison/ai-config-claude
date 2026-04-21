@@ -879,8 +879,8 @@ func lastSnippetLine(snippet string) string {
 	return ""
 }
 
-// applySelectedBg highlights the selected row using reverse-video so the
-// selection inherits the terminal's own foreground/background pairing.
+// applySelectedBg highlights the selected row using the shared subtle
+// background tint so selection remains visually consistent with the picker.
 func applySelectedBg(line string) string {
 	return selectedRowStyle.Render(line)
 }

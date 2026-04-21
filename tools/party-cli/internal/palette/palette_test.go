@@ -38,6 +38,14 @@ func TestPaletteUsesANSIIndexes(t *testing.T) {
 	}
 }
 
+func TestSelectedRowBgIsTheOnlyNonANSIColor(t *testing.T) {
+	t.Parallel()
+
+	if SelectedRowBg.Light != "#eaeef2" || SelectedRowBg.Dark != "#2d333b" {
+		t.Fatalf("SelectedRowBg = %#v, want light=#eaeef2 dark=#2d333b", SelectedRowBg)
+	}
+}
+
 func TestPaletteMappings(t *testing.T) {
 	t.Parallel()
 

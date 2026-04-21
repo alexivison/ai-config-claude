@@ -30,3 +30,8 @@ const (
 	SelectedBoxBorder     lipgloss.Color = Muted
 	ActivityDim           lipgloss.Color = Muted
 )
+
+var SelectedRowBg = lipgloss.AdaptiveColor{
+	Light: "#eaeef2",
+	Dark:  "#2d333b",
+}

@@ -80,7 +80,7 @@ var (
 	sessionBoxBorderStyle = lipgloss.NewStyle().Foreground(DividerBorder)
 	// Brighter than inactive, matches gh-dash's focused feel (GitHub fg.muted).
 	selectedBoxBorderStyle = lipgloss.NewStyle().Foreground(palette.SelectedBoxBorder)
-	selectedRowStyle       = lipgloss.NewStyle().Reverse(true)
+	selectedRowStyle       = lipgloss.NewStyle().Background(palette.SelectedRowBg)
 )
 
 // dimActivityStyle renders the activity dot's "blink off" half — a muted
