@@ -559,13 +559,7 @@ func (s SessionRow) isGenerating() bool {
 // (`│` / `├──┬` / `└──┬`) that connects siblings back to the master.
 const workerIndent = 3
 
-func (tm TrackerModel) renderSessionRow(row SessionRow, idx int, widthArg any, legacyInnerW ...int) string {
-	// Keep stale merge-ref test callers with the removed compact bool compiling.
-	innerW, ok := widthArg.(int)
-	if !ok && len(legacyInnerW) > 0 {
-		innerW = legacyInnerW[0]
-	}
-
+func (tm TrackerModel) renderSessionRow(row SessionRow, idx int, innerW int) string {
 	selected := idx == tm.cursor
 
 	isWorker := row.SessionType == "worker"
