@@ -23,14 +23,14 @@ You are Codex CLI. You default to the companion role but may be configured as pr
 
 - **Simplicity + Minimal Impact**: Smallest possible change. No over-engineering.
 - **No Laziness**: Root causes only. Senior developer standards.
-- **Clean Code**: Apply LoB (Locality of Behavior), SRP, YAGNI, DRY, KISS — see `shared/clean-code.md`.
+- **Clean Code**: Apply LoB (Locality of Behavior), SRP, YAGNI, DRY, KISS — see `shared/reference/clean-code.md`.
 - **Elegance check**: For non-trivial analysis, pause and ask: is there a more elegant framing? Skip for straightforward reviews.
 
 ## Default Mode: Direct Editing
 
 **The default session mode is direct editing.** As the default companion, you typically do not implement; you respond to `[PRIMARY]` requests. If you are acting as primary (role swapped) and the user has not invoked a workflow skill, just do the work — read files, make changes, run commands. When a workflow skill is invoked, execution-core is active for Codex too. Claude records that via an `execution-preset` marker; Codex has no local preset hook, so it must self-enforce the same recipe.
 
-When a workflow is active, follow `shared/execution-core.md` end-to-end. The presets are:
+When a workflow is active, follow `shared/reference/execution-core.md` end-to-end. The presets are:
 
 - `task-workflow` → preset=task (full pipeline with requirements audit)
 - `bugfix-workflow` → preset=bugfix (full pipeline without requirements audit)
@@ -59,8 +59,8 @@ Shared workflow skills describe logical stages. This section binds each stage to
 | Stage | Codex binding |
 |-------|---------------|
 | `write-tests` | Write tests using the repo's conventions, then run the repo's test command inline via shell (e.g. `pnpm test`, `go test ./...`). Observe RED before implementation. |
-| `code-critic` | Review the diff inline for SRP, DRY, correctness, regressions, test gaps, and security using `shared/skills/companion-review/SKILL.md` plus `shared/clean-code.md`. |
-| `minimizer` | Review the diff inline for locality, simplicity, YAGNI, and bloat using `shared/clean-code.md`. |
+| `code-critic` | Review the diff inline for SRP, DRY, correctness, regressions, test gaps, and security using `shared/skills/companion-review/SKILL.md` plus `shared/reference/clean-code.md`. |
+| `minimizer` | Review the diff inline for locality, simplicity, YAGNI, and bloat using `shared/reference/clean-code.md`. |
 | `requirements-auditor` | For `task-workflow` only, compare the diff and tests against the stated requirements. Flag missing, partial, or untested requirements. |
 | `companion-review` | Dispatch the configured companion via `~/.codex/skills/agent-transport/scripts/tmux-companion.sh --review` when a companion exists. Record the verdict with `--review-complete`. Skip with a note if no companion is configured. |
 | `pre-pr-verification` | Run the repo's test, lint, and typecheck commands inline via shell. Do NOT invent commands — discover them from package.json scripts, Makefile targets, or repo README. |
@@ -131,6 +131,8 @@ Shared workflow skills are symlinked into `~/.codex/skills/` — invoke them whe
 ### Worktree Isolation
 
 **Always create a dedicated worktree before editing any file**, including in direct-edit mode with no workflow active. Bypassing a workflow gate does NOT exempt you from this. Never edit in another session's cwd — concurrent workers in the same worktree trample each other's diffs.
+
+`main` is always the source of truth. When syncing or resolving conflicts, current `main` behavior/specs win. Reapply only your narrow ticket delta on top of latest `main`; never revive stale branch behavior.
 
 1. Prefer `gwta <branch>` if available.
 2. Otherwise: `git worktree add ../<repo>-<branch> -b <branch>`.

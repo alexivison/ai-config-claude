@@ -39,7 +39,7 @@ Investigation agents ALWAYS require user review before proceeding.
 
 Invoking this skill selects the `bugfix` execution preset. That preset requires `code-critic + minimizer + companion review + pre-pr-verification` evidence (no requirements-auditor, unlike the task preset).
 
-Use the canonical sequence in `shared/execution-core.md` (section "Core Sequence"), then apply these bugfix deltas from `shared/skills/task-workflow/SKILL.md`:
+Use the canonical sequence in `shared/reference/execution-core.md` (section "Core Sequence"), then apply these bugfix deltas from `shared/skills/task-workflow/SKILL.md`:
 - Step 1: Regression test (not feature test) — must FAIL first (RED), then PASS after fix (GREEN)
 - Fix must address root cause (not just mask symptoms)
 - No checkbox step
@@ -69,4 +69,4 @@ Write findings to `~/.ai-party/docs/research/YYYY-MM-DD-investigation-<slug>.md`
 
 ## Core Reference
 
-See `shared/execution-core.md` for review governance, decision matrix, and verification requirements.
+See `shared/reference/execution-core.md` for review governance, decision matrix, and verification requirements.

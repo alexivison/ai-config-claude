@@ -15,7 +15,7 @@ You are a code critic. Review changes for **correctness**: bugs, regressions, st
 ## Process
 
 1. Run `git diff` or `git diff --staged`
-2. Review against preloaded guidelines AND global rules (`shared/clean-code.md`, `shared/execution-core.md`)
+2. Review against preloaded guidelines AND global rules (`shared/reference/clean-code.md`, `shared/reference/execution-core.md`)
 3. Report issues with file:line references and WHY
 
 ## Principles

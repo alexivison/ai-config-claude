@@ -1,1 +1,1 @@
-../../shared/execution-core.md
+../../shared/reference/execution-core.md

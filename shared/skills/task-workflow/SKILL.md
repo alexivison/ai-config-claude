@@ -11,7 +11,7 @@ user-invocable: true
 
 # Task Workflow
 
-Execute planned work using the full autonomous pipeline defined in the shared execution-core rules at `shared/execution-core.md` (also accessible via agent-local shims such as `claude/rules/execution-core.md`).
+Execute planned work using the full autonomous pipeline defined in the shared execution-core rules at `shared/reference/execution-core.md` (also accessible via agent-local shims such as `claude/rules/execution-core.md`).
 
 ## Enforcement
 
@@ -30,13 +30,13 @@ For bug fixes → use `bugfix-workflow`. For non-behavioral small changes → us
 
 Task-workflow is a thin shim over execution-core. It triggers the full pipeline and ensures:
 
-1. **Scope extraction** — Read the planning source and extract scope boundaries, requirements, and goal per the pre-implementation gate in `shared/execution-core.md`.
+1. **Scope extraction** — Read the planning source and extract scope boundaries, requirements, and goal per the pre-implementation gate in `shared/reference/execution-core.md`.
 2. **Requirements audit** — Because planned work has requirements, the critics stage is `code-critic + minimizer + requirements-auditor`.
 3. **Source-file updates** — Tracking files (TASK/PLAN/external checkboxes) are updated alongside the implementation commit.
 4. **Task-plan location** — If you create a separate task plan doc, write it to `~/.ai-party/docs/research/YYYY-MM-DD-task-<slug>.md` with frontmatter `type: plan`.
 
 ## Execution
 
-Follow `shared/execution-core.md` end-to-end — pre-implementation gate, RED evidence, implementation, source-file updates, critics (`code-critic + minimizer + requirements-auditor`), companion review, commit, pre-pr-verification, PR. No stopping until PR is created.
+Follow `shared/reference/execution-core.md` end-to-end — pre-implementation gate, RED evidence, implementation, source-file updates, critics (`code-critic + minimizer + requirements-auditor`), companion review, commit, pre-pr-verification, PR. No stopping until PR is created.
 
 Concrete stage mechanisms come from your agent's "Stage Bindings" section (`claude/CLAUDE.md` or `codex/AGENTS.md`). This recipe describes the stages; the bindings describe how to execute them.

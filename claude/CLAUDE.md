@@ -24,7 +24,7 @@ You are Claude Code. You default to the primary role but may be configured as co
 
 - **Simplicity + Minimal Impact**: Smallest possible change. No over-engineering.
 - **No Laziness**: Root causes only. Senior developer standards.
-- **Clean Code**: Follow `shared/clean-code.md` (LoB, SRP, YAGNI, DRY, KISS). Self-check every function.
+- **Clean Code**: Follow `shared/reference/clean-code.md` (LoB, SRP, YAGNI, DRY, KISS). Self-check every function.
 
 ## Daily Reports
 
@@ -47,10 +47,10 @@ Invoke a workflow skill when the request matches the preset:
 - **Quick fixes / small or straightforward changes** → `/quick-fix-workflow`
 - **OpenSpec repos with CI review bots** → `/openspec-workflow`
 
-Each workflow skill writes an `execution-preset` marker via `skill-marker.sh`. That marker is what makes the PR gate enforce the preset's evidence set. See `shared/execution-core.md § Opt-In Presets` for the preset-to-evidence mapping.
+Each workflow skill writes an `execution-preset` marker via `skill-marker.sh`. That marker is what makes the PR gate enforce the preset's evidence set. See `shared/reference/execution-core.md § Opt-In Presets` for the preset-to-evidence mapping.
 Claude-specific hook paths, evidence storage, override knobs, and review metrics live in `claude/rules/execution-core-claude-internals.md`.
 
-When a workflow is active, **do NOT stop between steps.** Follow `shared/execution-core.md` for sequence, gates, decision matrix, and pause conditions. Companion review is NEVER a pause condition or skippable — see execution-core § Review Governance.
+When a workflow is active, **do NOT stop between steps.** Follow `shared/reference/execution-core.md` for sequence, gates, decision matrix, and pause conditions. Companion review is NEVER a pause condition or skippable — see execution-core § Review Governance.
 
 ## Docs Workspace
 
@@ -107,7 +107,7 @@ See `party-dispatch` skill for master session rules.
 
 ## Verification Principle
 
-Evidence before claims. Code edits invalidate prior results. Never mark complete without proof (tests, logs, diff). See `shared/execution-core.md § Verification Principle`.
+Evidence before claims. Code edits invalidate prior results. Never mark complete without proof (tests, logs, diff). See `shared/reference/execution-core.md § Verification Principle`.
 
 ## Self-Improvement
 
@@ -127,6 +127,8 @@ After ANY user correction: identify the pattern, write a preventive rule, save t
 ### Worktree Isolation
 
 **Always create a dedicated worktree before editing any file**, including in direct-edit mode with no workflow active. Bypassing a workflow gate does NOT exempt you from this. Never edit in another session's cwd — concurrent workers in the same worktree trample each other's diffs.
+
+`main` is always the source of truth. When syncing or resolving conflicts, current `main` behavior/specs win. Reapply only your narrow ticket delta on top of latest `main`; never revive stale branch behavior.
 
 1. Prefer `gwta <branch>` if available.
 2. Otherwise: `git worktree add ../<repo>-<branch> -b <branch>`.

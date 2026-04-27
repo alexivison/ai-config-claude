@@ -53,4 +53,4 @@ After passing the gate, execute continuously — **no stopping until PR is creat
 
 ## Core Reference
 
-See `shared/execution-core.md` for the evidence system and the preset-to-evidence mapping used by the PR gate.
+See `shared/reference/execution-core.md` for the evidence system and the preset-to-evidence mapping used by the PR gate.

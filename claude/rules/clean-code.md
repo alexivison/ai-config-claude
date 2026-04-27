@@ -1,1 +1,1 @@
-../../shared/clean-code.md
+../../shared/reference/clean-code.md

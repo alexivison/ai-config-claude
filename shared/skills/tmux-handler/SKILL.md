@@ -190,4 +190,4 @@ Message: `[COMPANION] Plan review complete. Findings at: <path>`
 
 ## Dispute Resolution
 
-Follow `shared/execution-core.md` § Dispute Resolution. Use `--dispute <file>` with `--review` for companion disputes, `--prompt` for NEEDS_DISCUSSION debates.
+Follow `shared/reference/execution-core.md` § Dispute Resolution. Use `--dispute <file>` with `--review` for companion disputes, `--prompt` for NEEDS_DISCUSSION debates.
