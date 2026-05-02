@@ -5,7 +5,7 @@ description: >-
   implementation, critic review, companion review, and PR creation. Works with
   any planning source that provides scope, requirements, and a goal — TASK
   files, external planning tools, or direct user instructions. Covers the
-  entire cycle from worktree creation to draft PR.
+  entire cycle from worktree setup (creating one if not already in one) to draft PR.
 user-invocable: true
 ---
 

@@ -16,7 +16,7 @@ Workflow skills enforce the critic-before-companion-review ordering. Claude hook
 
 **Before writing ANY code:**
 
-1. **Create worktree** — `git worktree add ../repo-branch-name -b branch-name` (or `gwta` if available). One session per worktree; never `git checkout` in shared repos.
+1. **Ensure worktree** — if you're not already in a worktree (e.g. the session was launched with `party-cli start --worktree` or you're inside a linked worktree), skip this step. Otherwise: `git worktree add ../repo-branch-name -b branch-name` (or `gwta` if available). One session per worktree; never `git checkout` in shared repos.
 2. **Extract scope, requirements, and goal** from whatever triggered the work:
    - **Scope boundaries** (in scope / out of scope) — included in every sub-agent prompt
    - **Requirements** — concrete, verifiable items

@@ -563,16 +563,19 @@ func TestCreateForm_Master_NavigationSkipsCompanion(t *testing.T) {
 	t.Parallel()
 
 	f, _ := NewCreateForm(true, false, "/tmp", testAgentOptions())
-	// title → dir → primary; third down must clamp at primary since companion
-	// is excluded from fieldOrder in master mode.
+	// Master form order: title → dir → primary → worktree (no companion).
 	f, _ = f.handleKey(tea.KeyMsg{Type: tea.KeyDown})
 	f, _ = f.handleKey(tea.KeyMsg{Type: tea.KeyDown})
 	if f.focus != fieldPrimary {
 		t.Fatalf("after two downs: expected primary, got %d", f.focus)
 	}
 	f, _ = f.handleKey(tea.KeyMsg{Type: tea.KeyDown})
-	if f.focus != fieldPrimary {
-		t.Fatalf("third down must clamp at primary for master form, got %d", f.focus)
+	if f.focus != fieldWorktree {
+		t.Fatalf("third down should reach worktree (companion is excluded), got %d", f.focus)
+	}
+	f, _ = f.handleKey(tea.KeyMsg{Type: tea.KeyDown})
+	if f.focus != fieldWorktree {
+		t.Fatalf("fourth down must clamp at worktree for master form, got %d", f.focus)
 	}
 }
 
@@ -606,6 +609,53 @@ func TestCreateForm_Enter_ValidDir_EmitsRequest(t *testing.T) {
 	}
 	if req.opts.Master {
 		t.Error("expected master=false")
+	}
+}
+
+func TestCreateForm_WorktreeToggle_DefaultOffAndCarriedToOpts(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	f, _ := NewCreateForm(false, false, dir, testAgentOptions())
+
+	// Default: off.
+	if f.worktree {
+		t.Fatal("worktree default should be off")
+	}
+
+	// Move focus through fields to fieldWorktree (title→dir→primary→companion→worktree).
+	for i := 0; i < 10 && f.focus != fieldWorktree; i++ {
+		f, _ = f.handleKey(tea.KeyMsg{Type: tea.KeyDown})
+	}
+	if f.focus != fieldWorktree {
+		t.Fatalf("expected focus to reach worktree, got %d", f.focus)
+	}
+
+	// Toggle on with right arrow.
+	f, _ = f.handleKey(tea.KeyMsg{Type: tea.KeyRight})
+	if !f.worktree {
+		t.Fatal("right arrow should toggle worktree on")
+	}
+
+	// Submit and verify the option propagates.
+	f, cmd := f.handleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	_ = f
+	if cmd == nil {
+		t.Fatal("expected a command from valid enter")
+	}
+	req, ok := cmd().(createRequestMsg)
+	if !ok {
+		t.Fatalf("expected createRequestMsg, got the wrong type")
+	}
+	if !req.opts.Worktree {
+		t.Error("expected opts.Worktree=true")
+	}
+}
+
+func TestCreateForm_WorktreeToggle_HiddenForTmux(t *testing.T) {
+	t.Parallel()
+	f, _ := NewCreateForm(false, true, "/tmp")
+	if f.hasWorktreeToggle() {
+		t.Error("tmux form should not expose the worktree toggle")
 	}
 }
 

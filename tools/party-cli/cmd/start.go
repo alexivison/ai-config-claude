@@ -19,6 +19,8 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 		agentFlags sessionAgentFlags
 		prompt     string
 		attach     bool
+		worktree   bool
+		branch     string
 	}
 
 	cmd := &cobra.Command{
@@ -56,6 +58,8 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 				ResumeIDs: resumeIDs,
 				Prompt:    opts.prompt,
 				Detached:  true, // shell wrappers handle attach
+				Worktree:  opts.worktree,
+				Branch:    opts.branch,
 			})
 			if err != nil {
 				return err
@@ -82,6 +86,8 @@ func newStartCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 	opts.agentFlags.AddFlags(cmd)
 	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for the primary agent")
 	cmd.Flags().BoolVar(&opts.attach, "attach", false, "attach to session after creation")
+	cmd.Flags().BoolVar(&opts.worktree, "worktree", false, "create a git worktree for this session and use it as cwd")
+	cmd.Flags().StringVar(&opts.branch, "branch", "", "branch name for the worktree (default: derived from title)")
 	// Note: by default, attach behavior is handled by shell wrappers (party.sh).
 	// Use --attach to have party-cli attach directly after creating the session.
 	addDeprecatedLayoutFlag(cmd)

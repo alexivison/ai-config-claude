@@ -30,6 +30,7 @@ const (
 	fieldDir
 	fieldPrimary
 	fieldCompanion
+	fieldWorktree
 )
 
 // CreateStartOptions captures the role selections from the create form.
@@ -38,6 +39,7 @@ type CreateStartOptions struct {
 	Primary     string
 	Companion   string
 	NoCompanion bool
+	Worktree    bool
 }
 
 // AgentOptions configures the agent selectors shown in the create form.
@@ -61,6 +63,7 @@ type CreateForm struct {
 	companionOpts []string
 	primaryIdx    int
 	companionIdx  int
+	worktree      bool
 	err           string
 }
 
@@ -154,13 +157,18 @@ func (f CreateForm) handleKey(msg tea.KeyMsg) (CreateForm, tea.Cmd) {
 	case "down":
 		return f, f.moveFocus(1)
 	case "left":
-		if f.focus == fieldPrimary || f.focus == fieldCompanion {
+		if f.focus == fieldPrimary || f.focus == fieldCompanion || f.focus == fieldWorktree {
 			f.cycleSelection(-1)
 			return f, nil
 		}
 	case "right":
-		if f.focus == fieldPrimary || f.focus == fieldCompanion {
+		if f.focus == fieldPrimary || f.focus == fieldCompanion || f.focus == fieldWorktree {
 			f.cycleSelection(1)
+			return f, nil
+		}
+	case " ":
+		if f.focus == fieldWorktree {
+			f.worktree = !f.worktree
 			return f, nil
 		}
 	case "enter":
@@ -182,6 +190,9 @@ func (f CreateForm) handleKey(msg tea.KeyMsg) (CreateForm, tea.Cmd) {
 			opts.Companion = f.selectedCompanion()
 			opts.NoCompanion = opts.Companion == ""
 		}
+		if !f.tmux {
+			opts.Worktree = f.worktree
+		}
 		f.submitting = true
 		return f, func() tea.Msg {
 			return createRequestMsg{title: f.titleInput.Value(), dir: dir, opts: opts, tmux: f.tmux}
@@ -192,7 +203,7 @@ func (f CreateForm) handleKey(msg tea.KeyMsg) (CreateForm, tea.Cmd) {
 		return f, tea.Quit
 	}
 
-	if f.focus == fieldPrimary || f.focus == fieldCompanion {
+	if f.focus == fieldPrimary || f.focus == fieldCompanion || f.focus == fieldWorktree {
 		return f, nil
 	}
 	cmd := f.updateFocusedInput(msg)
@@ -305,6 +316,7 @@ func (f CreateForm) View(width, height int) string {
 	dirLabel := pickerMutedStyle.Render("Dir:        ")
 	primaryLabel := pickerMutedStyle.Render("Primary:    ")
 	companionLabel := pickerMutedStyle.Render("Companion:  ")
+	worktreeLabel := pickerMutedStyle.Render("Worktree:   ")
 
 	var lines []string
 	lines = append(lines, headerLine)
@@ -319,6 +331,10 @@ func (f CreateForm) View(width, height int) string {
 			lines = append(lines, "")
 			lines = append(lines, pad+companionLabel+f.renderChoice(f.selectedCompanion(), f.focus == fieldCompanion))
 		}
+	}
+	if f.hasWorktreeToggle() {
+		lines = append(lines, "")
+		lines = append(lines, pad+worktreeLabel+f.renderChoice(worktreeLabelFor(f.worktree), f.focus == fieldWorktree))
 	}
 	lines = append(lines, f.renderCompletions(pad)...)
 
@@ -421,6 +437,17 @@ func (f CreateForm) hasCompanionSelector() bool {
 	return f.hasAgentSelectors() && len(f.companionOpts) > 0
 }
 
+func (f CreateForm) hasWorktreeToggle() bool {
+	return !f.tmux
+}
+
+func worktreeLabelFor(on bool) string {
+	if on {
+		return "yes"
+	}
+	return "no"
+}
+
 func (f *CreateForm) moveFocus(delta int) tea.Cmd {
 	fields := f.fieldOrder()
 	if len(fields) == 0 {
@@ -452,6 +479,9 @@ func (f CreateForm) fieldOrder() []createField {
 		if f.hasCompanionSelector() {
 			fields = append(fields, fieldCompanion)
 		}
+	}
+	if f.hasWorktreeToggle() {
+		fields = append(fields, fieldWorktree)
 	}
 	return fields
 }
@@ -487,6 +517,8 @@ func (f *CreateForm) cycleSelection(delta int) {
 			return
 		}
 		f.companionIdx = wrapIndex(f.companionIdx+delta, len(f.companionOpts))
+	case fieldWorktree:
+		f.worktree = !f.worktree
 	}
 }
 

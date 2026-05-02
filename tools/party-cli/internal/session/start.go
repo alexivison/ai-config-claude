@@ -29,6 +29,13 @@ type StartOpts struct {
 	Prompt      string
 	SystemBrief string
 	Detached    bool
+	// Worktree, when true, creates a git worktree before launching the
+	// session and uses its path as the session cwd. If Cwd is already in
+	// a non-main worktree, the existing worktree is reused.
+	Worktree bool
+	// Branch overrides the worktree branch name. When empty, a name is
+	// derived from Title.
+	Branch string
 }
 
 // StartResult holds the outcome of a Start operation.
@@ -46,6 +53,18 @@ func (s *Service) Start(ctx context.Context, opts StartOpts) (StartResult, error
 		if err != nil {
 			return StartResult{}, fmt.Errorf("get working directory: %w", err)
 		}
+	}
+
+	if opts.Worktree {
+		wtPath, err := EnsureWorktree(ctx, WorktreeOpts{
+			Cwd:    cwd,
+			Branch: opts.Branch,
+			Title:  opts.Title,
+		})
+		if err != nil {
+			return StartResult{}, fmt.Errorf("create worktree: %w", err)
+		}
+		cwd = wtPath
 	}
 
 	role := roleStandalone

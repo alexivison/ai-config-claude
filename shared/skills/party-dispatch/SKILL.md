@@ -312,8 +312,9 @@ When running in a master session (`session_type == "master"` in manifest):
 - The spawned workers run whatever CLI is configured for the primary role
   (Claude Code by default), so they execute autonomously. The prompt is all
   they get — make it complete.
-- Each worker creates its own worktree (per workflow conventions), so there
-  are no git conflicts between sessions.
+- Each worker runs in its own worktree (either pre-created via `party-cli
+  spawn --worktree` or created by the worker itself per workflow conventions
+  if it isn't already in one), so there are no git conflicts between sessions.
 - If a Linear fetch fails, warn the user and skip that item (don't block the rest).
 - Keep prompts under 500 characters to avoid shell quoting issues. For longer
   context, write the prompt to a temp file and use `--prompt "$(cat /tmp/party-prompt-N.md)"`.

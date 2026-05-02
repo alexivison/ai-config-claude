@@ -89,6 +89,7 @@ func runPicker(cmd *cobra.Command, store *state.Store, client *tmux.Client, repo
 			Cwd:              cwd,
 			Master:           opts.Master,
 			IncludeCompanion: opts.Master && !opts.NoCompanion,
+			Worktree:         opts.Worktree,
 		})
 		if err != nil {
 			return "", err

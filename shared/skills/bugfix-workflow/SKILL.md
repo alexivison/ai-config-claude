@@ -29,7 +29,7 @@ On Claude, invoking this skill writes the `bugfix` execution-preset via `skill-m
 
 **STOP. Before writing ANY code:**
 
-1. **Create worktree first** — `git worktree add ../repo-branch-name -b branch-name`
+1. **Ensure worktree** — if you're not already in a worktree, create one: `git worktree add ../repo-branch-name -b branch-name`. Skip if the session already started inside a worktree (e.g. `party-cli start --worktree`).
 2. **Understand the bug** — Read relevant code, reproduce if possible
 3. **Complex bug?** → Dispatch the companion via the default transport script `tmux-companion.sh --prompt` → `[wait for user]`
 
