@@ -281,6 +281,48 @@ setup_tmux() {
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PARTY-CLI (built from tools/party-cli)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+setup_party_cli() {
+    echo ""
+    echo "━━━ party-cli ━━━"
+
+    if [[ "$SYMLINKS_ONLY" == true ]]; then
+        return
+    fi
+
+    if command -v party-cli &> /dev/null; then
+        echo "✓  party-cli already installed"
+        return
+    fi
+
+    if ! command -v go &> /dev/null; then
+        if command -v brew &> /dev/null; then
+            prompt_install "go" \
+                "brew install go" \
+                "brew install go" || {
+                echo "⚠  Skipping party-cli build (Go required)"
+                return
+            }
+        else
+            echo "⚠  Go not found. Install from https://go.dev/dl/ and re-run."
+            return
+        fi
+    fi
+
+    echo "Building party-cli..."
+    if make -C "$SCRIPT_DIR/tools/party-cli" install; then
+        echo "✓  party-cli installed to ~/.local/bin/party-cli"
+        case ":$PATH:" in
+            *":$HOME/.local/bin:"*) ;;
+            *) echo "⚠  ~/.local/bin is not on PATH. Add it to your shell rc." ;;
+        esac
+    else
+        echo "⚠  party-cli build failed"
+    fi
+}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # FZF (interactive session picker)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 setup_fzf() {
@@ -333,6 +375,7 @@ for agent_name in "${CONFIGURED_AGENTS[@]}"; do
     setup_agent "$agent_name"
 done
 setup_tmux
+setup_party_cli
 setup_fzf
 
 echo ""
