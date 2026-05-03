@@ -49,7 +49,7 @@ Goal: produce OpenSpec artifacts and get them approved by the spec review bot.
 
 ### Steps
 
-1. **Worktree** — create via `git worktree add` (or `gwta` if available).
+1. **Worktree** — if you're not already in one, create via `git worktree add` (or `gwta` if available). Skip if the session already started inside a worktree (e.g. `party-cli start --worktree`).
 
 2. **Artifacts** — create the OpenSpec change. Delegate to `/opsx:propose`
    or `/opsx:ff` for artifact generation, or create manually:
@@ -84,7 +84,7 @@ Prerequisite: Phase 1 spec review is APPROVED and all checks are green.
 
 ### Steps
 
-1. **Worktree** — reuse Phase 1 branch or create a new worktree.
+1. **Worktree** — reuse Phase 1 branch or create a new worktree if you're not already in one.
 
 2. **Extract scope** — from whatever context is available (user prompt,
    Linear ticket, OpenSpec artifacts, direct instructions). Identify:

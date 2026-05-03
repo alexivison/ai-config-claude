@@ -21,6 +21,11 @@ type SpawnOpts struct {
 	SystemBrief string
 	Detached    bool
 	Registry    *agent.Registry
+	// Worktree, when true, creates a git worktree before launching the
+	// worker and uses its path as the worker's cwd.
+	Worktree bool
+	// Branch overrides the worktree branch name.
+	Branch string
 }
 
 // Spawn creates a new worker session owned by the given master.
@@ -62,6 +67,8 @@ func (s *Service) Spawn(ctx context.Context, masterID string, opts SpawnOpts) (S
 		Prompt:      opts.Prompt,
 		SystemBrief: opts.SystemBrief,
 		Detached:    opts.Detached,
+		Worktree:    opts.Worktree,
+		Branch:      opts.Branch,
 	})
 }
 

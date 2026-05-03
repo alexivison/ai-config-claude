@@ -28,7 +28,7 @@ Use this workflow when speed matters and the requested change seems contained. T
 
 **Before writing ANY code:**
 
-1. **Create worktree** — `git worktree add ../repo-branch-name -b branch-name`
+1. **Ensure worktree** — if you're not already in a worktree, create one: `git worktree add ../repo-branch-name -b branch-name`. Skip if the session already started inside a worktree (e.g. `party-cli start --worktree`).
 2. **Understand scope** — Confirm what the user wants changed and whether behavior is likely to change
 3. **Note verification needs** — Decide what tests and checks are needed for the requested change
 

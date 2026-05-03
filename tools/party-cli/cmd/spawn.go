@@ -14,6 +14,8 @@ func newSpawnCmd(store *state.Store, client *tmux.Client, repoRoot string) *cobr
 		cwd        string
 		agentFlags sessionAgentFlags
 		prompt     string
+		worktree   bool
+		branch     string
 	}
 
 	cmd := &cobra.Command{
@@ -64,6 +66,8 @@ it is a master session.`,
 				Prompt:    opts.prompt,
 				Detached:  true, // shell wrappers handle attach
 				Registry:  registry,
+				Worktree:  opts.worktree,
+				Branch:    opts.branch,
 			})
 			if err != nil {
 				return err
@@ -78,6 +82,8 @@ it is a master session.`,
 	opts.agentFlags.AddFlags(cmd)
 	addDeprecatedLayoutFlag(cmd)
 	cmd.Flags().StringVar(&opts.prompt, "prompt", "", "initial prompt for the worker's primary agent")
+	cmd.Flags().BoolVar(&opts.worktree, "worktree", false, "create a git worktree for the worker and use it as cwd")
+	cmd.Flags().StringVar(&opts.branch, "branch", "", "branch name for the worktree (default: derived from title)")
 
 	return cmd
 }

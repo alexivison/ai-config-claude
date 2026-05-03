@@ -130,11 +130,14 @@ Shared workflow skills are symlinked into `~/.codex/skills/` — invoke them whe
 
 ### Worktree Isolation
 
-**Always create a dedicated worktree before editing any file**, including in direct-edit mode with no workflow active. Bypassing a workflow gate does NOT exempt you from this. Never edit in another session's cwd — concurrent workers in the same worktree trample each other's diffs.
+**If you're not already in a worktree, create a dedicated one before editing any file** — including in direct-edit mode with no workflow active. Bypassing a workflow gate does NOT exempt you from this. Never edit in another session's cwd — concurrent workers in the same worktree trample each other's diffs.
+
+Sessions launched with `party-cli start --worktree` (or the picker's worktree toggle) already start inside a fresh worktree; in that case, skip creation and use the cwd as-is. Otherwise, create one yourself before the first edit.
 
 `main` is always the source of truth. When syncing or resolving conflicts, current `main` behavior/specs win. Reapply only your narrow ticket delta on top of latest `main`; never revive stale branch behavior.
 
-1. Prefer `gwta <branch>` if available.
-2. Otherwise: `git worktree add ../<repo>-<branch> -b <branch>`.
-3. One session per worktree. Never use `git checkout` or `git switch` in shared repos.
-4. After PR merge, clean up: `git worktree remove ../<repo>-<branch>`.
+1. Detect first: if `git rev-parse --show-toplevel` differs from `git rev-parse --git-common-dir`'s parent, you're already in a worktree — skip creation.
+2. Otherwise prefer `gwta <branch>` if available.
+3. Otherwise: `git worktree add ../<repo>-<branch> -b <branch>`.
+4. One session per worktree. Never use `git checkout` or `git switch` in shared repos.
+5. After PR merge, clean up: `git worktree remove ../<repo>-<branch>`.
